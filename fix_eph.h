@@ -25,6 +25,18 @@ namespace LAMMPS_NS {
 
 class FixEPH : public Fix {
  public:
+    enum class FixState : unsigned int {
+      NONE,
+      XIX,
+      XIY,
+      XIZ,
+      RHO,
+      BETA,
+      WX,
+      WY,
+      WZ
+    };
+    
     enum Flag : unsigned int {
       FRICTION = 0x01,
       RANDOM = 0x02,
@@ -32,7 +44,7 @@ class FixEPH : public Fix {
     };
     
     enum Model : unsigned int {
-      NONE = 0, // no friction at all (just calculates densities, gradients
+      NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
       PRBMOD = 3, // random force idea
@@ -52,16 +64,20 @@ class FixEPH : public Fix {
     void reset_dt();
     void grow_arrays(int);
     double compute_vector(int);
+    double memory_usage();
     
-    // orward communication copies information of owned local atoms to ghost
+    // forward communication copies information of owned local atoms to ghost
     // atoms, reverse communication does the opposite
     int pack_forward_comm(int, int *, double *, int, int *);
     void unpack_forward_comm(int, int, double *);
-    int pack_reverse_comm(int, int, double *);
-    void unpack_reverse_comm(int, int *, double *);
+    //int pack_reverse_comm(int, int, double *);
+    //void unpack_reverse_comm(int, int *, double *);
   
   private:
     int myID; // mpi rank for current instance
+    int nrPS; // number of processes
+    
+    FixState state;
     
     char eph_flag; // term flags
     char eph_model; // model selection
@@ -90,15 +106,14 @@ class FixEPH : public Fix {
     // random force
     double **f_RNG; // size = [nlocal][3]
     
-
     // stopping power for each atom
-    double* beta_i; // size = [natoms]
+    double* beta_i; // size = [nlocal]
     
     // Electronic density at each atom
-    double* rho_i; // size = [natoms]
+    double* rho_i; // size = [nlocal]
     
     // dissipation vector W_ij v_j
-    double** w_i; // size = [natoms][3]
+    double** w_i; // size = [nlocal][3]
     
     // locally stored individual densities to lower the number of calls to interpolation
     int rho_neigh; // 512 by default
@@ -109,12 +124,10 @@ class FixEPH : public Fix {
     double** grad_rho_i; // size [nlocal][3]
     
     // random numbers
-    double **v_xi; // size = [natoms][3]
+    double **xi_i; // size = [nlocal][3]
     
     // per atom array
     double **array; // size = [nlocal][5]
-
-    double *test_array; // size inum
     
     // these are temporary
     double v_alpha;

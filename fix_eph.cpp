@@ -62,6 +62,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   if (narg < 18) error->all(FLERR, "Illegal fix eph command: too few arguments");
   if (atom->natoms < 1) error->all(FLERR, "fix_eph: error no atoms in simulation");
   MPI_Comm_rank(world, &myID);
+  MPI_Comm_size(world, &nrPS);
+  state = FixState::NONE;
   
   vector_flag = 1; // fix is able to output a vector compute
   size_vector = 2; // 2 elements in the vector
@@ -69,12 +71,12 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   extvector = 1; // 
   nevery = 1; // call end_of_step every step
   peratom_flag = 1;
-  size_peratom_cols = 5;
+  size_peratom_cols = 8;
   peratom_freq = 1;
   
   /** comm test **/
   comm_forward = 1;
-  comm_reverse = 1;
+  //comm_reverse = 1;
   
   // special needed for velocity things to work
   comm->ghost_velocity = 1;
@@ -132,14 +134,14 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   // allocate arrays for fix_eph
   f_EPH = NULL;
   f_RNG = NULL;
-
+  
   w_i = NULL;
 
   beta_i = NULL;
   rho_i = NULL;
   array = NULL;
   
-  v_xi = NULL;
+  xi_i = NULL;
   
   rho_neigh = 512;
   rho_ij = NULL;
@@ -147,12 +149,11 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   grad_rho_i = NULL;
   
+  list = NULL;
+  
+  // NO ARRAYS BEFORE THIS
   grow_arrays(atom->nmax);
   atom->add_callback(0);
-  
-  test_array = NULL;
-
-  list = NULL;
   
   Ee = 0.0; // electronic energy is zero in the beginning
   
@@ -180,10 +181,8 @@ FixEPH::~FixEPH() {
   
   memory->destroy(grad_rho_i);
   
-  memory->destroy(v_xi);
+  memory->destroy(xi_i);
   memory->destroy(w_i);
-
-  memory->destroy(test_array);
 }
 
 void FixEPH::init() {
@@ -260,13 +259,14 @@ void FixEPH::end_of_step() {
   // store per atom values into array
   for(unsigned int i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
-      tagint itag = tag[i] - 1;
-      
-      array[i][ 0] = rho_i[itag];
-      array[i][ 1] = beta_i[itag];
-      array[i][ 2] = w_i[itag][0];
-      array[i][ 3] = w_i[itag][1];
-      array[i][ 4] = w_i[itag][2];
+      array[i][ 0] = rho_i[i];
+      array[i][ 1] = beta_i[i];
+      array[i][ 2] = w_i[i][0];
+      array[i][ 3] = w_i[i][1];
+      array[i][ 4] = w_i[i][2];
+      array[i][ 5] = xi_i[i][0];
+      array[i][ 6] = xi_i[i][1];
+      array[i][ 7] = xi_i[i][2];
     }
     else {
       array[i][ 0] = 0.0;
@@ -274,6 +274,9 @@ void FixEPH::end_of_step() {
       array[i][ 2] = 0.0;
       array[i][ 3] = 0.0;
       array[i][ 4] = 0.0;
+      array[i][ 5] = 0.0;
+      array[i][ 6] = 0.0;
+      array[i][ 7] = 0.0;
     }
   }
 }
@@ -291,7 +294,6 @@ void FixEPH::calculate_environment() {
   // loop over atoms and their neighbours and calculate rho and beta(rho)
   /* TODO: inum vs nlocal */
   for(int i = 0; i < nlocal; ++i) {
-    tagint itag = tag[i] - 1;
     
     // check if current atom belongs to fix group and if an atom is local
     if(mask[i] & groupbit) {
@@ -318,7 +320,7 @@ void FixEPH::calculate_environment() {
           rho_ij[i][j] = v_rho_ij;
           rho_ji[i][j] = v_rho_ji;
           
-          rho_i[itag] += v_rho_ji;
+          rho_i[i] += v_rho_ji;
           
           double v_grad_rho = -beta->getDRho(typeMap[jtype-1], r);
           
@@ -328,12 +330,19 @@ void FixEPH::calculate_environment() {
         }
       }
       
-      beta_i[itag] = beta->getBeta(typeMap[itype-1], rho_i[itag]);
+      beta_i[i] = beta->getBeta(typeMap[itype-1], rho_i[i]);
     }
   }
   
-  MPI_Allreduce(MPI_IN_PLACE, &(rho_i[0]), atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, &(beta_i[0]), atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD); 
+  if(nrPS > 1) {
+    state = FixState::RHO;
+    comm->forward_comm_fix(this);
+  }
+  
+  if(nrPS > 1) {
+    state = FixState::BETA;
+    comm->forward_comm_fix(this);
+  }
 }
 
 void FixEPH::force_ttm() {
@@ -346,9 +355,7 @@ void FixEPH::force_ttm() {
   if(eph_flag & Flag::FRICTION) {
     for(int i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
-        tagint itag = tag[i] - 1;
-        
-        double var = -beta_factor * beta_i[itag];
+        double var = -beta_factor * beta_i[i];
         f_EPH[i][0] = var * v[i][0];
         f_EPH[i][1] = var * v[i][1];
         f_EPH[i][2] = var * v[i][2];
@@ -360,12 +367,10 @@ void FixEPH::force_ttm() {
   if(eph_flag & Flag::RANDOM) {
     for(int i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
-        tagint itag = tag[i] - 1;
-        
-        double var = eta_factor * sqrt(v_Te * beta_i[itag]);
-        f_RNG[i][0] = var * v_xi[itag][0];
-        f_RNG[i][1] = var * v_xi[itag][1];
-        f_RNG[i][2] = var * v_xi[itag][2];
+        double var = eta_factor * sqrt(v_Te * beta_i[i]);
+        f_RNG[i][0] = var * xi_i[i][0];
+        f_RNG[i][1] = var * xi_i[i][1];
+        f_RNG[i][2] = var * xi_i[i][2];
       }
     }
   }  
@@ -389,9 +394,7 @@ void FixEPH::force_prb() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double var = beta_i[itag];
+        double var = beta_i[i];
         f_EPH[i][0] = var * v[i][0];
         f_EPH[i][1] = var * v[i][1];
         f_EPH[i][2] = var * v[i][2];
@@ -401,11 +404,9 @@ void FixEPH::force_prb() {
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          tagint jtag = tag[jj] - 1;
-          
-          if(rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D) {
+          if(rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
-            double var = beta_i[itag] * v_rho_ji / rho_i[itag];
+            double var = beta_i[i] * v_rho_ji / rho_i[i];
             f_EPH[i][0] -= var * v[jj][0];
             f_EPH[i][1] -= var * v[jj][1];
             f_EPH[i][2] -= var * v[jj][2];
@@ -424,12 +425,10 @@ void FixEPH::force_prb() {
   if(eph_flag & Flag::RANDOM) {
     for(int i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
-        tagint itag = tag[i] - 1;
-        
-        double var = eta_factor * sqrt(v_Te * beta_i[itag]);
-        f_RNG[i][0] = var * v_xi[itag][0];
-        f_RNG[i][1] = var * v_xi[itag][1];
-        f_RNG[i][2] = var * v_xi[itag][2];
+        double var = eta_factor * sqrt(v_Te * beta_i[i]);
+        f_RNG[i][0] = var * xi_i[i][0];
+        f_RNG[i][1] = var * xi_i[i][1];
+        f_RNG[i][2] = var * xi_i[i][2];
       }
     }
   }
@@ -453,32 +452,36 @@ void FixEPH::force_prbmod() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double alpha_i = sqrt(beta_i[itag]);
-        w_i[itag][0] = alpha_i * v[i][0];
-        w_i[itag][1] = alpha_i * v[i][1];
-        w_i[itag][2] = alpha_i * v[i][2];
+        double alpha_i = sqrt(beta_i[i]);
+        w_i[i][0] = alpha_i * v[i][0];
+        w_i[i][1] = alpha_i * v[i][1];
+        w_i[i][2] = alpha_i * v[i][2];
         
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          tagint jtag = tag[jj] - 1;
-          
-          if (rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D) {
+          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
-            double var = alpha_i * v_rho_ji / rho_i[itag];
-            w_i[itag][0] -= var * v[jj][0];
-            w_i[itag][1] -= var * v[jj][1];
-            w_i[itag][2] -= var * v[jj][2];
+            double var = alpha_i * v_rho_ji / rho_i[i];
+            w_i[i][0] -= var * v[jj][0];
+            w_i[i][1] -= var * v[jj][1];
+            w_i[i][2] -= var * v[jj][2];
           }
         }
       }
     }
     
-    MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if(nrPS > 1) {
+      state = FixState::WX;
+      comm->forward_comm_fix(this);
+      state = FixState::WY;
+      comm->forward_comm_fix(this);
+      state = FixState::WZ;
+      comm->forward_comm_fix(this);
+    }
+    //MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
     // now calculate the forces
     for(int i = 0; i < nlocal; ++i) {
@@ -487,27 +490,23 @@ void FixEPH::force_prbmod() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double alpha_i = sqrt(beta_i[itag]);
-        f_EPH[i][0] = alpha_i * w_i[itag][0];
-        f_EPH[i][1] = alpha_i * w_i[itag][1];
-        f_EPH[i][2] = alpha_i * w_i[itag][2];
+        double alpha_i = sqrt(beta_i[i]);
+        f_EPH[i][0] = alpha_i * w_i[i][0];
+        f_EPH[i][1] = alpha_i * w_i[i][1];
+        f_EPH[i][2] = alpha_i * w_i[i][2];
         
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          tagint jtag = tag[jj] - 1;
-          
-          if(rho_ij[i][j] > 0.0D &&rho_i[jtag] > 0.0D) {
-            double alpha_j = sqrt(beta_i[jtag]);
+          if(rho_ij[i][j] > 0.0D &&rho_i[jj] > 0.0D) {
+            double alpha_j = sqrt(beta_i[jj]);
             double v_rho_ij = rho_ij[i][j];
-            double var = alpha_j * v_rho_ij / rho_i[jtag];
-            f_EPH[i][0] -= var * w_i[jtag][0];
-            f_EPH[i][1] -= var * w_i[jtag][1];
-            f_EPH[i][2] -= var * w_i[jtag][2];
+            double var = alpha_j * v_rho_ij / rho_i[jj];
+            f_EPH[i][0] -= var * w_i[jj][0];
+            f_EPH[i][1] -= var * w_i[jj][1];
+            f_EPH[i][2] -= var * w_i[jj][2];
           }
         }
         
@@ -527,28 +526,24 @@ void FixEPH::force_prbmod() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
+        double var = sqrt(beta_i[i]);
         
-        double var = sqrt(beta_i[itag]);
-        
-        f_RNG[i][0] = var * v_xi[itag][0];
-        f_RNG[i][1] = var * v_xi[itag][1];
-        f_RNG[i][2] = var * v_xi[itag][2];
+        f_RNG[i][0] = var * xi_i[i][0];
+        f_RNG[i][1] = var * xi_i[i][1];
+        f_RNG[i][2] = var * xi_i[i][2];
         
         for(int j = 0; j < jnum; j++) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           
-          tagint jtag = tag[jj] - 1;
-          
-          if(rho_ij[i][j] > 0.0D && rho_i[jtag] > 0.0) {          
+          if(rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0) {          
             double v_rho_ij = rho_ij[i][j];
-            var = sqrt(beta_i[jtag]);
-            var *= v_rho_ij / rho_i[jtag];
+            var = sqrt(beta_i[jj]);
+            var *= v_rho_ij / rho_i[jj];
             
-            f_RNG[i][0] -= var * v_xi[jtag][0];
-            f_RNG[i][1] -= var * v_xi[jtag][1];
-            f_RNG[i][2] -= var * v_xi[jtag][2];
+            f_RNG[i][0] -= var * xi_i[jj][0];
+            f_RNG[i][1] -= var * xi_i[jj][1];
+            f_RNG[i][2] -= var * xi_i[jj][2];
           }
         }
         
@@ -581,9 +576,7 @@ void FixEPH::force_eta() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double alpha_i = sqrt(beta_i[itag]);
+        double alpha_i = sqrt(beta_i[i]);
         
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
@@ -597,41 +590,49 @@ void FixEPH::force_eta() {
           
           double e_r_2 = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          tagint jtag = tag[jj] - 1;
-          double alpha_j = sqrt(beta_i[jtag]);
+          double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if (rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
                           e_ij_z * v[i][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[itag] * e_v_v / e_r_2;
+            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_2;
             
-            w_i[itag][0] += var * e_ij_x;
-            w_i[itag][1] += var * e_ij_y;
-            w_i[itag][2] += var * e_ij_z;
+            w_i[i][0] += var * e_ij_x;
+            w_i[i][1] += var * e_ij_y;
+            w_i[i][2] += var * e_ij_z;
           }
           
           // second sum
-          if (rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * v[jj][0] + 
                           e_ij_y * v[jj][1] + 
                           e_ij_z * v[jj][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[itag] * e_v_v / e_r_2;
+            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_2;
             
-            w_i[itag][0] -= var * e_ij_x;
-            w_i[itag][1] -= var * e_ij_y;
-            w_i[itag][2] -= var * e_ij_z;
+            w_i[i][0] -= var * e_ij_x;
+            w_i[i][1] -= var * e_ij_y;
+            w_i[i][2] -= var * e_ij_z;
           }
         }
       }
     }
     
-    MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if(nrPS > 1) {
+      state = FixState::WX;
+      comm->forward_comm_fix(this);
+      state = FixState::WY;
+      comm->forward_comm_fix(this);
+      state = FixState::WZ;
+      comm->forward_comm_fix(this);
+    }
+    
+    //MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
     // now calculate the forces
     // f_i = W_ij w_j
@@ -641,9 +642,7 @@ void FixEPH::force_eta() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double alpha_i = sqrt(beta_i[itag]);
+        double alpha_i = sqrt(beta_i[i]);
         
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
@@ -657,17 +656,16 @@ void FixEPH::force_eta() {
           
           double e_r_2 = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          tagint jtag = tag[jj] - 1;
-          double alpha_j = sqrt(beta_i[jtag]);
+          double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if (rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
-            double e_v_v = e_ij_x * w_i[itag][0] + 
-                          e_ij_y * w_i[itag][1] + 
-                          e_ij_z * w_i[itag][2];
+            double e_v_v = e_ij_x * w_i[i][0] + 
+                          e_ij_y * w_i[i][1] + 
+                          e_ij_z * w_i[i][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[itag] * e_v_v / e_r_2;
+            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_2;
             
             f_EPH[i][0] += var * e_ij_x;
             f_EPH[i][1] += var * e_ij_y;
@@ -675,13 +673,13 @@ void FixEPH::force_eta() {
           }
           
           // second sum
-          if (rho_ij[i][j] > 0.0D && rho_i[jtag] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ij = rho_ij[i][j];
-            double e_v_v = e_ij_x * w_i[jtag][0] + 
-                          e_ij_y * w_i[jtag][1] + 
-                          e_ij_z * w_i[jtag][2];
+            double e_v_v = e_ij_x * w_i[jj][0] + 
+                          e_ij_y * w_i[jj][1] + 
+                          e_ij_z * w_i[jj][2];
             
-            double var = alpha_j * v_rho_ij / rho_i[jtag] * e_v_v / e_r_2;
+            double var = alpha_j * v_rho_ij / rho_i[jj] * e_v_v / e_r_2;
             
             f_EPH[i][0] -= var * e_ij_x;
             f_EPH[i][1] -= var * e_ij_y;
@@ -705,9 +703,7 @@ void FixEPH::force_eta() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
-        double alpha_i = sqrt(beta_i[itag]);
+        double alpha_i = sqrt(beta_i[i]);
         
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
@@ -720,17 +716,16 @@ void FixEPH::force_eta() {
           
           double e_r_2 = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          tagint jtag = tag[jj] - 1;
-          double alpha_j = sqrt(beta_i[jtag]);
+          double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if(rho_ji[i][j] > 0.0D && rho_i[itag] > 0.0D && e_r_2 > 0.0D) {
+          if(rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ji = rho_ji[i][j];
-            double e_v_xi = e_ij_x * v_xi[itag][0] + 
-                            e_ij_y * v_xi[itag][1] + 
-                            e_ij_z * v_xi[itag][2];
+            double e_v_xi = e_ij_x * xi_i[i][0] + 
+                            e_ij_y * xi_i[i][1] + 
+                            e_ij_z * xi_i[i][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[itag] * e_v_xi / e_r_2;
+            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_xi / e_r_2;
             
             f_RNG[i][0] += var * e_ij_x;
             f_RNG[i][1] += var * e_ij_y;
@@ -738,13 +733,13 @@ void FixEPH::force_eta() {
           }
           
           // second sum
-          if(rho_ij[i][j] > 0.0D && rho_i[jtag] > 0.0D && e_r_2 > 0.0D) {
+          if(rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0D && e_r_2 > 0.0D) {
             double v_rho_ij = rho_ij[i][j];
-            double e_v_xi = e_ij_x * v_xi[jtag][0] + 
-                            e_ij_y * v_xi[jtag][1] + 
-                            e_ij_z * v_xi[jtag][2];
+            double e_v_xi = e_ij_x * xi_i[jj][0] + 
+                            e_ij_y * xi_i[jj][1] + 
+                            e_ij_z * xi_i[jj][2];
             
-            double var = alpha_j * v_rho_ij / rho_i[jtag] * e_v_xi / e_r_2;
+            double var = alpha_j * v_rho_ij / rho_i[jj] * e_v_xi / e_r_2;
             
             f_RNG[i][0] -= var * e_ij_x;
             f_RNG[i][1] -= var * e_ij_y;
@@ -782,8 +777,6 @@ void FixEPH::force_gap() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
@@ -794,16 +787,16 @@ void FixEPH::force_gap() {
           v_star_z -= v[jj][2] * rho_ji[i][j];
         }
         
-        if(rho_i[itag] > 0.0) {
-          v_star_x /= rho_i[itag];
-          v_star_y /= rho_i[itag];
-          v_star_z /= rho_i[itag];
+        if(rho_i[i] > 0.0) {
+          v_star_x /= rho_i[i];
+          v_star_y /= rho_i[i];
+          v_star_z /= rho_i[i];
           
           v_star_x += v[i][0];
           v_star_y += v[i][1];
           v_star_z += v[i][2];
           
-          double v_rho = pow(rho_i[itag], 4.0/3.0);
+          double v_rho = pow(rho_i[i], 4.0/3.0);
           double v_v = sqrt(v_star_x * v_star_x + 
                             v_star_y * v_star_y + 
                             v_star_z * v_star_z);
@@ -820,13 +813,13 @@ void FixEPH::force_gap() {
           var *= v_alpha / v_rho;
           //printf("%.6f %.6f %.6f ", grad_rho_i[i][0], grad_rho_i[i][1], grad_rho_i[i][2]);
           //printf("%.6f %.6f %.6f ", v_star_x, v_star_y, v_star_z);
-          //printf("%.6f %.6f %.6f %.6f %.6f\n", v_alpha, grad_rho_i[i][0], v_rho, rho_i[itag], var);
-          var = exp(var) * beta_i[itag];
+          //printf("%.6f %.6f %.6f %.6f %.6f\n", v_alpha, grad_rho_i[i][0], v_rho, rho_i[i], var);
+          var = exp(var) * beta_i[i];
           
           double v_th = grad_rho_i[i][0] * grad_rho_i[i][0] +
                         grad_rho_i[i][1] * grad_rho_i[i][1] +
                         grad_rho_i[i][2] * grad_rho_i[i][2];
-          v_th *= v_alpha / rho_i[itag] / v_rho; // v_beta
+          v_th *= v_alpha / rho_i[i] / v_rho; // v_beta
                     
           if(v_v > v_th) {
             v_v -= v_th;
@@ -874,8 +867,6 @@ void FixEPH::force_gapb() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        tagint itag = tag[i] - 1;
-        
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
@@ -886,16 +877,16 @@ void FixEPH::force_gapb() {
           v_star_z -= v[jj][2] * rho_ji[i][j];
         }
         
-        if(rho_i[itag] > 0.0) {
-          v_star_x /= rho_i[itag];
-          v_star_y /= rho_i[itag];
-          v_star_z /= rho_i[itag];
+        if(rho_i[i] > 0.0) {
+          v_star_x /= rho_i[i];
+          v_star_y /= rho_i[i];
+          v_star_z /= rho_i[i];
           
           v_star_x += v[i][0];
           v_star_y += v[i][1];
           v_star_z += v[i][2];
           
-          double v_rho = pow(rho_i[itag], 4.0/3.0);
+          double v_rho = pow(rho_i[i], 4.0/3.0);
           double v_v = sqrt(v_star_x * v_star_x + 
                             v_star_y * v_star_y + 
                             v_star_z * v_star_z);
@@ -907,16 +898,16 @@ void FixEPH::force_gapb() {
           double var = grad_rho_i[i][0] * v_e_x + 
                        grad_rho_i[i][1] * v_e_y +
                        grad_rho_i[i][2] * v_e_z;
-          var *= v_alpha / rho_i[itag] / rho_i[itag];
+          var *= v_alpha / rho_i[i] / rho_i[i];
           //printf("%.6f %.6f %.6f ", grad_rho_i[i][0], grad_rho_i[i][1], grad_rho_i[i][2]);
           //printf("%.6f %.6f %.6f ", v_star_x, v_star_y, v_star_z);
           //printf("%.6f\n", var);
-          var = exp(var) * beta_i[itag];
+          var = exp(var) * beta_i[i];
           
           double v_th = grad_rho_i[i][0] * grad_rho_i[i][0] +
                         grad_rho_i[i][1] * grad_rho_i[i][1] +
                         grad_rho_i[i][2] * grad_rho_i[i][2];
-          v_th *= v_alpha / rho_i[itag] / v_rho; // v_beta
+          v_th *= v_alpha / rho_i[i] / v_rho; // v_beta
           
           //printf("%.6f %.6f\n", v_v, v_th);
           if(v_v > v_th) {
@@ -952,10 +943,10 @@ void FixEPH::post_force(int vflag) {
   int *numneigh = list->numneigh;
   
   //zero all arrays
-  std::fill_n(&(rho_i[0]), (atom->natoms), 0.0D);
-  std::fill_n(&(beta_i[0]), (atom->natoms), 0.0D);
-  std::fill_n(&(v_xi[0][0]), 3 * (atom->natoms), 0.0D);
-  std::fill_n(&(w_i[0][0]), 3 * (atom->natoms), 0.0D);
+  std::fill_n(&(rho_i[0]), nlocal, 0.0D);
+  std::fill_n(&(beta_i[0]), nlocal, 0.0D);
+  std::fill_n(&(xi_i[0][0]), 3 * (nlocal), 0.0D);
+  std::fill_n(&(w_i[0][0]), 3 * (nlocal), 0.0D);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0D);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0D);
   std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0D);
@@ -963,17 +954,24 @@ void FixEPH::post_force(int vflag) {
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
     for(int i = 0; i < nlocal; ++i) {
-      tagint itag = tag[i] - 1;
-      
       if(mask[i] & groupbit) {
-        v_xi[itag][0] = random->gaussian();
-        v_xi[itag][1] = random->gaussian();
-        v_xi[itag][2] = random->gaussian();
+        xi_i[i][0] = random->gaussian();
+        xi_i[i][1] = random->gaussian();
+        xi_i[i][2] = random->gaussian();
       }
     }
     
-    MPI_Allreduce(MPI_IN_PLACE, &(v_xi[0][0]), 3*atom->natoms, 
-      MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    if(nrPS > 1) {
+      state = FixState::XIX;
+      comm->forward_comm_fix(this);
+      state = FixState::XIY;
+      comm->forward_comm_fix(this);
+      state = FixState::XIZ;
+      comm->forward_comm_fix(this);
+    }
+    
+    //MPI_Allreduce(MPI_IN_PLACE, &(xi_i[0][0]), 3*atom->natoms, 
+    //  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   }
   
   /* do a quick check for number of neighbours */
@@ -1057,10 +1055,11 @@ void FixEPH::grow_arrays(int ngrow) {
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
   
-  memory->grow(beta_i, atom->natoms, "eph:beta_i");
-  memory->grow(rho_i, atom->natoms, "eph:rho_i");
-  memory->grow(w_i, atom->natoms, 3, "eph:w_i");
-  memory->grow(v_xi, atom->natoms, 3, "eph:v_xi");
+  memory->grow(beta_i, ngrow, "eph:beta_i");
+  memory->grow(rho_i, ngrow, "eph:rho_i");
+  
+  memory->grow(w_i, ngrow, 3, "eph:w_i");
+  memory->grow(xi_i, ngrow, 3, "eph:xi_i");
   
   memory->grow(rho_ij, ngrow, rho_neigh, "eph:rho_ij");
   memory->grow(rho_ji, ngrow, rho_neigh, "eph:rho_ji");
@@ -1068,7 +1067,8 @@ void FixEPH::grow_arrays(int ngrow) {
   memory->grow(grad_rho_i, ngrow, 3, "eph:grad_rho_i");
   
   // per atom values
-  memory->grow(array, ngrow, 5, "eph:array");
+  // we need only nlocal elements here
+  memory->grow(array, atom->nlocal, size_peratom_cols, "eph:array");
   array_atom = array;
 }
 
@@ -1081,14 +1081,116 @@ double FixEPH::compute_vector(int i) {
   return Ee;
 }
 
-int FixEPH::pack_forward_comm(int, int *, double *, int, int *) {
+int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
+  int j, m;
+  m = 0;
+  if(state == FixState::RHO) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = rho_i[j];
+    }
+  }
+  else if(state == FixState::BETA) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = beta_i[j];
+    }
+  }
+  else if(state == FixState::XIX) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = xi_i[j][0];
+    }
+  }
+  else if(state == FixState::XIY) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = xi_i[j][1];
+    }
+  }
+  else if(state == FixState::XIZ) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = xi_i[j][2];
+    }
+  }
+  else if(state == FixState::WX) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = w_i[j][0];
+    }
+  }
+  else if(state == FixState::WY) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = w_i[j][1];
+    }
+  }
+  else if(state == FixState::WZ) {
+    for(int i = 0; i < n; ++i) {
+      j = list[i];
+      data[m++] = w_i[j][2];
+    }
+  }
   
+  return m;
 }
 
-void FixEPH::unpack_forward_comm(int, int, double *) {
+void FixEPH::unpack_forward_comm(int n, int first, double *data) {
+  int m, last;
+  m = 0;
+  last = first + n;
   
+  if(state == FixState::RHO) {
+    for(int i = first; i < last; ++i) {
+      rho_i[i] = data[m++];
+    }
+  }
+  else if(state == FixState::BETA) {
+    for(int i = first; i < last; ++i) {
+      beta_i[i] = data[m++];
+    }
+  }
+  else if(state == FixState::XIX) {
+    for(int i = first; i < last; ++i) {
+      xi_i[i][0] = data[m++];
+    }
+  }
+  else if(state == FixState::XIY) {
+    for(int i = first; i < last; ++i) {
+      xi_i[i][1] = data[m++];
+    }
+  }
+  else if(state == FixState::XIZ) {
+    for(int i = first; i < last; ++i) {
+      xi_i[i][2] = data[m++];
+    }
+  }
+  else if(state == FixState::WX) {
+    for(int i = first; i < last; ++i) {
+      w_i[i][0] = data[m++];
+    }
+  }
+  else if(state == FixState::WY) {
+    for(int i = first; i < last; ++i) {
+      w_i[i][1] = data[m++];
+    }
+  }
+  else if(state == FixState::WZ) {
+    for(int i = first; i < last; ++i) {
+      w_i[i][2] = data[m++];
+    }
+  }
 }
 
+/** TODO **/
+double FixEPH::memory_usage() {
+    double bytes = 0;
+    
+    return bytes;
+}
+
+/*
 int FixEPH::pack_reverse_comm(int, int, double *) {
   
 }
@@ -1096,5 +1198,5 @@ int FixEPH::pack_reverse_comm(int, int, double *) {
 void FixEPH::unpack_reverse_comm(int, int *, double *) {
   
 }
-
+*/
 
