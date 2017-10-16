@@ -52,6 +52,13 @@ class FixEPH : public Fix {
     void reset_dt();
     void grow_arrays(int);
     double compute_vector(int);
+    
+    // orward communication copies information of owned local atoms to ghost
+    // atoms, reverse communication does the opposite
+    int pack_forward_comm(int, int *, double *, int, int *);
+    void unpack_forward_comm(int, int, double *);
+    int pack_reverse_comm(int, int, double *);
+    void unpack_reverse_comm(int, int *, double *);
   
   private:
     int myID; // mpi rank for current instance
@@ -105,7 +112,9 @@ class FixEPH : public Fix {
     double **v_xi; // size = [natoms][3]
     
     // per atom array
-    double** array; // size = [nlocal][5]
+    double **array; // size = [nlocal][5]
+
+    double *test_array; // size inum
     
     // these are temporary
     double v_alpha;

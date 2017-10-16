@@ -72,6 +72,10 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   size_peratom_cols = 5;
   peratom_freq = 1;
   
+  /** comm test **/
+  comm_forward = 1;
+  comm_reverse = 1;
+  
   // special needed for velocity things to work
   comm->ghost_velocity = 1;
   
@@ -146,6 +150,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   grow_arrays(atom->nmax);
   atom->add_callback(0);
   
+  test_array = NULL;
+
   list = NULL;
   
   Ee = 0.0; // electronic energy is zero in the beginning
@@ -176,6 +182,8 @@ FixEPH::~FixEPH() {
   
   memory->destroy(v_xi);
   memory->destroy(w_i);
+
+  memory->destroy(test_array);
 }
 
 void FixEPH::init() {
@@ -1072,4 +1080,21 @@ double FixEPH::compute_vector(int i) {
   
   return Ee;
 }
+
+int FixEPH::pack_forward_comm(int, int *, double *, int, int *) {
+  
+}
+
+void FixEPH::unpack_forward_comm(int, int, double *) {
+  
+}
+
+int FixEPH::pack_reverse_comm(int, int, double *) {
+  
+}
+
+void FixEPH::unpack_reverse_comm(int, int *, double *) {
+  
+}
+
 
