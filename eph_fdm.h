@@ -7,6 +7,7 @@
 #define EPH_FDM_H
 
 #include <iostream>
+#include <mpi.h>
 
 /**
  * This is first stupid solution
@@ -35,15 +36,25 @@ class EPH_FDM {
     double *ddT_e; // second derivative
     
     // temperature dependence will be added later
-    double C_e; // specific heat at each point; 
-    double rho_e; // electronic density at each point
-    double kappa_e; // electronic heat conduction
+    double *C_e; // specific heat at each point; 
+    double *rho_e; // electronic density at each point
+    double *kappa_e; // electronic heat conduction
     
     double *S_e; // source or sink term for the electronic system
-    unsigned int *flag; // term to create walls inside the contiinum
+    
+    /*
+     * -1 -> uninitialised
+     *  0 -> constant
+     *  1 -> dynamic
+     **/
+    int *flag; // term to create walls inside the contiinum
     
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
+    
+    MPI_Comm world; // communicator
+    int myID;
+    int nrPS;
     
   public:
     EPH_FDM(const char* file);
@@ -66,12 +77,13 @@ class EPH_FDM {
     }
     
     void setConstants(double T_e, double C_e, double rho_e, double kappa_e) {
-      this->C_e = C_e;
-      this->rho_e = rho_e;
-      this->kappa_e = kappa_e;
-        
       for(int i = 0; i < ntotal; i++) {
         this->T_e[i] = T_e;
+        
+        this->rho_e[i] = rho_e;
+        this->C_e[i] = C_e;
+        this->kappa_e[i] = kappa_e;
+        this->flag[i] = 1;
       }
     }
     
@@ -94,6 +106,8 @@ class EPH_FDM {
       ly = ly%ny;
       lz = lz%nz;
       
+      unsigned int index = lx + ly * nx + lz * nx * ny;
+      
       return T_e[lx + ly * nx + lz * nx * ny];
     }
     
@@ -113,7 +127,7 @@ class EPH_FDM {
       lz = (unsigned int)((z-z0)/dz+1e-12);
       
       unsigned int index = lx + ly * nx + lz * nx * ny;
-      double prescale = rho_e * C_e * dV;
+      double prescale = rho_e[index] * C_e[index] * dV;
       
       if(prescale > 0.0)
         dT_e[index] += E / prescale;
@@ -172,12 +186,31 @@ class EPH_FDM {
       
       S_e[index] = S;
     }
-
-    unsigned int solve(); // evolve electronic system
     
+    void setComm(MPI_Comm comm, int myID, int nrPS) {
+      world = comm;
+      this->myID = myID;
+      this->nrPS = nrPS;
+    } 
+    
+    void solve(); // evolve electronic system
+    
+    // save final state of electronic structure for continuation
     void saveState(const char* file);
     
-    double calcEtotal();
+    // save current temperature map
+    void saveTemperature(const char* file, int n);
+    
+    double calcTtotal() {
+      double result = 0.0;
+  
+      for(int i = 0; i < ntotal; i++) {
+        result += T_e[i];
+      }
+      result /= ntotal; // this calculates the average temperature
+  
+      return result;
+    }
   
   private:
     static constexpr unsigned int lineLength = 1024;

@@ -30,7 +30,7 @@ EPH_Beta::EPH_Beta(const char* file) {
     return;
   }
   
-  unsigned int inputType; // 0 old; 1 new json
+  unsigned int inputType; // 0 old; 1 new json (TODO)
   char symbol;
   char line[lineLength];
   
