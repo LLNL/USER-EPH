@@ -155,6 +155,22 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   grow_arrays(atom->nmax);
   atom->add_callback(0);
   
+  // zero arrays, so they would not contain garbage
+  int nlocal = atom->nlocal;
+  std::fill_n(&(rho_i[0]), nlocal, 0.0D);
+  std::fill_n(&(beta_i[0]), nlocal, 0.0D);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0D);
+  
+  for(int i = 0; i < nlocal; ++i) {
+    for(int j = 0; j < size_peratom_cols; ++j) {
+      array[i][j] = 0.0;
+    }
+  }
+  
   Ee = 0.0; // electronic energy is zero in the beginning
   
   // we ignore all other input parameters at the moment
@@ -945,11 +961,15 @@ void FixEPH::post_force(int vflag) {
   //zero all arrays
   std::fill_n(&(rho_i[0]), nlocal, 0.0D);
   std::fill_n(&(beta_i[0]), nlocal, 0.0D);
-  std::fill_n(&(xi_i[0][0]), 3 * (nlocal), 0.0D);
-  std::fill_n(&(w_i[0][0]), 3 * (nlocal), 0.0D);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0D);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0D);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0D);
   std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0D);
+  
+  for(int i = 0; i < nlocal; ++i) {
+    rho_i[i] = 0.0;
+  }
   
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
