@@ -127,8 +127,9 @@ class EPH_FDM {
       lz = (unsigned int)((z-z0)/dz+1e-12);
       
       unsigned int index = lx + ly * nx + lz * nx * ny;
-      double prescale = rho_e[index] * C_e[index] * dV;
+      double prescale = dV * dt;
       
+      // convert energy into power per area
       if(prescale > 0.0)
         dT_e[index] += E / prescale;
       else

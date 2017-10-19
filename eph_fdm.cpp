@@ -163,6 +163,7 @@ void EPH_FDM::solve() {
           for(int i = 0; i < nx; i++) {
             unsigned int p, q;
             p = i + j*nx + k*nx*ny;
+            
             q = (i+1)%nx + j*nx + k*nx*ny;
             dT_e_x[p] = (T_e[q] - T_e[p])/dx;
             
@@ -193,13 +194,14 @@ void EPH_FDM::solve() {
         }
       }
       
+      /* TODO: there might be an issue with grid volume here */
       // do the actual step
       for(int i = 0; i < ntotal; i++) {
         //std::cout << i << " " << T_e[i] << " " << ddT_e[i] / prescaler * inner_dt << std::endl;
         double prescaler = rho_e[i] * C_e[i];
         
         if(prescaler > 0.0 && flag[i] > 0)
-          T_e[i] += ddT_e[i] / prescaler * inner_dt + dT_e[i] * inner_dt + S_e[i] * inner_dt;
+          T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
         
         // energy conservation issues
         /* Add a sanity check somewhere for this
