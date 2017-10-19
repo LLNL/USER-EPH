@@ -20,6 +20,7 @@ FixStyle(eph,FixEPH)
 
 // internal headers
 #include "eph_beta.h"
+#include "eph_fdm.h"
 
 namespace LAMMPS_NS {
 
@@ -40,7 +41,7 @@ class FixEPH : public Fix {
     enum Flag : unsigned int {
       FRICTION = 0x01,
       RANDOM = 0x02,
-      FDE = 0x04
+      FDM = 0x04
     };
     
     enum Model : unsigned int {
@@ -65,6 +66,7 @@ class FixEPH : public Fix {
     void grow_arrays(int);
     double compute_vector(int);
     double memory_usage();
+    void post_run();
     
     // forward communication copies information of owned local atoms to ghost
     // atoms, reverse communication does the opposite
@@ -84,9 +86,15 @@ class FixEPH : public Fix {
     
     unsigned int types; // number of different types
     unsigned int* typeMap; // type map
-    EPH_Beta* beta; // instance for 
+    EPH_Beta* beta; // instance for
+    EPH_FDM* fdm; // electronic FDM grid
     
     double rcutoff; // cutoff for beta
+    
+    // TODO: fix this; confusing names and 256
+    int Tfreq;
+    char Tout[256]; // this will print temperature heatmap
+    char Tstate[256]; // this will store the final state into file
     
     double beta_factor; // this is for the conversion from amu/ps -> force
     double eta_factor; // this is for the conversion from energy/ps -> force
@@ -131,9 +139,6 @@ class FixEPH : public Fix {
     
     // these are temporary
     double v_alpha;
-    double v_rho;
-    double v_Ce;
-    double v_Te;
     double v_struc;
     
     // private member functions

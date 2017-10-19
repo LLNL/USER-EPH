@@ -27,6 +27,7 @@
 // internal headers
 #include "fix_eph.h"
 #include "eph_beta.h"
+#include "eph_fdm.h"
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -39,7 +40,7 @@ using namespace FixConst;
    * arg[ 3] <- rng seed
    * arg[ 4] <- eph parameter; 0 disable all terms; 1 enable friction term; 2 enable random force; 4 enable fde;
    * arg[ 5] <- eph model selection; 1 standard ttm with beta(rho); 2 PRB version; 3 PRB mod; 4 Mason like; 5 Testing
-   * arg[ 6] <- electronic density; this might be changed with new fdm model
+   * arg[ 6] <- electronic density; this might be changed with new fdm model // this is in principle unnessesary
    * arg[ 7] <- electronic heat capacity
    * arg[ 8] <- electronic heat conduction
    * arg[ 9] <- initial electronic temperature TODO
@@ -90,11 +91,53 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   eph_model = atoi(arg[5]);
   
   // TODO: magic parameters for passing values TEMPORARY
-  v_alpha = atof(arg[6]);
-  v_rho = atof(arg[7]);
-  v_Ce = atof(arg[8]);
-  v_Te = atof(arg[9]);
-  v_struc = 1.0000; // remove structure factor for now
+  v_alpha = 1.0;
+  v_struc = 1.0000;
+  
+  // electronic structure parameters
+  double v_rho = atof(arg[6]);
+  double v_Ce = atof(arg[7]);
+  double v_kappa = atof(arg[8]);
+  double v_Te = atof(arg[9]);
+  int nx = atoi(arg[10]);
+  int ny = atoi(arg[11]);
+  int nz = atoi(arg[12]);
+  
+  /** initialise FDM grid **/
+  // if filename is provided use that to initialise grid everything else is ignored
+  if(strcmp("NULL" , arg[13]) == 0) { // this might not be the best test
+    if(nx < 1 || ny < 1 || nz < 1) { // TODO: negative values could be used for sth
+      error->all(FLERR, "FixEPH: non-positive grid values");
+    }
+    fdm = new EPH_FDM(nx, ny, nz);
+    double x0 = domain->boxlo[0];
+    double x1 = domain->boxhi[0];
+    double y0 = domain->boxlo[1];
+    double y1 = domain->boxhi[1];
+    double z0 = domain->boxlo[2];
+    double z1 = domain->boxhi[2];
+    fdm->setBox(x0, x1, y0, y1, z0, z1);
+    fdm->setConstants(v_Te, v_Ce, v_rho, v_kappa);
+    // now the FDM should be defined
+    strcpy(Tstate, "T.restart");
+  }
+  else {
+    fdm = new EPH_FDM(arg[13]);
+    /* TODO: add error check here
+    if(fdm == NULL) { // this does not do the correct thing
+      error->all(FLERR, "FixEPH: loading FDM parameters from file failed.");
+    }*/
+    sprintf(Tstate, "%s.restart", arg[13]);
+  }
+  
+  Tfreq = atoi(arg[14]);
+  if(Tfreq > 0) {
+    sprintf(Tout, "%s", arg[15]);
+  }
+  
+  // set the communicator
+  fdm->setComm(world, myID, nrPS);
+  
   // initialise beta(rho)
   types = atom->ntypes;
   
@@ -103,6 +146,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   }
   
   typeMap = new unsigned int[types];
+  // TODO: add error check here
   beta = new EPH_Beta(arg[16]);
   
   if(beta->getElementsNumber() < 1) {
@@ -181,6 +225,7 @@ FixEPH::~FixEPH() {
   delete random;
   delete[] typeMap;
   delete beta;
+  delete fdm;
   
   atom->delete_callback(id, 0);
   
@@ -249,9 +294,13 @@ void FixEPH::end_of_step() {
   if(eph_flag & Flag::FRICTION) {
     for(unsigned int i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
-        E_local -= f_EPH[i][0]*v[i][0]*update->dt;
-        E_local -= f_EPH[i][1]*v[i][1]*update->dt;
-        E_local -= f_EPH[i][2]*v[i][2]*update->dt;
+        double dE_i = 0.0;
+        dE_i -= f_EPH[i][0]*v[i][0]*update->dt;
+        dE_i -= f_EPH[i][1]*v[i][1]*update->dt;
+        dE_i -= f_EPH[i][2]*v[i][2]*update->dt;
+        
+        fdm->insertEnergy(x[i][0], x[i][1], x[i][2], dE_i);
+        E_local += dE_i;
       }
     }
   }
@@ -259,16 +308,30 @@ void FixEPH::end_of_step() {
   if(eph_flag & Flag::RANDOM) {
     for(unsigned int i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
-        E_local -= f_RNG[i][0]*v[i][0]*update->dt;
-        E_local -= f_RNG[i][1]*v[i][1]*update->dt;
-        E_local -= f_RNG[i][2]*v[i][2]*update->dt;
+        double dE_i = 0.0;
+        dE_i -= f_RNG[i][0]*v[i][0]*update->dt;
+        dE_i -= f_RNG[i][1]*v[i][1]*update->dt;
+        dE_i -= f_RNG[i][2]*v[i][2]*update->dt;
+        
+        fdm->insertEnergy(x[i][0], x[i][1], x[i][2], dE_i);
+        E_local += dE_i;
       }
     }
   }
   
+  if(eph_flag & Flag::FDM) {
+    fdm->solve();
+  }
+  
+  // save heatmap
+  if(myID == 0 && Tfreq > 0 && (update->ntimestep % Tfreq) == 0) {
+    fdm->saveTemperature(Tout, update->ntimestep / Tfreq);
+  }
+  
+  // this is for checking energy conservation
   MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
-  if(v_alpha > 0.0)
-    v_Te += E_local / v_Ce / v_rho; // v_Ce * v_rho [K / eV]
+  //if(v_alpha > 0.0)
+  //  v_Te += E_local / v_Ce / v_rho; // v_Ce * v_rho [K / eV]
   
   Ee += E_local;
   
@@ -362,6 +425,7 @@ void FixEPH::calculate_environment() {
 }
 
 void FixEPH::force_ttm() {
+  double **x = atom->x;
   double **v = atom->v;
   int *mask = atom->mask;
   int *tag = atom->tag;
@@ -383,6 +447,7 @@ void FixEPH::force_ttm() {
   if(eph_flag & Flag::RANDOM) {
     for(int i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
+        double v_Te = fdm->getT(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te * beta_i[i]);
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
@@ -393,6 +458,7 @@ void FixEPH::force_ttm() {
 }
 
 void FixEPH::force_prb() {
+  double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
   int *mask = atom->mask;
@@ -441,6 +507,7 @@ void FixEPH::force_prb() {
   if(eph_flag & Flag::RANDOM) {
     for(int i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
+        double v_Te = fdm->getT(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te * beta_i[i]);
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
@@ -451,6 +518,7 @@ void FixEPH::force_prb() {
 }
 
 void FixEPH::force_prbmod() {
+  double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
   int *mask = atom->mask;
@@ -563,6 +631,7 @@ void FixEPH::force_prbmod() {
           }
         }
         
+        double v_Te = fdm->getT(x[i][0], x[i][1], x[i][2]);
         var = eta_factor * sqrt(v_Te);
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
@@ -763,6 +832,7 @@ void FixEPH::force_eta() {
           }
         }
         
+        double v_Te = fdm->getT(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te);
         f_RNG[i][0] *= v_struc * var;
         f_RNG[i][1] *= v_struc * var;
@@ -1095,12 +1165,14 @@ void FixEPH::grow_arrays(int ngrow) {
 double FixEPH::compute_vector(int i) {
   if(i == 0)
     return Ee;
-  else if(i == 1)
-    return v_Te;
+  else if(i == 1) {
+    return fdm->calcTtotal();
+  }
   
   return Ee;
 }
 
+/** TODO: There might be synchronisation issues here; maybe should add barrier for sync **/
 int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
   int j, m;
   m = 0;
@@ -1208,6 +1280,11 @@ double FixEPH::memory_usage() {
     double bytes = 0;
     
     return bytes;
+}
+
+/* save temperature state after run */
+void FixEPH::post_run() {
+  if(myID == 0) fdm->saveState(Tstate);
 }
 
 /*
