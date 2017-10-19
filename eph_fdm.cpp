@@ -43,6 +43,8 @@ EPH_FDM::EPH_FDM(const char* file) {
   
   init();
   
+  fd >> steps;
+  
   // define box size
   fd >> x0; fd >> x1;
   fd >> y0; fd >> y1;
@@ -237,8 +239,8 @@ void EPH_FDM::saveState(const char* file) {
   fprintf(fd, "# A comment\n");
   fprintf(fd, "#\n");
   fprintf(fd, "#\n");
-  // next line is grid size
-  fprintf(fd, "%d %d %d\n", nx, ny, nz);
+  // next line is grid size and min number of steps
+  fprintf(fd, "%d %d %d %d\n", nx, ny, nz, steps);
   // next we have box size
   fprintf(fd, "%.6e %.6e\n", x0, x1);
   fprintf(fd, "%.6e %.6e\n", y0, y1);
@@ -274,7 +276,7 @@ void EPH_FDM::saveTemperature(const char* file, int n) {
         double y = y0 + j * dy;
         double z = z0 + k * dz;
         
-        fprintf(fd, "%.6e, %.6e %.6e %.6e\n", x, y, z, T_e[index]);
+        fprintf(fd, "%.6e %.6e %.6e %.6e\n", x, y, z, T_e[index]);
       }
     }
   }
