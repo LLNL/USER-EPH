@@ -92,7 +92,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // TODO: magic parameters for passing values TEMPORARY
   v_alpha = 1.0;
-  v_struc = 1.0000;
+  v_struc = 1.0;
   
   // electronic structure parameters
   double v_rho = atof(arg[6]);
@@ -167,13 +167,16 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   }
   
   // set force prefactors
-  beta_factor = 1.0 / force->ftm2v;
+  beta_factor = 1.0;
+  eta_factor = sqrt(2.0 * force->boltz / update->dt);
+  
+  // beta_factor = 1.0 / force->ftm2v;
   
   // uniform distribution
   // eta_factor = sqrt(24.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
   
   // gaussian distribution
-  eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
+  // eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
   
   // allocate arrays for fix_eph
   f_EPH = NULL;
@@ -1133,12 +1136,16 @@ void FixEPH::post_force(int vflag) {
 }
 
 void FixEPH::reset_dt() {
-  beta_factor = 1.0 / force->ftm2v;
+  // this should be correct if beta is in eV ps / Ang^2
+  beta_factor = 1.0;
+  eta_factor = sqrt(2.0 * force->boltz / update->dt);
+  
+  // beta_factor = 1.0 / force->ftm2v;
   // this is true for uniform distribution
   // eta_factor = sqrt(24.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
   
   // this is true for a gaussian distribution
-  eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
+  // eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
 }
 
 void FixEPH::grow_arrays(int ngrow) {
