@@ -146,8 +146,21 @@ void EPH_FDM::solve() {
     
     double dtdxdydz = inner_dt * (1.0/dx/dx + 1.0/dy/dy + 1.0/dz/dz);
     
-    // this does not work corectly
+    // this does not work corerctly
     double r = dtdxdydz / C_e[0] / rho_e[0] * kappa_e[0];
+    /** FOR THE FUTURE **/
+    /*
+    double min_C_e = 1e+99;
+    double min_rho_e = 1e+99;
+    double max_kappa_e = 0.0;
+    
+    for(int i = 0; i < ntotal; i++) {
+      if(min_C_e > C_e[i]) min_C_e = C_e[i];
+      if(min_rho_e > rho_e[i]) min_rho_e = rho_e[i];
+      if(max_kappa_e < kappa_e[i]) max_kappa_e = kappa_e[i];
+    }
+    double r = dtdxdydz / min_C_e / min_rho_e * max_kappa_e;
+    */
     
     unsigned int new_steps = steps;
     
@@ -160,6 +173,9 @@ void EPH_FDM::solve() {
     for(int n = 0; n < new_steps; n++) {
       // calculate derivatives
       // TODO: add OMP parallelism here
+      #pragma omp parallel
+      {
+      #pragma omp for
       for(int k = 0; k < nz; k++) {
         for(int j = 0; j < ny; j++) {
           for(int i = 0; i < nx; i++) {
@@ -177,8 +193,12 @@ void EPH_FDM::solve() {
           }
         }
       }
+      }
       
       // calculate second derivative
+      #pragma omp parallel
+      {
+      #pragma omp for
       for(int k = 0; k < nz; k++) {
         for(int j = 0; j < ny; j++) {
           for(int i = 0; i < nx; i++) {
@@ -195,9 +215,13 @@ void EPH_FDM::solve() {
           }
         }
       }
+      }
       
       /* TODO: there might be an issue with grid volume here */
       // do the actual step
+      #pragma omp parallel
+      {
+      #pragma omp for
       for(int i = 0; i < ntotal; i++) {
         //std::cout << i << " " << T_e[i] << " " << ddT_e[i] / prescaler * inner_dt << std::endl;
         double prescaler = rho_e[i] * C_e[i];
@@ -210,6 +234,7 @@ void EPH_FDM::solve() {
         if(T_e[i] < 0.0)
           T_e[i] = 0.0;
         */
+      }
       }
     
       // zero arrays
