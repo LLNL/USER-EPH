@@ -22,6 +22,7 @@ class EPH_FDM {
     double x0, x1; // box dimensions in x
     double y0, y1; // box dimensions in y
     double z0, z1; // box dimensions in z
+    double lx, ly, lz; // box size
     
     double dx, dy, dz; // element size
     double dV; // volume of the element
@@ -69,9 +70,13 @@ class EPH_FDM {
       this->z0 = z0;
       this->z1 = z1;
       
-      dx = (x1-x0)/nx;
-      dy = (y1-y0)/ny;
-      dz = (z1-z0)/nz;
+      lx = x1-x0;
+      ly = y1-y0;
+      lz = z1-z0;
+      
+      dx = lx/nx;
+      dy = ly/ny;
+      dz = lz/nz;
       
       dV = dx*dy*dz;
     }
@@ -97,10 +102,20 @@ class EPH_FDM {
     
     double getT(double x, double y, double z) {
       unsigned int lx, ly, lz;
+      double px, py, pz; // periodicity corrected
       
-      lx = (unsigned int)((x-x0)/dx+1e-12);
-      ly = (unsigned int)((y-y0)/dy+1e-12);
-      lz = (unsigned int)((z-z0)/dz+1e-12);
+      if(x < x0) px = x + this->lx;
+      else px = x;
+      
+      if(y < y0) py = y + this->ly;
+      else py = y;
+      
+      if(z < z0) pz = z + this->lz;
+      else pz = z;
+      
+      lx = (unsigned int)((px-x0)/dx+1e-12);
+      ly = (unsigned int)((py-y0)/dy+1e-12);
+      lz = (unsigned int)((pz-z0)/dz+1e-12);
       
       lx = lx%nx;
       ly = ly%ny;
@@ -111,7 +126,7 @@ class EPH_FDM {
       return T_e[lx + ly * nx + lz * nx * ny];
     }
     
-    double getT(int lx, int ly, int lz) {
+    double getT(unsigned int lx, unsigned int ly, unsigned int lz) {
       lx = lx%nx;
       ly = ly%ny;
       lz = lz%nz;
@@ -121,16 +136,28 @@ class EPH_FDM {
     
     bool insertEnergy(double x, double y, double z, double E) {
       unsigned int lx, ly, lz;
+      double px, py, pz; // periodicity corrected
       
-      lx = (unsigned int)((x-x0)/dx+1e-12);
-      ly = (unsigned int)((y-y0)/dy+1e-12);
-      lz = (unsigned int)((z-z0)/dz+1e-12);
+      /* wrap around */
+      if(x < x0) px = x + this->lx;
+      else px = x;
+      
+      if(y < y0) py = y + this->ly;
+      else py = y;
+      
+      if(z < z0) pz = z + this->lz;
+      else pz = z;
+      
+      lx = (unsigned int)((px-x0)/dx+1e-12);
+      ly = (unsigned int)((py-y0)/dy+1e-12);
+      lz = (unsigned int)((pz-z0)/dz+1e-12);
       
       lx = lx%nx;
       ly = ly%ny;
       lz = lz%nz;
       
       unsigned int index = lx + ly * nx + lz * nx * ny;
+      printf("%f %f %f %d %d %d %d\n", px, py, pz, lx, ly, lz, index);
       double prescale = dV * dt;
       
       // convert energy into power per area
@@ -142,10 +169,20 @@ class EPH_FDM {
     
     void setT(double x, double y, double z, double T) {
       unsigned int lx, ly, lz;
+      double px, py, pz; // periodicity corrected
       
-      lx = (unsigned int)((x-x0)/dx+1e-12);
-      ly = (unsigned int)((y-y0)/dy+1e-12);
-      lz = (unsigned int)((z-z0)/dz+1e-12);
+      if(x < x0) px = x + this->lx;
+      else px = x;
+      
+      if(y < y0) py = y + this->ly;
+      else py = y;
+      
+      if(z < z0) pz = z + this->lz;
+      else pz = z;
+      
+      lx = (unsigned int)((px-x0)/dx+1e-12);
+      ly = (unsigned int)((py-y0)/dy+1e-12);
+      lz = (unsigned int)((pz-z0)/dz+1e-12);
       
       lx = lx%nx;
       ly = ly%ny;
@@ -156,7 +193,7 @@ class EPH_FDM {
       T_e[index] = T;
     }
     
-    void setT(int lx, int ly, int lz, double T) {
+    void setT(unsigned int lx, unsigned int ly, unsigned int lz, double T) {
       lx = lx%nx;
       ly = ly%ny;
       lz = lz%nz;
@@ -168,10 +205,20 @@ class EPH_FDM {
     
     void setS(double x, double y, double z, double S) {
       unsigned int lx, ly, lz;
+      double px, py, pz; // periodicity corrected
       
-      lx = (unsigned int)((x-x0)/dx+1e-12);
-      ly = (unsigned int)((y-y0)/dy+1e-12);
-      lz = (unsigned int)((z-z0)/dz+1e-12);
+      if(x < x0) px = x + this->lx;
+      else px = x;
+      
+      if(y < y0) py = y + this->ly;
+      else py = y;
+      
+      if(z < z0) pz = z + this->lz;
+      else pz = z;
+      
+      lx = (unsigned int)((px-x0)/dx+1e-12);
+      ly = (unsigned int)((py-y0)/dy+1e-12);
+      lz = (unsigned int)((pz-z0)/dz+1e-12);
       
       lx = lx%nx;
       ly = ly%ny;
@@ -182,7 +229,7 @@ class EPH_FDM {
       S_e[index] = S;
     }
     
-    void setS(int lx, int ly, int lz, double S) {
+    void setS(unsigned int lx, unsigned int ly, unsigned int lz, double S) {
       lx = lx%nx;
       ly = ly%ny;
       lz = lz%nz;
