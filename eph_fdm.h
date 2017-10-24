@@ -126,6 +126,10 @@ class EPH_FDM {
       ly = (unsigned int)((y-y0)/dy+1e-12);
       lz = (unsigned int)((z-z0)/dz+1e-12);
       
+      lx = lx%nx;
+      ly = ly%ny;
+      lz = lz%nz;
+      
       unsigned int index = lx + ly * nx + lz * nx * ny;
       double prescale = dV * dt;
       
