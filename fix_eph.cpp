@@ -170,6 +170,10 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
   
+  /** integrator functionality **/
+  dtv = update->dt;
+  dtf = 0.5 * update->dt * force->ftm2v;
+  
   // beta_factor = 1.0 / force->ftm2v;
   
   // uniform distribution
@@ -274,8 +278,58 @@ int FixEPH::setmask() {
   int mask = 0;
   mask |= POST_FORCE;
   mask |= END_OF_STEP;
+  /** integrator functionality **/
+  mask |= INITIAL_INTEGRATE;
+  mask |= FINAL_INTEGRATE;
   
   return mask;
+}
+
+/** integrator functionality **/
+void FixEPH::initial_integrate(int) {
+  double dtfm;
+
+  double **x = atom->x;
+  double **v = atom->v;
+  double **f = atom->f;
+  double *rmass = atom->rmass;
+  double *mass = atom->mass;
+  int *type = atom->type;
+  int *mask = atom->mask;
+  int nlocal = atom->nlocal;
+
+  for (int i = 0; i < nlocal; i++) {
+    if (mask[i] & groupbit) {
+      dtfm = dtf / mass[type[i]];
+      v[i][0] += dtfm * f[i][0];
+      v[i][1] += dtfm * f[i][1];
+      v[i][2] += dtfm * f[i][2];
+      x[i][0] += dtv * v[i][0];
+      x[i][1] += dtv * v[i][1];
+      x[i][2] += dtv * v[i][2];
+    }
+  }
+}
+
+void FixEPH::final_integrate() {
+  double dtfm;
+
+  double **v = atom->v;
+  double **f = atom->f;
+  double *rmass = atom->rmass;
+  double *mass = atom->mass;
+  int *type = atom->type;
+  int *mask = atom->mask;
+  int nlocal = atom->nlocal;
+
+  for (int i = 0; i < nlocal; i++) {
+    if (mask[i] & groupbit) {
+      dtfm = dtf / mass[type[i]];
+      v[i][0] += dtfm * f[i][0];
+      v[i][1] += dtfm * f[i][1];
+      v[i][2] += dtfm * f[i][2];
+    }
+  }
 }
 
 void FixEPH::end_of_step() {
@@ -416,15 +470,11 @@ void FixEPH::calculate_environment() {
     }
   }
   
-  if(nrPS > 1) {
-    state = FixState::RHO;
-    comm->forward_comm_fix(this);
-  }
+  state = FixState::RHO;
+  comm->forward_comm_fix(this);
   
-  if(nrPS > 1) {
-    state = FixState::BETA;
-    comm->forward_comm_fix(this);
-  }
+  state = FixState::BETA;
+  comm->forward_comm_fix(this);
 }
 
 void FixEPH::force_ttm() {
@@ -560,14 +610,12 @@ void FixEPH::force_prbmod() {
       }
     }
     
-    if(nrPS > 1) {
-      state = FixState::WX;
-      comm->forward_comm_fix(this);
-      state = FixState::WY;
-      comm->forward_comm_fix(this);
-      state = FixState::WZ;
-      comm->forward_comm_fix(this);
-    }
+    state = FixState::WX;
+    comm->forward_comm_fix(this);
+    state = FixState::WY;
+    comm->forward_comm_fix(this);
+    state = FixState::WZ;
+    comm->forward_comm_fix(this);
     //MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
     // now calculate the forces
@@ -711,14 +759,12 @@ void FixEPH::force_eta() {
       }
     }
     
-    if(nrPS > 1) {
-      state = FixState::WX;
-      comm->forward_comm_fix(this);
-      state = FixState::WY;
-      comm->forward_comm_fix(this);
-      state = FixState::WZ;
-      comm->forward_comm_fix(this);
-    }
+    state = FixState::WX;
+    comm->forward_comm_fix(this);
+    state = FixState::WY;
+    comm->forward_comm_fix(this);
+    state = FixState::WZ;
+    comm->forward_comm_fix(this);
     
     //MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
@@ -1054,14 +1100,12 @@ void FixEPH::post_force(int vflag) {
       }
     }
     
-    if(nrPS > 1) {
-      state = FixState::XIX;
-      comm->forward_comm_fix(this);
-      state = FixState::XIY;
-      comm->forward_comm_fix(this);
-      state = FixState::XIZ;
-      comm->forward_comm_fix(this);
-    }
+    state = FixState::XIX;
+    comm->forward_comm_fix(this);
+    state = FixState::XIY;
+    comm->forward_comm_fix(this);
+    state = FixState::XIZ;
+    comm->forward_comm_fix(this);
     
     //MPI_Allreduce(MPI_IN_PLACE, &(xi_i[0][0]), 3*atom->natoms, 
     //  MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -1133,12 +1177,30 @@ void FixEPH::post_force(int vflag) {
       f[i][2] += f_RNG[i][2];
     }
   }
+  
+  /** debug **/
+  /*
+  double fsumx = 0.0;
+  double fsumy = 0.0;
+  double fsumz = 0.0;
+  
+  for(int i = 0; i < nlocal; i++) {
+    fsumx += f_RNG[i][0];
+    fsumy += f_RNG[i][1];
+    fsumz += f_RNG[i][1];
+  }
+  
+  printf("%f %f %f\n", fsumx, fsumy, fsumz);
+  */
 }
 
 void FixEPH::reset_dt() {
   // this should be correct if beta is in eV ps / Ang^2
   beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
+  
+  dtv = update->dt;
+  dtf = 0.5 * update->dt * force->ftm2v;
   
   // beta_factor = 1.0 / force->ftm2v;
   // this is true for uniform distribution

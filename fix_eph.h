@@ -68,6 +68,10 @@ class FixEPH : public Fix {
     double memory_usage();
     void post_run();
     
+    /** integrator functionality **/
+    void initial_integrate(int);
+    void final_integrate();
+    
     // forward communication copies information of owned local atoms to ghost
     // atoms, reverse communication does the opposite
     int pack_forward_comm(int, int *, double *, int, int *);
@@ -88,6 +92,10 @@ class FixEPH : public Fix {
     unsigned int* typeMap; // type map
     EPH_Beta* beta; // instance for
     EPH_FDM* fdm; // electronic FDM grid
+    
+    /** integrator functionality **/
+    double dtv;
+    double dtf;
     
     double rcutoff; // cutoff for beta
     

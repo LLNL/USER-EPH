@@ -157,7 +157,7 @@ class EPH_FDM {
       lz = lz%nz;
       
       unsigned int index = lx + ly * nx + lz * nx * ny;
-      printf("%f %f %f %d %d %d %d\n", px, py, pz, lx, ly, lz, index);
+      //printf("%f %f %f %d %d %d %d\n", px, py, pz, lx, ly, lz, index);
       double prescale = dV * dt;
       
       // convert energy into power per area
