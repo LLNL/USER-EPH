@@ -28,3 +28,11 @@ make -j 8 mpi
 
 The executable are `lmp_mpi lmp_serial`, you can copy them elsewhere.
 
+Usage
+
+* Take you MD input file
+* Add a line at the correct place, 
+
+```
+fix ID group-ID eph seed ...
+```
