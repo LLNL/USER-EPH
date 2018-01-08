@@ -3,7 +3,7 @@ LAMMPS extension to capture electron-ion interaction
 
 Artur Tamm and Alfredo A. Correa (LLNL)
 
-Installation Instructions
+## Installation Instructions
 
 Get LAMMPS (source code)
 
@@ -28,7 +28,7 @@ make -j 8 mpi
 
 The executable are `lmp_mpi lmp_serial`, you can copy them elsewhere.
 
-Usage
+## Usage
 
 * Take you MD input file
 * Add a line at the correct place, 
