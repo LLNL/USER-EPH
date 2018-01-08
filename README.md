@@ -22,7 +22,9 @@ Execute
 ```
 make yes-manybody
 make yes-user-eph
-make serial
-make mpi
+make -j 8 serial
+make -j 8 mpi
 ```
+
+The executable are `lmp_mpi lmp_serial`, you can copy them elsewhere.
 
