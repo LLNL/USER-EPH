@@ -39,7 +39,7 @@ using namespace FixConst;
    * arg[ 2] <- name
    * arg[ 3] <- rng seed
    * arg[ 4] <- eph parameter; 0 disable all terms; 1 enable friction term; 2 enable random force; 4 enable fde;
-   * arg[ 5] <- eph model selection; 1 standard ttm with beta(rho); 2 PRB version; 3 PRB mod; 4 Mason like; 5 Testing
+   * arg[ 5] <- eph model selection; 1 standard langevin with beta(rho); 2 PRB version; 3 new model with CM only; 4 full new model ; 9 Testing
    * arg[ 6] <- electronic density; this might be changed with new fdm model // this is in principle unnessesary
    * arg[ 7] <- electronic heat capacity
    * arg[ 8] <- electronic heat conduction

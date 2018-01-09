@@ -51,7 +51,8 @@ class FixEPH : public Fix {
       PRBMOD = 3, // random force idea
       ETA = 4, // random force idea with angular momentum
       GAP = 5, 
-      GAPB = 6
+      GAPB = 6,
+      TESTING = 9
     };
     
     FixEPH(class LAMMPS *, int, char **); // constructor
