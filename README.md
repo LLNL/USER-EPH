@@ -61,12 +61,12 @@ Where:
 * `A`, `B`, `C` -> element type mapping [string]
 
 For example the following line will run MD including the coupling for electrons, within the spatially correlated Langevin bath.
-The electronic specific heat is assumed to be 2.5e-7 eV/K/Ang^3 (40000 J/m³/K) (see LinPRB772008) which is a good approximation for a renge of electronic temperatures in the range of 500 to 1500K. 
+The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a renge of electronic temperatures in the range of 500 to 1500K. 
 Initial electron temperature is set to 300K (and not from a file).
 We use uniform tempetures (one grid element), therefore the heat conductivity is not relevant in this case.
 
 ```
-fix ID group-ID eph 123 4 4 2.5e-7 rho_e kappa_e 300 1 1 1 NULL 10 T_map.heat.out.dat Ni.betarho.in.dat A B C
+fix ID group-ID eph 123 4 4 2.5e-6 rho_e kappa_e 300 1 1 1 NULL 10 T_map.heat.out.dat Ni.betarho.in.dat A B C
 ```
 
 This fix produces two types of output:
