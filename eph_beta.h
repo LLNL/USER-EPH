@@ -1,6 +1,6 @@
 /*
  * Authors of the extension Artur Tamm, Alfredo Caro, Alfredo Correa, Mattias Klintenberg
- * e-mail: arturt@ut.ee
+ * e-mail: artur.tamm.work@gmail.com
  */
 
 #ifndef EPH_BETA
