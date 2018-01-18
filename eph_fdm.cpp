@@ -199,8 +199,8 @@ void EPH_FDM::solve() {
       /* TODO: there might be an issue with grid volume here */
       // do the actual step
       for(int i = 0; i < ntotal; i++) {
-        //std::cout << i << " " << T_e[i] << " " << ddT_e[i] / prescaler * inner_dt << std::endl;
         double prescaler = rho_e[i] * C_e[i];
+        //std::cout << i << " " << T_e[i] << " " << ddT_e[i] / prescaler * inner_dt << std::endl;
         
         if(prescaler > 0.0 && flag[i] > 0)
           T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;

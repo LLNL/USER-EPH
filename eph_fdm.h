@@ -104,13 +104,17 @@ class EPH_FDM {
       unsigned int lx, ly, lz;
       double px, py, pz; // periodicity corrected
       
+      /** TODO: this is probably slow and should be redobne **/
       if(x < x0) px = x + this->lx;
+      else if( x > x1) px = x - this->lx;
       else px = x;
       
       if(y < y0) py = y + this->ly;
+      else if( y > y1) py = y - this->ly;
       else py = y;
       
       if(z < z0) pz = z + this->lz;
+      else if( z > z1) pz = z - this->lz;
       else pz = z;
       
       lx = (unsigned int)((px-x0)/dx+1e-12);
@@ -139,13 +143,17 @@ class EPH_FDM {
       double px, py, pz; // periodicity corrected
       
       /* wrap around */
+      /** TODO: this is probably slow and should be redobne **/
       if(x < x0) px = x + this->lx;
+      else if( x > x1) px = x - this->lx;
       else px = x;
       
       if(y < y0) py = y + this->ly;
+      else if( y > y1) py = y - this->ly;
       else py = y;
       
       if(z < z0) pz = z + this->lz;
+      else if( z > z1) pz = z - this->lz;
       else pz = z;
       
       lx = (unsigned int)((px-x0)/dx+1e-12);

@@ -1,0 +1,27 @@
+
+units metal
+atom_style atomic
+
+boundary p p p
+
+lattice fcc 3.52
+region box_size block 0 5 0 5 0 5
+create_box 1 box_size
+create_atoms 1 box
+
+pair_style eam/alloy
+pair_coeff * * Ni.eam Ni
+
+thermo_style custom step temp press pe ke
+thermo 1000
+
+timestep 0.0001
+
+fix friction all eph 12345 3 4 1.0 1.0e-5 1.0 300.0 1 1 1 NULL 0 T_out Ni.beta Ni
+
+fix out all print 1000 "$(step) $(time) $(temp) $(f_friction[1]) $(f_friction[2])" file out.data screen no
+
+run 100000
+write_data struc_out.data
+
+

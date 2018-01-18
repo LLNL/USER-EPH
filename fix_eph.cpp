@@ -1163,7 +1163,13 @@ void FixEPH::post_force(int vflag) {
   }
   
   // second loop over atoms if needed
-  // This can be merged into previous loop
+  // debug
+  /*
+  printf("%f %f %f\n", f[0][0], f[0][1], f[0][2]);
+  printf("%f %f %f\n", f_EPH[0][0], f_EPH[0][1], f_EPH[0][2]);
+  printf("%f %f %f\n", f_RNG[0][0], f_RNG[0][1], f_RNG[0][2]);
+  */
+ 
   for(int i = 0; i < nlocal; i++) {
     if(eph_flag & Flag::FRICTION) {
       f[i][0] += f_EPH[i][0];
