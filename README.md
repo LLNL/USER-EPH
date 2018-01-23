@@ -151,6 +151,8 @@ $ gnuplot
 ```
 You will see that the ionic temperature increases and approaches the (fixed) electronic temperature (300K).
 
+![Alt text](Examples/Example_2/Tout.png?raw=true "Temperature Example 1")
+
 ## Example 2
 
 `Examples/Example_2/`: 
@@ -158,7 +160,7 @@ This example illustrates the use cooling of the ionic systems due to electrons o
 This means that only the friction term acts on atoms and removes energy. 
 This is equivalent to having electrons at 0K.
 
-![Alt text](Examples/Example_2/Tout.png?raw=true "Title")
+![Alt text](Examples/Example_2/Tout.png?raw=true "Temperature Example 2")
 
 ## Example 3
 `Examples/Example_3/`: 
