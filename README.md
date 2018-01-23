@@ -151,8 +151,7 @@ $ gnuplot
 ```
 You will see that the ionic temperature increases and approaches the (fixed) electronic temperature (300K).
 
-
-
+![Alt text](Examples/Example_1/Tout.png?raw=true "Temperature Example 1")
 
 ## Example 2
 
@@ -160,6 +159,8 @@ You will see that the ionic temperature increases and approaches the (fixed) ele
 This example illustrates the use cooling of the ionic systems due to electrons only. 
 This means that only the friction term acts on atoms and removes energy. 
 This is equivalent to having electrons at 0K.
+
+![Alt text](Examples/Example_2/Tout.png?raw=true "Temperature Example 2")
 
 ## Example 3
 `Examples/Example_3/`: 
@@ -176,3 +177,8 @@ Final state of the grid is stored and can be reused in later simulations (`T.res
 This example reads the FDM grid parameters from a file (`T.in`). 
 In this file a source term is added at grid point `(0 0 0)` representing for example a swift ion. 
 During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
+
+# History
+
+- 2018/01/01 Initiatial Release
+- 2018/01/15 Added CUBE format output for temperature and ions
