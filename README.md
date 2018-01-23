@@ -172,6 +172,8 @@ Also, this example illustrates the automatic initialisation of the FDM grid with
 The electronic temperature at various grid points is written to files (one per step) (`T_out_XXXXXX`). 
 Final state of the grid is stored and can be reused in later simulations (`T.restart`).
 
+![Alt text](Examples/Example_3/Tout.png?raw=true "Temperature Example 2")
+
 ## Example 4
 `Examples/Example_4/`: 
 This example reads the FDM grid parameters from a file (`T.in`). 
