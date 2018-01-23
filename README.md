@@ -26,6 +26,10 @@ Execute:
 ```
 $ make yes-manybody yes-user-eph
 $ make -j 8 serial
+```
+
+Make sure your MPI enviroment is setup already (`mpicxx` compiler wrapper works), this may require for example running `$ module load mpi/mpich-x86_64`
+```
 $ make -j 8 mpi
 ```
 
@@ -33,22 +37,27 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 
 ## Usage
 
-* Take you MD input file
+* Take your MD input file
 * Add a line at the correct place, 
 ```
-fix ID group-ID eph seed flags model C_e rho_e kappa_e T_e NX NY NZ T_infile N T_map beta_infile A B C
+fix [ID] [group-ID] eph [seed] [flags] [model] [C_e] [rho_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [N] [T_outfile] [beta_infile] [A] [B] [C]
 ```
 Where:
+* `ID` -> user-assigned name for the fix, for example `ephttm` [string]
+* `group-ID` -> group of atoms to which this fix will be applied, for example `all` [string]
 * `seed` -> seed for random number generator [integer, for example 123]
-* `flags`: control of different terms or'd together [integer]
-  * `1` -> enable friction
-  * `2` -> enable random force
-  * `4` -> enable FDM
+* `flags`: control of different terms or'd together [integer or bitmask]
+  * `1` -> enable friction (only) (pure damping)
+  * `2` -> enable random force (only) (not recommended)
+  * `3` -> enable friction and random force (fixed e-temperature) 
+  * `4` -> heat equation (by FDM finite difference method) (decoupled from ions)
+  * `5` -> enable friction and heat equation (no feedback from e-)
+  * `7` -> enable friction, random force, and heat equation (coupled e-ions)
 * `model`: select model for friction and random force [integer]
-  * `1` -> Standard Langevin
-  * `2` -> Tamm2016 PRB paper version
-  * `3` -> New version with CM correction only
-  * `4` -> New version full model (Tamm2018 paper)
+  * `1` -> standard Langevin (for vanilla TTM)
+  * `2` -> simple e-ph model (https://link.aps.org/doi/10.1103/PhysRevB.94.024305) (not recommended)
+  * `3` -> e-ph with spatial correlations, with CM-correction only (https://arxiv.org/abs/1801.06610)
+  * `4` -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
 * `rho_e` -> scaling parameter for the FDM grid [float] [unitless]
 * `C_e` -> electronic heat capacity per density [float] [in eV/K/Ang^3]
 * `kappa_e` -> electronic heat conduction [float] [in eV/K/Ang/ps]
