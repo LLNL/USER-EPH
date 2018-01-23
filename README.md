@@ -51,7 +51,7 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 fix [ID] [group-ID] eph [seed] [flags] [model] [rho_e] [C_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [freq] [Te_outfile] [beta_infile] [A] [B] [C...]
 ```
 Where:
-* `ID` -> user-assigned name for the fix, [string, e.g. `ephttm`]
+* `ID` -> user-assigned name for the fix, [string, e.g. `ephttm` or `friction`]
 * `group-ID` -> group of atoms to which this fix will be applied, [string, e.g. `all`]
 * `seed` -> seed for random number generator [integer, e.g. 123]
 * `flags`: control of different terms or'd together [integer or bitmask]
@@ -183,4 +183,6 @@ During the simulation the whole system will heat and due to gradient in the elec
 # History
 
 - 2018/01/01 Initiatial Release
-- 2018/01/15 Added CUBE format output for temperature and ions
+
+# TODO
+
