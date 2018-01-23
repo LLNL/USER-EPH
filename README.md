@@ -51,6 +51,7 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 fix [ID] [group-ID] eph [seed] [flags] [model] [rho_e] [C_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [freq] [Te_outfile] [beta_infile] [A] [B] [C...]
 ```
 Where:
+
 * `ID` -> user-assigned name for the fix, [string, e.g. `ephttm` or `friction`]
 * `group-ID` -> group of atoms to which this fix will be applied, [string, e.g. `all`]
 * `seed` -> seed for random number generator [integer, e.g. 123]
@@ -89,9 +90,11 @@ fix ephttm all eph 123 7 4 1.0 2.5e-6 1.0 300.0 1 1 1 NULL 10 Te_output.cub Ni.b
 ```
 
 This fix produces two types of Lammps-internal results in addition to the normal MD:
+
 * vector with the energy and temperature of the electronic system
   * `f_ID[1]` -> Net energy transfer between electronic and ionic system
   * `f_ID[2]` -> Average electronic temperature
+ 
 * per atom values:
   * `f_ID[i][1]` -> site density
   * `f_ID[i][2]` -> coupling parameter
