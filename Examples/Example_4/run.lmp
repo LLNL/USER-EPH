@@ -12,9 +12,9 @@ pair_coeff * * Ni.eam Ni
 thermo_style custom step temp press pe ke
 thermo 1000
 
-timestep 0.0001
+timestep 0.00005
 
-fix friction all eph 12345 7 4 1.0 1.0e-5 1.000000e-06 300.0 10 10 1 T.in 1000 T_out Ni.beta Ni
+fix friction all eph 12345 7 4 1.0 1.0e-5 1.0e-9 300.0 9 9 9 T.in 1000 T_out Ni.beta Ni
 
 fix out all print 1 "$(step) $(time) $(temp) $(f_friction[1]) $(f_friction[2])" file out.data screen no
 
