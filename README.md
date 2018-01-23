@@ -9,6 +9,8 @@ Artur Tamm and Alfredo A. Correa (LLNL)
 In LAMMPS, a "fix" is any operation that is applied to the system during
 timestepping or minimization.  
 We use this extension mechanism to generalize the two-temperature model to include electron-phonon coupling.
+The extension is flexible enough to represent cascades, laser heating and equilibration and study energy transport with realistic electron-phonon coupling.
+The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (https://arxiv.org/abs/1801.06610) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
 
 ## Installation Instructions
 
@@ -46,7 +48,7 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 * Take your MD input file
 * Add a line at the correct place, 
 ```
-fix [ID] [group-ID] eph [seed] [flags] [model] [rho_e] [C_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [N] [Te_outfile] [beta_infile] [A] [B] [C...]
+fix [ID] [group-ID] eph [seed] [flags] [model] [rho_e] [C_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [freq] [Te_outfile] [beta_infile] [A] [B] [C...]
 ```
 Where:
 * `ID` -> user-assigned name for the fix, [string, e.g. `ephttm`]
@@ -70,12 +72,13 @@ Where:
 * `T_e` -> electronic temperature [float, e.g. `300`] [in K]
 * `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point]
 * `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL]
-* `N` -> heat map output (`T_output`) frequency, `0` to disable [integer, e.g. `10`]
+* `freq` -> heat map output (`T_output`) frequency, `0` to disable [integer, e.g. `10`]
 * `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
 * `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
 * `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
 
-For example the following line will run the MD including the coupling to electrons, 
+For example the following line in LAMMPS input script, 
+will run the MD including the coupling to electrons, 
 within the spatially correlated Langevin bath.
 The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a range of electronic temperatures from 500 to 1500K. 
 Initial electron temperature is set to 300K (and not from a file).
@@ -93,7 +96,7 @@ This fix produces two types of Lammps-internal results in addition to the normal
   * `f_ID[i][1]` -> site density
   * `f_ID[i][2]` -> coupling parameter
 
-To access them in the output :
+To access them in the output file add this to the LAMMPS input script:
 ```
 fix out all print 1000 "$(step) $(time) $(temp) $(f_ephttm[1]) $(f_ephtmm[2])" file out.data screen no
 dump out all custom 10 strucs_out.dump.gz type x y z f_ephttm[1] f_ephttm[2]
@@ -101,45 +104,61 @@ dump out all custom 10 strucs_out.dump.gz type x y z f_ephttm[1] f_ephttm[2]
 
 ### Beta(rho) input file
 
-This file provides the electronic densities and beta(rho) functions for individual species.
+This file provides the electronic densities and beta(rho) functions for individual species (see https://arxiv.org/abs/1801.06610).
 The format is described in `Doc/Beta/input.beta`. 
-The file is similar to eam setfl format. 
-The beta(rho) function has units of [eV ps/Ang^2]. An example is provided in `Examples/Beta/Ni_model_4.beta`.
+The file is similar to EAM setfl format. 
+The beta(rho) function has units of [eV ps/Ang^2]. 
+An example is provided in `Examples/Beta/Ni_model_4.beta`.
 
-### FDM grid input file
+### heat equation FDM grid input file
 
 This file is used to initialise FDM grid for the electronic system. 
 The format is described in `Doc/FDM/T_input.fdm`. 
 This allows fine control of the properties at various grid points. 
 Also, the grid can be larger than ionic system if energy reservoir far away is needed. 
-Grid points can act as energy sources, sinks or walls (wall feature is not implemented correctly). 
+Grid points can act as energy sources, sinks or walls (individual grid points updates can be deactivated).
 An example of input file is provided in `Examples/FDM/T.in`.
+Units are [Kelvin], [eV/Ang^3/ps], [unitless], [in eV/K/Ang^3] [eV/K/Ang/ps] for T, local source term, rho_e, Ce, kappa_e respectively.
 
 ## Notes and limitations
 
-* There is an incompatibility between model 4 and models 1, 2, 3, where the same beta(rho) function cannot be used. 
-This is due to angular correction.
-* `C_e`, `rho_e`, and `kappa_e` are constants at the moment.
+* The exact physical interpretation of beta(rho) changes with the precise model. 
+* `C_e`, `rho_e`, and `kappa_e` are constants at the moment (not temperature dependent).
 * If `T_infile` is not `NULL` then `C_e`, `rho_e`, `kappa_e`, `T_e`, `NX`, `NY`, `NZ` are ignored and are read from the filename supplied. 
 If `NULL` is provided as the filename then the FDM grid is initialised with the parameters provided in the command.
-* In order to disable output of the electronic temperature zero can be provided as the value of N.
 
 # Tutorial
-Tutorials can be found in `Examples/` directory. To run them type `lmp_serial -i run.lmp` in the appropriate example directory and assuming executable is in `PATH`. Some of the examples may take long on older machines, so tweak the input file (`run.lmp`) accordingly. Every example contains a README file that describes what the runscript does.
+
+Examples can be found in `Examples/` directory. 
+To run them type `lmp_serial -i run.lmp` in the appropriate example directory and assuming executable is in `PATH`. 
+Some of the examples may take long on older machines, so tweak the input file (`run.lmp`) accordingly. Every example contains a `README` file that describes what the runscript does.
 
 ## Example 1
-`Examples/Example_1/`
-In this example a crystal structure is created and the model is applied with both the friction and random force terms. The electrons are kept at constant temperature (300K). This example illustrates the thermalisation process from 0K through electron-ion interaction only.
+
+`Examples/Example_1/`: 
+In this example a crystal structure is created and the model is applied with both the friction and random force terms. 
+The electrons are *kept* at constant temperature (300K). 
+This example illustrates the thermalisation process from 0K to the target temperature through electron-ion interaction only.
 
 ## Example 2
-`Examples/Example_2/`
-This example illustrates the use cooling of the ionic systems due to electrons only. This means that only the friction term acts on atoms and removes energy. This is equivalent to having electrons at 0K.
+
+`Examples/Example_2/`: 
+This example illustrates the use cooling of the ionic systems due to electrons only. 
+This means that only the friction term acts on atoms and removes energy. 
+This is equivalent to having electrons at 0K.
 
 ## Example 3
-`Examples/Example_3/`
-In this example full model with electronic FDM grid is used. The crystal is created with 0K motion and is heated by electrons. During the simulation the electronic system will cool and ionic system heat. At equilibrium both systems have same temperature on average. Also, this example illustrates the automatic initialisation of the FDM grid with constant parameters. The electronic temperature
-at various grid points is written to files. Final state of the grid is stored and can be reused in later simulations (`T.restart`).
+`Examples/Example_3/`: 
+In this example the full model with electronic heat equation FDM grid is used. 
+The crystal is created at equilibrium positions (0K) and it is heated by electrons. 
+During the simulation the electronic system will cool and the ionic system heat. 
+At equilibrium both systems end up at the same temperature on average. 
+Also, this example illustrates the automatic initialisation of the FDM grid with constant parameters. 
+The electronic temperature at various grid points is written to files (one per step) (`T_out_XXXXXX`). 
+Final state of the grid is stored and can be reused in later simulations (`T.restart`).
 
 ## Example 4
-`Examples/Example_4/`
-This example uses reads the FDM grid parameters from a file (`T.in`). In this file a source term is added at grid point `(0 0 0)` representing for example a laser. During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
+`Examples/Example_4/`: 
+This example reads the FDM grid parameters from a file (`T.in`). 
+In this file a source term is added at grid point `(0 0 0)` representing for example a swift ion. 
+During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
