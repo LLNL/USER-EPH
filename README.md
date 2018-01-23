@@ -178,6 +178,8 @@ This example reads the FDM grid parameters from a file (`T.in`).
 In this file a source term is added at grid point `(0 0 0)` representing for example a swift ion. 
 During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
 
+![Alt text](Examples/Example_2/Tfieldout.png?raw=true "Temperature Example 4")
+
 # History
 
 - 2018/01/01 Initiatial Release
