@@ -175,8 +175,10 @@ Final state of the grid is stored and can be reused in later simulations (`T.res
 ## Example 4
 `Examples/Example_4/`: 
 This example reads the FDM grid parameters from a file (`T.in`). 
-In this file a source term is added at grid point `(0 0 0)` representing for example a swift ion. 
-During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
+In this file a source term is added at line in the grid representing the energy dumped by swift ion. 
+During the simulation the ionic system will heat while electron temperature will diffuse and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
+
+After a few MD-TTM steps the electronic temperature field will look like this:
 
 ![Alt text](Examples/Example_4/Tfieldout.png?raw=true "Temperature Example 4")
 
