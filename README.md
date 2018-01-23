@@ -8,13 +8,14 @@ Artur Tamm and Alfredo A. Correa (LLNL)
 
 Get LAMMPS (source code)
 ```
-$ git clone https://github.com/lammps/lammps.git lammps
+$ cd mywork
+$ git clone https://github.com/lammps/lammps.git
 ```
 
-Get USER-EPH (this plugin)
+Get USER-EPH (this plugin, you have to have access to the repository)
 ```
-$ git clone https://github.com/artuuuro/USER-EPH.git lammps/src/USER-EPH
 $ cd lammps/src
+$ git clone https://github.com/artuuuro/USER-EPH.git
 ```
 
 Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 66).
@@ -23,13 +24,12 @@ Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` to read `CCFLAGS = -g -O3 -s
 
 Execute:
 ```
-$ make yes-manybody
-$ make yes-user-eph
+$ make yes-manybody yes-user-eph
 $ make -j 8 serial
 $ make -j 8 mpi
 ```
 
-The executables are `lmp_mpi` (for parallel runs) `lmp_serial` (for serial runs, testing), you can copy them elsewhere.
+The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial runs, testing), you can copy them elsewhere.
 
 ## Usage
 
