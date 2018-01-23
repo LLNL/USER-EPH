@@ -103,4 +103,21 @@ If `NULL` is provided as the filename then the FDM grid is initialised with the 
 * In order to disable output of the electronic temperature zero can be provided as the value of N.
 
 # Tutorial
+Tutorials can be found in `Examples/` directory. To run them type `lmp_serial -i run.lmp` in the appropriate example directory and assuming executable is in `PATH`. Some of the examples may take long on older machines, so tweak the input file (`run.lmp`) accordingly. Every example contains a README file that describes what the runscript does.
 
+## Example 1
+`Examples/Example_1/`
+In this example a crystal structure is created and the model is applied with both the friction and random force terms. The electrons are kept at constant temperature (300K). This example illustrates the thermalisation process from 0K through electron-ion interaction only.
+
+## Example 2
+`Examples/Example_2/`
+This example illustrates the use cooling of the ionic systems due to electrons only. This means that only the friction term acts on atoms and removes energy. This is equivalent to having electrons at 0K.
+
+## Example 3
+`Examples/Example_3/`
+In this example full model with electronic FDM grid is used. The crystal is created with 0K motion and is heated by electrons. During the simulation the electronic system will cool and ionic system heat. At equilibrium both systems have same temperature on average. Also, this example illustrates the automatic initialisation of the FDM grid with constant parameters. The electronic temperature
+at various grid points is written to files. Final state of the grid is stored and can be reused in later simulations (`T.restart`).
+
+## Example 4
+`Examples/Example_4/`
+This example uses reads the FDM grid parameters from a file (`T.in`). In this file a source term is added at grid point `(0 0 0)` representing for example a laser. During the simulation the whole system will heat and due to gradient in the electronic system forces acting on atoms at different grid points will 'feel' different random forces in magnitude.
