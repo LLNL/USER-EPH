@@ -140,6 +140,20 @@ In this example a crystal structure is created and the model is applied with bot
 The electrons are *kept* at constant temperature (300K). 
 This example illustrates the thermalisation process from 0K to the target temperature through electron-ion interaction only.
 
+```
+$ cd Examples/Example_1
+$ mypath/lmp_serial -i run.lmp
+```
+
+```
+$ gnuplot
+> plot "out.data" u 2:3 w lp lw 2
+```
+You will see that the ionic temperature increases and approaches the (fixed) electronic temperature (300K).
+
+
+
+
 ## Example 2
 
 `Examples/Example_2/`: 
