@@ -1,8 +1,14 @@
 # USER-EPH
 
-LAMMPS extension ("fix") to capture electron-ion interaction
+LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction.
 
 Artur Tamm and Alfredo A. Correa (LLNL)
+
+## Introduction
+
+In LAMMPS, a "fix" is any operation that is applied to the system during
+timestepping or minimization.  
+We use this extension mechanism to generalize the two-temperature model to include electron-phonon coupling.
 
 ## Installation Instructions
 
@@ -40,12 +46,12 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 * Take your MD input file
 * Add a line at the correct place, 
 ```
-fix [ID] [group-ID] eph [seed] [flags] [model] [C_e] [rho_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [N] [T_outfile] [beta_infile] [A] [B] [C]
+fix [ID] [group-ID] eph [seed] [flags] [model] [rho_e] [C_e] [kappa_e] [T_e] [NX] [NY] [NZ] [T_infile] [N] [Te_outfile] [beta_infile] [A] [B] [C...]
 ```
 Where:
-* `ID` -> user-assigned name for the fix, for example `ephttm` [string]
-* `group-ID` -> group of atoms to which this fix will be applied, for example `all` [string]
-* `seed` -> seed for random number generator [integer, for example 123]
+* `ID` -> user-assigned name for the fix, [string, e.g. `ephttm`]
+* `group-ID` -> group of atoms to which this fix will be applied, [string, e.g. `all`]
+* `seed` -> seed for random number generator [integer, e.g. 123]
 * `flags`: control of different terms or'd together [integer or bitmask]
   * `1` -> enable friction (only) (pure damping)
   * `2` -> enable random force (only) (not recommended)
@@ -58,33 +64,40 @@ Where:
   * `2` -> simple e-ph model (https://link.aps.org/doi/10.1103/PhysRevB.94.024305) (not recommended)
   * `3` -> e-ph with spatial correlations, with CM-correction only (https://arxiv.org/abs/1801.06610)
   * `4` -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
-* `rho_e` -> scaling parameter for the FDM grid [float] [unitless]
-* `C_e` -> electronic heat capacity per density [float] [in eV/K/Ang^3]
-* `kappa_e` -> electronic heat conduction [float] [in eV/K/Ang/ps]
-* `T_e` -> electronic temperature [float] [in K]
-* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, for example 1 1 1]
-* `T_infile` -> Input file for the FDM grid parameters and initial values [string]
-* `N` -> heat map output frequency [integer, for example 10]
-* `T_map` -> output heat map file name [string]
-* `beta_infile` -> beta(rho) input file [string]
-* `A`, `B`, `C` -> element type mapping [string]
+* `rho_e` -> scaling parameter for the FDM grid [float, recommended `1.0`] [unitless]
+* `C_e` -> electronic heat capacity per volume [float, e.g. `2.5e-6`] [in eV/K/Ang^3]
+* `kappa_e` -> electronic thermal conductivity [float,  ignored for single grid point] [in eV/K/Ang/ps]
+* `T_e` -> electronic temperature [float, e.g. `300`] [in K]
+* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point]
+* `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL]
+* `N` -> heat map output (`T_output`) frequency, `0` to disable [integer, e.g. `10`]
+* `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
+* `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
+* `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
 
-For example the following line will run MD including the coupling for electrons, within the spatially correlated Langevin bath.
-The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a renge of electronic temperatures in the range of 500 to 1500K. 
+For example the following line will run the MD including the coupling to electrons, 
+within the spatially correlated Langevin bath.
+The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a range of electronic temperatures from 500 to 1500K. 
 Initial electron temperature is set to 300K (and not from a file).
 We use uniform tempetures (one grid element), therefore the heat conductivity is not relevant in this case.
 
 ```
-fix ID group-ID eph 123 4 4 2.5e-6 rho_e kappa_e 300 1 1 1 NULL 10 T_map.heat.out.dat Ni.betarho.in.dat A B C
+fix ephttm all eph 123 7 4 1.0 2.5e-6 1.0 300.0 1 1 1 NULL 10 Te_output.cub Ni.beta Ni 
 ```
 
-This fix produces two types of output:
+This fix produces two types of Lammps-internal results in addition to the normal MD:
 * vector with the energy and temperature of the electronic system
   * `f_ID[1]` -> Net energy transfer between electronic and ionic system
   * `f_ID[2]` -> Average electronic temperature
 * per atom values:
   * `f_ID[i][1]` -> site density
   * `f_ID[i][2]` -> coupling parameter
+
+To access them in the output :
+```
+fix out all print 1000 "$(step) $(time) $(temp) $(f_ephttm[1]) $(f_ephtmm[2])" file out.data screen no
+dump out all custom 10 strucs_out.dump.gz type x y z f_ephttm[1] f_ephttm[2]
+```
 
 ### Beta(rho) input file
 
