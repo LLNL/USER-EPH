@@ -148,9 +148,10 @@ $ cd Examples/Example_1
 $ mypath/lmp_serial -i run.lmp
 ```
 
+The run will write to the file `out.data`, column 2 has the time (in ps), columns 3 and 5 have the ionic and the electronic temperature respectively.
 ```
 $ gnuplot
-> plot "out.data" u 2:3 w lp lw 2
+> plot "out.data" u 2:3 w lp lw 2 t "Tion", "out.data" u 2:5 w lp lw 2 t "Te"
 ```
 You will see that the ionic temperature increases and approaches the (fixed) electronic temperature (300K).
 
@@ -175,6 +176,13 @@ Also, this example illustrates the automatic initialisation of the FDM grid with
 The electronic temperature at various grid points is written to files (one per step) (`T_out_XXXXXX`). 
 Final state of the grid is stored and can be reused in later simulations (`T.restart`).
 
+Althoug you can run in serial mode (like above), 
+you can try to run this example with in parallel, for example in 4 processes.
+Make sure your MPI environment works, for example you may need `$ module load mpi/mpich-x86_64`
+```
+$ mpirun -np 4 mypath/lmp_mpi -i run.lmp
+```
+
 ![Alt text](Examples/Example_3/Tout.png?raw=true "Temperature Example 2")
 
 ## Example 4
@@ -192,4 +200,6 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 - 2018/01/01 Initiatial Release
 
 # TODO
+
+- Implement CUBE format output
 
