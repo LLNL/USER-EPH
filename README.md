@@ -63,7 +63,7 @@ Where:
   * `5` -> enable friction and heat equation (no feedback from e-)
   * `7` -> enable friction, random force, and heat equation (coupled e-ions)
 * `model`: select model for friction and random force [integer]
-  * `1` -> standard Langevin (for vanilla TTM)
+  * `1` -> standard Langevin (for vanilla TTM with beta(rho))
   * `2` -> simple e-ph model (https://link.aps.org/doi/10.1103/PhysRevB.94.024305) (not recommended)
   * `3` -> e-ph with spatial correlations, with CM-correction only (https://arxiv.org/abs/1801.06610)
   * `4` -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
@@ -129,6 +129,7 @@ Units are [Kelvin], [eV/Ang^3/ps], [unitless], [in eV/K/Ang^3] [eV/K/Ang/ps] for
 * `C_e`, `rho_e`, and `kappa_e` are constants at the moment (not temperature dependent).
 * If `T_infile` is not `NULL` then `C_e`, `rho_e`, `kappa_e`, `T_e`, `NX`, `NY`, `NZ` are ignored and are read from the filename supplied. 
 If `NULL` is provided as the filename then the FDM grid is initialised with the parameters provided in the command.
+* The implementation of the model is applicable to alloys, but this has not been tested thoroughly yet.
 
 # Tutorial
 
