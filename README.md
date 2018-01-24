@@ -176,11 +176,13 @@ Also, this example illustrates the automatic initialisation of the FDM grid with
 The electronic temperature at various grid points is written to files (one per step) (`T_out_XXXXXX`). 
 Final state of the grid is stored and can be reused in later simulations (`T.restart`).
 
-Althoug you can run in serial mode (like above), 
+Although you can run in serial mode (like above), 
 you can try to run this example with in parallel, for example in 4 processes.
 Make sure your MPI environment works, for example you may need `$ module load mpi/mpich-x86_64`
 ```
 $ mpirun -np 4 mypath/lmp_mpi -i run.lmp
+$ gnuplot
+> plot "out.data" u 2:3 w lp lw 2 t "Tion", "out.data" u 2:5 w lp lw 2 t "Te"
 ```
 
 ![Alt text](Examples/Example_3/Tout.png?raw=true "Temperature Example 2")
