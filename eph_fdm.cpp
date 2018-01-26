@@ -151,8 +151,10 @@ void EPH_FDM::solve() {
     
     unsigned int new_steps = steps;
     
-    if(r > 0.5) {
-      inner_dt = 0.5 * inner_dt / r;
+    //if(r > 0.5) {
+    if(r > 0.4) {
+      inner_dt = 0.4 * inner_dt / r; // be more conservative
+      //inner_dt = 0.5 * inner_dt / r; // be more conservative
       new_steps = ((unsigned int)(dt / inner_dt)) + 1;
       inner_dt = dt / new_steps;
     }
