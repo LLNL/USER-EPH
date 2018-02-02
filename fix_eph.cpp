@@ -287,6 +287,8 @@ int FixEPH::setmask() {
 
 /** integrator functionality **/
 void FixEPH::initial_integrate(int) {
+  if(eph_flag & Flag::NOINT) return;
+
   double dtfm;
 
   double **x = atom->x;
@@ -312,6 +314,8 @@ void FixEPH::initial_integrate(int) {
 }
 
 void FixEPH::final_integrate() {
+  if(eph_flag & Flag::NOINT) return;
+  
   double dtfm;
 
   double **v = atom->v;

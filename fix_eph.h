@@ -41,7 +41,8 @@ class FixEPH : public Fix {
     enum Flag : unsigned int {
       FRICTION = 0x01,
       RANDOM = 0x02,
-      FDM = 0x04
+      FDM = 0x04,
+      NOINT = 0x08 // disable integration
     };
     
     enum Model : unsigned int {
