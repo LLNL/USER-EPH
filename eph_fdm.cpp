@@ -208,10 +208,9 @@ void EPH_FDM::solve() {
           T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
         
         // energy conservation issues
-        /* Add a sanity check somewhere for this
+        /* Add a sanity check somewhere for this */
         if(T_e[i] < 0.0)
           T_e[i] = 0.0;
-        */
       }
     
       // zero arrays

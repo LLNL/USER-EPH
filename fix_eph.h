@@ -159,6 +159,9 @@ class FixEPH : public Fix {
     void force_eta();
     void force_gap();
     void force_gapb();
+    
+    // tmp
+    //int t_nlocal;
 };
 
 }

@@ -208,6 +208,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // zero arrays, so they would not contain garbage
   int nlocal = atom->nlocal;
+  //t_nlocal = nlocal;
   std::fill_n(&(rho_i[0]), nlocal, 0.0D);
   std::fill_n(&(beta_i[0]), nlocal, 0.0D);
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0D);
@@ -287,6 +288,7 @@ int FixEPH::setmask() {
 
 /** integrator functionality **/
 void FixEPH::initial_integrate(int) {
+  //if(myID == 0) std::cout << "DEBUG initial_integrate()" << std::endl;
   if(eph_flag & Flag::NOINT) return;
 
   double dtfm;
@@ -314,6 +316,7 @@ void FixEPH::initial_integrate(int) {
 }
 
 void FixEPH::final_integrate() {
+  //if(myID == 0) std::cout << "DEBUG final_integrate()" << std::endl;
   if(eph_flag & Flag::NOINT) return;
   
   double dtfm;
@@ -337,6 +340,7 @@ void FixEPH::final_integrate() {
 }
 
 void FixEPH::end_of_step() {
+  //if(myID == 0) std::cout << "DEBUG end_of_step()" << std::endl;
   double **x = atom->x;
   double **v = atom->v;
   double **f = atom->f;
@@ -397,6 +401,10 @@ void FixEPH::end_of_step() {
   Ee += E_local;
   
   // store per atom values into array
+  /*if(nlocal != t_nlocal) {
+    std::cout << "NLOCAL CHANGED " << t_nlocal << " -> " << nlocal << std::endl;
+    t_nlocal = nlocal;
+  }*/
   for(unsigned int i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
       array[i][ 0] = rho_i[i];
@@ -1075,6 +1083,7 @@ void FixEPH::force_gapb() {
 }
 
 void FixEPH::post_force(int vflag) {
+  //if(myID == 0) std::cout << "DEBUG post_force()" << std::endl;
   double **f = atom->f;
   int *mask = atom->mask;
   int *tag = atom->tag;
@@ -1221,6 +1230,7 @@ void FixEPH::reset_dt() {
 }
 
 void FixEPH::grow_arrays(int ngrow) {
+  //if(myID == 0) std::cout << "DEBUG grow_arrays()" << std::endl;
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
   
@@ -1237,11 +1247,12 @@ void FixEPH::grow_arrays(int ngrow) {
   
   // per atom values
   // we need only nlocal elements here
-  memory->grow(array, atom->nlocal, size_peratom_cols, "eph:array");
+  memory->grow(array, ngrow, size_peratom_cols, "eph:array");
   array_atom = array;
 }
 
 double FixEPH::compute_vector(int i) {
+  //if(myID == 0) std::cout << "DEBUG compute_vector()" << std::endl;
   if(i == 0)
     return Ee;
   else if(i == 1) {

@@ -7,6 +7,8 @@
 #define EPH_FDM_H
 
 #include <iostream>
+#include <cassert>
+
 #include <mpi.h>
 
 /**
@@ -126,8 +128,10 @@ class EPH_FDM {
       lz = lz%nz;
       
       unsigned int index = lx + ly * nx + lz * nx * ny;
-      
-      return T_e[lx + ly * nx + lz * nx * ny];
+      //printf("%f %f %f %d %d %d %d\n", x, y, z, lx, ly, lz, index);
+      assert(index >= 0);
+      assert(index < (nx*ny*nz));
+      return T_e[index];
     }
     
     double getT(unsigned int lx, unsigned int ly, unsigned int lz) {
@@ -169,8 +173,11 @@ class EPH_FDM {
       double prescale = dV * dt;
       
       // convert energy into power per area
-      if(prescale > 0.0)
+      if(prescale > 0.0) {
+        assert(index >= 0);
+        assert(index < (nx*ny*nz));
         dT_e[index] += E / prescale;
+      }
       else
         return false;
     }
