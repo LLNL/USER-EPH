@@ -137,6 +137,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // set the communicator
   fdm->setComm(world, myID, nrPS);
+  // oops
+  fdm->setDt(update->dt);
   
   // initialise beta(rho)
   types = atom->ntypes;
@@ -316,7 +318,7 @@ void FixEPH::initial_integrate(int) {
 }
 
 void FixEPH::final_integrate() {
-  //if(myID == 0) std::cout << "DEBUG final_integrate()" << std::endl;
+  //sif(myID == 0) std::cout << "DEBUG final_integrate()" << std::endl;
   if(eph_flag & Flag::NOINT) return;
   
   double dtfm;
@@ -1220,6 +1222,8 @@ void FixEPH::reset_dt() {
   
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
+  
+  fdm->setDt(update->dt);
   
   // beta_factor = 1.0 / force->ftm2v;
   // this is true for uniform distribution
