@@ -268,6 +268,9 @@ void EPH_FDM::saveTemperature(const char* file, int n) {
   
   if(!fd) return; // give an error?
   
+  // this is needed for visit Point3D
+  fprintf(fd, "x y z Te\n");
+  
   for(int k = 0; k < nz; ++k) {
     for(int j = 0; j < ny; ++j) {
       for(int i = 0; i < nx; ++i) {
