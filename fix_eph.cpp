@@ -271,6 +271,8 @@ void FixEPH::init() {
   neighbor->requests[irequest]->fix=1;
   neighbor->requests[irequest]->half=0;
   neighbor->requests[irequest]->full=1;
+  
+  reset_dt();
 }
 
 void FixEPH::init_list(int id, NeighList *ptr) {
@@ -1216,6 +1218,9 @@ void FixEPH::post_force(int vflag) {
 }
 
 void FixEPH::reset_dt() {
+  // DEBUG
+  //std::cout << "###### Timestep changed" << std::endl;
+  
   // this should be correct if beta is in eV ps / Ang^2
   beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
