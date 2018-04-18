@@ -21,9 +21,15 @@ int main(int args, char **argv) {
   }
   
   EPH_Spline spline(x0, dx);
+  std::cout << "Testing call to GetValue on an empty spline" << std::endl;
+  std::cout << spline.GetValue(x0) << std::endl;
+  
   for(int i = 0; i < n; ++i) {
     spline << y[i];
   }
+  std::cout << "Testing call to GetValue before initing" << std::endl;
+  std::cout << spline.GetValue(x0) << std::endl;
+  
   spline << true;
   
   // test borders

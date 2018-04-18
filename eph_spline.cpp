@@ -17,16 +17,9 @@
 // internal headers
 #include "eph_spline.h"
 
-bool EPH_Spline::InitSpline(const double x0, const double dx, const double* y, const unsigned int points) {
-  inited = false;
-  if(!y) return false;
-  if(points < 2) return false;
-  
-  // I do not know if I should keep this
-  //this->points = points;
-  this->x_First = x0;
-  this->dx = dx;
-  this->x_Last = x0 + points * dx;
+EPH_Spline::EPH_Spline(const double x0, const double dx, const double* y, const unsigned int points) : EPH_Spline(x0, dx) {
+  if(!y) throw;
+  if(points < 2) throw;
   
   // resize vectors so they would fit enough data
   this->y.resize(points);
@@ -43,29 +36,11 @@ bool EPH_Spline::InitSpline(const double x0, const double dx, const double* y, c
   dda.resize(points);
   ddb.resize(points);
   
-  /*
-  // clear data in vectors
-  this->y.clear();
-  
-  a.clear(); 
-  b.clear();
-  c.clear();
-  d.clear();
-  
-  da.clear();
-  db.clear();
-  dc.clear();
-  
-  dda.clear();
-  ddb.clear();
-  */
-  
   for(int i = 0; i < points; ++i) {
     this->y[i] = y[i];
   }
   
   FindCoefficients();
-  return true;
 }
 
 EPH_Spline& EPH_Spline::operator<< (const double y) {
@@ -82,17 +57,12 @@ EPH_Spline& EPH_Spline::operator<< (const double y) {
   dda.push_back(0.0);
   ddb.push_back(0.0);
   
-  x_Last += dx;
-  
   return *this;
 }
 
 EPH_Spline& EPH_Spline::operator<< (const bool init) {
   if(!init) {
-    x_First = 0.0;
-    x_Last = 0.0;
-    dx = 0.0;
-    
+    x_Last = x_First - 0.1;
     y.clear();
     
     a.clear();
@@ -107,8 +77,6 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
     dda.clear();
     ddb.clear();
     
-    inited = false;
-    
     return *this;
   }
   
@@ -119,6 +87,10 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
 // calculate coeffiecients based on x0, x1, ,y0, y1, y0' and y1'
 void EPH_Spline::FindCoefficients() {
   unsigned int points = y.size();
+  
+  if(!(dx > 0.0)) throw;
+  
+  x_Last = x_First + points * dx;
   
   // do the magic
   // we use da, db, and dc as temporary buffers
@@ -236,6 +208,4 @@ void EPH_Spline::FindCoefficients() {
     dda[i] = db[i];
     ddb[i] = 2.0*dc[i];
   }
-  
-  inited = true;
 }

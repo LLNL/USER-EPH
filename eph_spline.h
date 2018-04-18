@@ -11,7 +11,6 @@
 class EPH_Spline {
   public:
   private:
-    bool inited;
     double x_First; // coordinate of the first element
     double x_Last; // coordinate of the last element
     double dx; // discretisation step
@@ -37,14 +36,13 @@ class EPH_Spline {
     std::vector<double> ddb;
     
   public:
-    EPH_Spline() {inited = false;} // default constructor
-    EPH_Spline(const double x0, const double dx) : EPH_Spline() { 
-        x_Last = x_First = x0;
+    EPH_Spline() : EPH_Spline(0.0, 0.0) {} // default constructor
+    EPH_Spline(const double x0, const double dx) { 
+        x_First = x0;
         this->dx = dx;
+        x_Last = x0 - 0.1; // this ensures that GetValue() will return NaN until FindCoefficients has been called
     }
-    //~EPH_Spline(); // destructor
-    
-    bool InitSpline(const double x0, const double dx, const double *y, const unsigned int points); // initialise spline
+    EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // initialise spline
     
     // special type of initialisation (show off)
     void SetDiscretisation(const double x0, const double dx) {
@@ -59,9 +57,6 @@ class EPH_Spline {
     double GetValue(const double x) const { // get function value at x
       double result = 0.0;
       unsigned int index = 0;
-      
-      if(!inited) 
-        return std::numeric_limits<double>::quiet_NaN();
       
       if(x < this->x_First)
         return std::numeric_limits<double>::quiet_NaN();
@@ -82,9 +77,6 @@ class EPH_Spline {
       double result = 0.0;
       unsigned int index = 0;
       
-      if(!inited) 
-        return std::numeric_limits<double>::quiet_NaN();
-      
       if(x < this->x_First)
         return std::numeric_limits<double>::quiet_NaN();
       else if(x > this->x_Last)
@@ -103,9 +95,6 @@ class EPH_Spline {
     double GetDDValue(const double x) const { // get second derivative at x (discontinuous!)
       double result = 0.0;
       unsigned int index = 0;
-      
-      if(!inited) 
-        return std::numeric_limits<double>::quiet_NaN();
       
       if(x < this->x_First)
         return std::numeric_limits<double>::quiet_NaN();
