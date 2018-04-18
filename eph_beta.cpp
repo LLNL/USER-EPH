@@ -22,9 +22,7 @@
 EPH_Beta::EPH_Beta(const char* file) {
   elements = 0;
   
-  std::ifstream fd;
-  
-  fd.open(file);
+  std::ifstream fd(file);
   
   if(!fd.is_open()) {
     return;
@@ -95,35 +93,27 @@ EPH_Beta::EPH_Beta(const char* file) {
     fd >> drho;
     fd >> cutoff;
     
-    double* f_r = new double[nPointsRho];
-    double* rho_r = new double[nPointsRho];
-    
-    double* f_rho = new double[nPointsBeta];
-    double* beta_rho = new double[nPointsBeta];
-    
     for(unsigned int i = 0; i < elements; ++i) {
       fd >> elementNumber[i];
       
+      (*(this->rho[i])).SetDiscretisation(0.0, dr);
       for(unsigned int j = 0; j < nPointsRho; ++j) {
-        f_r[j] = j * dr;
-        fd >> rho_r[j];
+        double rho_r;
+        fd >> rho_r;
+        *(this->rho[i]) << rho_r;
       }
+      *(this->rho[i]) << true;
       
+      (*(this->beta[i])).SetDiscretisation(0.0, drho);
       for(unsigned int j = 0; j < nPointsBeta; ++j) {
-        f_rho[j] = j * drho;
-        fd >> beta_rho[j];
+        double beta_rho;
+        fd >> beta_rho;
+        *(this->beta[i]) << beta_rho;
       }
+      *(this->beta[i]) << true;
       
-      rho[i]->InitSpline(f_r, rho_r, nPointsRho);
-      beta[i]->InitSpline(f_rho, beta_rho, nPointsBeta);
+      
     }
-    
-    delete f_r;
-    delete rho_r;
-    
-    delete f_rho;
-    delete beta_rho;
-    
   }
   else {
     // TODO: json type input

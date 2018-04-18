@@ -17,178 +17,108 @@
 // internal headers
 #include "eph_spline.h"
 
-EPH_Spline::EPH_Spline() {
-  this->inited = false;
-  this->lastIndex = 0;
-  
-  this->points = 0;
-  
-  this->x = nullptr;
-  this->y = nullptr;
-  
-  this->a = nullptr;
-  this->b = nullptr;
-  this->c = nullptr;
-  this->d = nullptr;
-  
-  this->da = nullptr;
-  this->db = nullptr;
-  this->dc = nullptr;
-  
-  this->dda = nullptr;
-  this->ddb = nullptr;
-}
-
-EPH_Spline::~EPH_Spline() {
-  if(x) delete[] x;
-  if(y) delete[] y;
-  
-  if(a) delete[] a;
-  if(b) delete[] b;
-  if(c) delete[] c;
-  if(d) delete[] d;
-  
-  if(da) delete[] da;
-  if(db) delete[] db;
-  if(dc) delete[] dc;
-  
-  if(dda) delete[] dda;
-  if(ddb) delete[] ddb;
-}
-
-EPH_Spline::EPH_Spline(const EPH_Spline& spline) {
+bool EPH_Spline::InitSpline(const double x0, const double dx, const double* y, const unsigned int points) {
   inited = false;
-  dx = 0;
-  points = 0;
-  lastIndex = 0;
-  
-  x = nullptr;
-  y = nullptr;
-  
-  a = nullptr;
-  b = nullptr;
-  c = nullptr;
-  d = nullptr;
-  
-  da = nullptr;
-  db = nullptr;
-  dc = nullptr;
-  
-  dda = nullptr;
-  ddb = nullptr;
-  
-  *this = spline;
-}
-
-EPH_Spline& EPH_Spline::operator= (const EPH_Spline& spline) {
-  points = spline.points;
-  inited = spline.inited;
-  dx = spline.dx;
-  lastIndex = spline.lastIndex;
-  
-  if(spline.points > 0) {
-    if(x) delete[] x;
-    x = new double[points];
-    std::copy_n(spline.x, points, x);
-    
-    if(y) delete[] y;
-    y = new double[points];
-    std::copy_n(spline.y, points, y);
-    
-    if(a) delete[] a;
-    a = new double[points];
-    std::copy_n(spline.a, points, a);
-    
-    if(b) delete[] b;
-    b = new double[points];
-    std::copy_n(spline.b, points, b);
-    
-    if(c) delete[] c;
-    c = new double[points];
-    std::copy_n(spline.c, points, c);
-    
-    if(d) delete[] d;
-    d = new double[points];
-    std::copy_n(spline.d, points, d);
-    
-    if(da) delete[] da;
-    da = new double[points];
-    std::copy_n(spline.da, points, da);
-    
-    if(db) delete[] db;
-    db = new double[points];
-    std::copy_n(spline.db, points, db);
-    
-    if(dc) delete[] dc;
-    dc = new double[points];
-    std::copy_n(spline.dc, points, dc);
-        
-    if(dda) delete[] dda;
-    dda = new double[points];
-    std::copy_n(spline.dda, points, dda);
-    
-    if(ddb) delete[] ddb;
-    ddb = new double[points];
-    std::copy_n(spline.ddb, points, ddb);
-  }
-  else {
-    x = nullptr;
-    y = nullptr;
-    
-    a = nullptr;
-    b = nullptr;
-    c = nullptr;
-    d = nullptr;
-    
-    da = nullptr;
-    db = nullptr;
-    dc = nullptr;
-    
-    dda = nullptr;
-    ddb = nullptr;
-  }
-}
-
-bool EPH_Spline::InitSpline(const double* x, const double* y, const unsigned int points) {
-  if(!x || !y) return false;
+  if(!y) return false;
   if(points < 2) return false;
   
-  this->points = points;
+  // I do not know if I should keep this
+  //this->points = points;
+  this->x_First = x0;
+  this->dx = dx;
+  this->x_Last = x0 + points * dx;
   
-  if(this->x) delete[] this->x;
-  if(this->y) delete[] this->y;
+  // resize vectors so they would fit enough data
+  this->y.resize(points);
   
-  this->x = new double[points];
-  this->y = new double[points];
+  a.resize(points);
+  b.resize(points);
+  c.resize(points);
+  d.resize(points);
   
-  std::copy_n(x, points, this->x);
-  dx = this->x[1] - this->x[0];
+  da.resize(points);
+  db.resize(points);
+  dc.resize(points);
   
-  std::copy_n(y, points, this->y);
+  dda.resize(points);
+  ddb.resize(points);
   
-  if(a) delete[] a;
-  if(b) delete[] b;
-  if(c) delete[] c;
-  if(d) delete[] d;
+  /*
+  // clear data in vectors
+  this->y.clear();
   
-  if(da) delete[] da;
-  if(db) delete[] db;
-  if(dc) delete[] dc;
+  a.clear(); 
+  b.clear();
+  c.clear();
+  d.clear();
   
-  if(dda) delete[] dda;
-  if(ddb) delete[] ddb;
+  da.clear();
+  db.clear();
+  dc.clear();
   
-  a = new double[points];
-  b = new double[points];
-  c = new double[points];
-  d = new double[points];
+  dda.clear();
+  ddb.clear();
+  */
   
-  da = new double[points];
-  db = new double[points];
-  dc = new double[points];
+  for(int i = 0; i < points; ++i) {
+    this->y[i] = y[i];
+  }
   
-  dda = new double[points];
-  ddb = new double[points];
+  FindCoefficients();
+  return true;
+}
+
+EPH_Spline& EPH_Spline::operator<< (const double y) {
+  this->y.push_back(y);
+  a.push_back(0.0);
+  b.push_back(0.0);
+  c.push_back(0.0);
+  d.push_back(0.0);
+  
+  da.push_back(0.0);
+  db.push_back(0.0);
+  dc.push_back(0.0);
+  
+  dda.push_back(0.0);
+  ddb.push_back(0.0);
+  
+  x_Last += dx;
+  
+  return *this;
+}
+
+EPH_Spline& EPH_Spline::operator<< (const bool init) {
+  if(!init) {
+    x_First = 0.0;
+    x_Last = 0.0;
+    dx = 0.0;
+    
+    y.clear();
+    
+    a.clear();
+    b.clear();
+    c.clear();
+    d.clear();
+    
+    da.clear();
+    db.clear();
+    dc.clear();
+    
+    dda.clear();
+    ddb.clear();
+    
+    inited = false;
+    
+    return *this;
+  }
+  
+  if((this->y).size() > 2) FindCoefficients();
+  return *this; 
+}
+
+// calculate coeffiecients based on x0, x1, ,y0, y1, y0' and y1'
+void EPH_Spline::FindCoefficients() {
+  unsigned int points = y.size();
   
   // do the magic
   // we use da, db, and dc as temporary buffers
@@ -200,7 +130,7 @@ bool EPH_Spline::InitSpline(const double* x, const double* y, const unsigned int
   
   for(int i = 0; i < points-1; ++i) {
     //da -> z
-    da[i] = (y[i+1]-y[i])/(x[i+1]-x[i]);
+    da[i] = (y[i+1]-y[i])/dx;
   }
   
   z1 = 2.0*da[0] - da[1];
@@ -274,85 +204,22 @@ bool EPH_Spline::InitSpline(const double* x, const double* y, const unsigned int
     }
   }
   
-  FindCoefficients();
-  return true;
-}
-
-// cubic spline
-double EPH_Spline::GetValue(const double x) {
-  double result = 0.0;
-  unsigned int index = 0;
-  
-  if(x < this->x[0])
-    return std::numeric_limits<double>::quiet_NaN();
-  else if(x > this->x[points-1])
-    return std::numeric_limits<double>::quiet_NaN();
-  
-  index = FindIndex(x);
-  
-  double x2 = x*x;
-  double x3 = x*x2;
-  
-  result = a[index] + b[index] * x + c[index] * x2 + d[index] * x3;
-  
-  return result;
-}
-
-double EPH_Spline::GetDValue(const double x) {
-  double result = 0.0;
-  unsigned int index = 0;
-  
-  if(x < this->x[0])
-    return std::numeric_limits<double>::quiet_NaN();
-  else if(x > this->x[points-1])
-    return std::numeric_limits<double>::quiet_NaN();
-  
-  index = FindIndex(x);
-  
-  double x2 = x*x;
-  double x3 = x*x2;
-  
-  result = da[index] + db[index] * x + dc[index] * x2;
-  
-  return result;
-}
-
-double EPH_Spline::GetDDValue(const double x) {
-  double result = 0.0;
-  unsigned int index = 0;
-  
-  if(x < this->x[0])
-    return std::numeric_limits<double>::quiet_NaN();
-  else if(x > this->x[points-1])
-    return std::numeric_limits<double>::quiet_NaN();
-  
-  index = FindIndex(x);
-  
-  double x2 = x*x;
-  double x3 = x*x2;
-  
-  result = dda[index] + ddb[index] * x;
-  
-  return result;
-}
-
-// calculate coeffiecients based on x0, x1, ,y0, y1, y0' and y1'
-void EPH_Spline::FindCoefficients() {
   // solve the equations
   for(unsigned int i = 0; i < points-1; ++i) {
-    double dx = x[i+1]-x[i];
     double dx3 = dx*dx*dx;
     
-    double x0_2 = x[i]*x[i];
-    double x0_3 = x[i]*x0_2;
+    double x0_1 = (x_First + i*dx);
+    double x0_2 = (x_First + i*dx)*x0_1;
+    double x0_3 = (x_First + i*dx)*x0_2;
     
-    double x1_2 = x[i+1]*x[i+1];
-    double x1_3 = x[i+1]*x1_2;
+    double x1_1 = (x_First + (i+1)*dx);
+    double x1_2 = (x_First + (i+1)*dx)*x1_1;
+    double x1_3 = (x_First + (i+1)*dx)*x1_2;
     
-    d[i] = (-ddb[i]*x[i]-ddb[i+1]*x[i]+ddb[i]*x[i+1]+ddb[i+1]*x[i+1]+2.0*y[i]-2.0*y[i+1])/dx3;
+    d[i] = (-ddb[i]*x0_1-ddb[i+1]*x0_1+ddb[i]*x1_1+ddb[i+1]*x1_1+2.0*y[i]-2.0*y[i+1])/dx3;
     c[i] = (-ddb[i]+ddb[i+1]+3.0*d[i]*x0_2-3.0*d[i]*x1_2)/2.0/dx;
     b[i] = (c[i]*x0_2+d[i]*x0_3-c[i]*x1_2-d[i]*x1_3-y[i]+y[i+1])/dx;
-    a[i] = y[i] - b[i]*x[i] - c[i]*x0_2 - d[i]*x0_3;
+    a[i] = y[i] - b[i]*x0_1 - c[i]*x0_2 - d[i]*x0_3;
   }
   
   a[points-1] = y[points-1];
@@ -369,5 +236,6 @@ void EPH_Spline::FindCoefficients() {
     dda[i] = db[i];
     ddb[i] = 2.0*dc[i];
   }
+  
+  inited = true;
 }
-

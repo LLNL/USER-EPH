@@ -6,50 +6,125 @@
 #ifndef EPH_SPLINE
 #define EPH_SPLINE
 
+#include <vector>
+
 class EPH_Spline {
   public:
   private:
     bool inited;
+    double x_First; // coordinate of the first element
+    double x_Last; // coordinate of the last element
+    double dx; // discretisation step
     
-    unsigned int points; // number of points in the spline
-    double* x; // x values
-    double* y; // y values
+    //unsigned int points; // number of points in the spline
+    std::vector<double> y; // y values
     
-    double* a; // splines are always in a + b*x + c*x^2 + d*x^3 form
-    double* b;
-    double* c;
-    double* d;
+    // coeffiecients for function values
+    // splines are always in a + b*x + c*x**2 + d*x**3 form
+    std::vector<double> a;
+    std::vector<double> b;
+    std::vector<double> c;
+    std::vector<double> d;
     
-    double* da; // this is for the derivative
-    double* db;
-    double* dc;
+    // coefficients for the derivative
+    // da + db * x + dc * x**2
+    std::vector<double> da;
+    std::vector<double> db;
+    std::vector<double> dc;
     
-    double* dda; // this is for the second derivative
-    double* ddb;
-    
-    double dx; 
-    
-    unsigned int lastIndex;
+    // coefficients for the second derivative
+    std::vector<double> dda;
+    std::vector<double> ddb;
     
   public:
-    EPH_Spline(); // default constructor
-    ~EPH_Spline(); // destructor
+    EPH_Spline() {inited = false;} // default constructor
+    EPH_Spline(const double x0, const double dx) : EPH_Spline() { 
+        x_Last = x_First = x0;
+        this->dx = dx;
+    }
+    //~EPH_Spline(); // destructor
     
-    EPH_Spline& operator= (const EPH_Spline& spline);
+    bool InitSpline(const double x0, const double dx, const double *y, const unsigned int points); // initialise spline
     
-    //TODO: copy constructor; maybe not needed
-    EPH_Spline(const EPH_Spline& spl);
+    // special type of initialisation (show off)
+    void SetDiscretisation(const double x0, const double dx) {
+      *this << false;
+      this->x_First = this->x_Last = x0;
+      this->dx = dx;
+    }
     
-    bool InitSpline(const double *x, const double *y, const unsigned int points); // initialise spline
-    double GetValue(const double x);
-    double GetDValue(const double x);
-    double GetDDValue(const double x);
+    EPH_Spline& operator<< (const double y);
+    EPH_Spline& operator<< (const bool init);
+    
+    double GetValue(const double x) const { // get function value at x
+      double result = 0.0;
+      unsigned int index = 0;
+      
+      if(!inited) 
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      if(x < this->x_First)
+        return std::numeric_limits<double>::quiet_NaN();
+      else if(x > this->x_Last)
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      index = FindIndex(x);
+      
+      double x2 = x*x;
+      double x3 = x*x2;
+  
+      result = a[index] + b[index] * x + c[index] * x2 + d[index] * x3;
+  
+      return result;
+    }
+    
+    double GetDValue(const double x) const { // get function derivative at x
+      double result = 0.0;
+      unsigned int index = 0;
+      
+      if(!inited) 
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      if(x < this->x_First)
+        return std::numeric_limits<double>::quiet_NaN();
+      else if(x > this->x_Last)
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      index = FindIndex(x);
+      
+      double x2 = x*x;
+      double x3 = x*x2;
+      
+      result = da[index] + db[index] * x + dc[index] * x2;
+      
+      return result;
+    }
+      
+    double GetDDValue(const double x) const { // get second derivative at x (discontinuous!)
+      double result = 0.0;
+      unsigned int index = 0;
+      
+      if(!inited) 
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      if(x < this->x_First)
+        return std::numeric_limits<double>::quiet_NaN();
+      else if(x > this->x_Last)
+        return std::numeric_limits<double>::quiet_NaN();
+      
+      index = FindIndex(x);
+      
+      double x2 = x*x;
+      double x3 = x*x2;
+      
+      result = dda[index] + ddb[index] * x;
+      
+      return result;
+    }
   
   private: // some private functions for spline initialisation and value calculation
-    unsigned int FindIndex(const double x) {
-      unsigned int index = 0;
-      index = (unsigned int) ((x-this->x[0])/dx);
-      return index;
+    unsigned int FindIndex(const double x) const {
+      return ((x-this->x_First)/dx);
     }
     
     void FindCoefficients();

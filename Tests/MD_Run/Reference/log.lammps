@@ -1,0 +1,1415 @@
+LAMMPS (31 Mar 2017)
+
+# initialisation
+units metal
+# mass -> grams/mole
+# distance -> Angstroms (A)
+# time -> picoseconds (ps)
+# energy -> eV
+# velocity -> A/ps
+# force -> eV/A
+# torque -> eV
+# temperature -> K
+# pressure -> bars
+# dynamic viscosity -> Poise
+# charge -> e
+# dipole -> e*A
+# electric field -> V/A
+# density -> gram/cm^3
+
+atom_style atomic
+
+boundary p p p
+atom_modify map array
+
+######################
+### create the box ###
+######################
+
+## box size ##
+variable n equal 8
+variable n_2 equal floor(${n}/2)
+variable n_2 equal floor(8/2)
+
+## lattice constant ##
+variable a equal 3.52
+
+variable x index $n
+variable x index 8
+variable y index $n
+variable y index 8
+variable z index $n
+variable z index 8
+
+## lattice type ##
+lattice fcc $a
+lattice fcc 3.52
+Lattice spacing in x,y,z = 3.52 3.52 3.52
+region box block 0 $x 0 $y 0 $z
+region box block 0 8 0 $y 0 $z
+region box block 0 8 0 8 0 $z
+region box block 0 8 0 8 0 8
+
+## create box for two atom types ##
+create_box 2 box
+Created orthogonal box = (0 0 0) to (28.16 28.16 28.16)
+  1 by 1 by 1 MPI processor grid
+## fill box with atoms ##
+create_atoms 1 box
+Created 2048 atoms
+
+## potential in use ##
+pair_style eam/alloy
+pair_coeff * * Ni.eam Ni Ni
+
+## create a vacancy in the center of the box ##
+# we need a vacancy somewhere (center of the box)
+region pka sphere ${n_2} ${n_2} ${n_2} 0.1 side in
+region pka sphere 4 ${n_2} ${n_2} 0.1 side in
+region pka sphere 4 4 ${n_2} 0.1 side in
+region pka sphere 4 4 4 0.1 side in
+delete_atoms region pka
+Deleted 1 atoms, new total = 2047
+region pka delete
+
+## put atom type 2 (Ni) at vacancy position ##
+# we create an interstitial somewhere else
+create_atoms 2 single ${n_2} ${n_2} ${n_2}
+create_atoms 2 single 4 ${n_2} ${n_2}
+create_atoms 2 single 4 4 ${n_2}
+create_atoms 2 single 4 4 4
+Created 1 atoms
+group pka type 2
+1 atoms in group pka
+
+########################
+### Set PKA velocity ###
+########################
+
+## SUB_VEL is substituted by sed ##
+# we give it some velocity
+variable vvx equal 0.835115
+variable vvy equal 0.543981
+variable vvz equal 0.081652
+
+variable vel equal 573.39111597
+
+variable vx equal ${vel}*${vvx}
+variable vx equal 573.39111597*${vvx}
+variable vx equal 573.39111597*0.835115
+variable vy equal ${vel}*${vvy}
+variable vy equal 573.39111597*${vvy}
+variable vy equal 573.39111597*0.543981
+variable vz equal ${vel}*${vvz}
+variable vz equal 573.39111597*${vvz}
+variable vz equal 573.39111597*0.081652
+
+## set PKA energy to the selected atom ##
+velocity pka set ${vx} ${vy} ${vz} units box
+velocity pka set 478.847521813287 ${vy} ${vz} units box
+velocity pka set 478.847521813287 311.913872656477 ${vz} units box
+velocity pka set 478.847521813287 311.913872656477 46.8185314011824 units box
+
+#############################
+### Find largest velocity ###
+#############################
+
+variable vv atom sqrt(vx*vx+vy*vy+vz*vz)
+compute maxv all reduce max v_vv
+
+#####################################
+### Initial intergration timestep ###
+#####################################
+
+## initial timestep; atom should not move more than 10 uA in one timestep ##
+variable maxA equal 1.0e-3
+variable tau equal 1.0/${vel}
+variable tau equal 1.0/573.39111597
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.00174401027875765
+timestep ${dt}
+timestep 1.74401027875765e-06
+
+## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
+thermo_style custom step time temp press pe ke etotal c_maxv
+thermo 1000
+
+compute keatom all ke/atom
+
+################################
+### Integrator and eph model ###
+################################
+
+## use velocity verlet integration
+#fix integrate all nve
+
+## eph model ##
+## model is applied only to the PKA atom (a small error is created because of this) ##
+fix friction all eph 1111 7 4 1.0 3.5e-6 0.1248 0.0 8 8 8 NULL 0 T_out Ni.beta Ni Ni
+run 0
+Neighbor list info ...
+  update every 1 steps, delay 10 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 8.5
+  ghost atom cutoff = 8.5
+  binsize = 4.25, bins = 7 7 7
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair eam/alloy, perpetual, half/full from (2)
+      attributes: half, newton on
+      pair build: halffull/newton
+      stencil: none
+      bin: none
+  (2) fix eph, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+Per MPI rank memory allocation (min/avg/max) = 6.617 | 6.617 | 6.617 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+       0            0    3780.4192    47845.773      -9113.6     1000.282    -8113.318    573.39096 
+Loop time of 1.90735e-06 on 1 procs for 0 steps with 2048 atoms
+
+157.3% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.907e-06  |            |       |100.00
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5765 ave 5765 max 5765 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    229376 ave 229376 max 229376 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  458752 ave 458752 max 458752 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 458752
+Ave neighs/atom = 224
+Neighbor list builds = 0
+Dangerous builds = 0
+
+#################################
+### Dump coordinates          ###
+### velocities forces and     ###
+### kinetic energy            ###
+#################################
+
+## create trajactory file where atom moves at the most 0.1 A
+#dump myDump all custom 1000 strucs.dump type x y z vx vy vz fx fy fz c_keatom
+#dump_modify myDump sort id
+
+#################################
+### these are for output file ###
+#################################
+variable N equal count(all)
+print "Number of atoms: $N"
+Number of atoms: 2048
+
+variable xe equal x[$N]
+variable xe equal x[2048]
+variable ye equal y[$N]
+variable ye equal y[2048]
+variable ze equal z[$N]
+variable ze equal z[2048]
+
+variable Ep equal pe
+variable Ek equal ke
+variable Ee equal f_friction[1]
+variable Te equal f_friction[2]
+
+variable rho equal f_friction[$N][1]
+variable rho equal f_friction[2048][1]
+variable beta equal f_friction[$N][2]
+variable beta equal f_friction[2048][2]
+
+# print in nice format
+variable fxe format xe "%.12e"
+variable fye format ye "%.12e"
+variable fze format ze "%.12e"
+
+variable fEp format Ep "%.12e"
+variable fEk format Ek "%.12e"
+variable fEe format Ee "%.12e"
+variable fTe format Te "%.12e"
+
+variable frho format rho "%.12e"
+variable fbeta format beta "%.12e"
+
+#################################################################
+### print output every time atom has moved at the most 0.01 A ###
+#################################################################
+
+fix out all print 1000 "$(step) $(time) $(temp) ${Te} ${fxe} ${fye} ${fze} ${fEp} ${fEk} ${fEe} ${frho} ${fbeta}" file out.data screen no
+
+########################################
+### loop until 1 ps has been reached ###
+########################################
+
+variable T_total equal 0.0
+variable T_new equal 0.0
+
+#########################################
+### calculate kinetic energy per-atom ###
+#########################################
+
+label time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 1.74401027875765e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/573.390955618286
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.00174401076647905
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 1.74401027875765e-06/${dt}
+variable dtratio equal 1.74401027875765e-06/1.74401076647905e-06
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 1.74401076647905e-06
+timestep ${dt}
+timestep 1.74401076647905e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+       0            0    3780.4192    47845.773      -9113.6     1000.282    -8113.318    573.39096 
+    1000 0.0017440108    3743.1013    48729.785   -9104.3978    990.40781     -8113.99    570.54815 
+    2000 0.0034880215    2768.2951    64602.903   -8862.5118    732.47848   -8130.0333    467.94165 
+    3000 0.0052320323    3573.3717    48870.771    -9089.829    945.49812   -8144.3309    445.36604 
+    4000 0.0069760431    3483.4266    49997.512   -9072.5576    921.69907   -8150.8585    436.69014 
+    5000 0.0087200538    3404.5775    51733.876   -9053.6503    900.83595   -8152.8143     431.0749 
+    6000  0.010464065    3393.3087     51954.67   -9053.4062    897.85427   -8155.5519    431.23112 
+    7000  0.012208075    3223.5711    53814.691   -9014.6725    852.94246     -8161.73    424.75655 
+    8000  0.013952086    3246.7009    53175.759   -9024.4224    859.06251   -8165.3599    422.98205 
+    9000  0.015696097    2865.6776    61274.284   -8939.7408    758.24545   -8181.4954    339.99708 
+   10000  0.017440108    3271.3729     50316.43   -9054.6805    865.59059   -8189.0899    336.49498 
+Loop time of 268.504 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.006 ns/day, 4276.601 hours/ns, 37.243 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 58.293     | 58.293     | 58.293     |   0.0 | 21.71
+Neigh   | 0.10275    | 0.10275    | 0.10275    |   0.0 |  0.04
+Comm    | 0.61326    | 0.61326    | 0.61326    |   0.0 |  0.23
+Output  | 0.0012944  | 0.0012944  | 0.0012944  |   0.0 |  0.00
+Modify  | 209.36     | 209.36     | 209.36     |   0.0 | 77.97
+Other   |            | 0.129      |            |       |  0.05
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5766 ave 5766 max 5766 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    229427 ave 229427 max 229427 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  458854 ave 458854 max 458854 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 458854
+Ave neighs/atom = 224.05
+Neighbor list builds = 7
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*1.74401076647905e-06+${T_total}
+variable T_new equal 10000*1.74401076647905e-06+0
+variable T_total equal ${T_new}
+variable T_total equal 0.0174401076647905
+print "Total time: ${T_total}"
+Total time: 0.0174401076647905
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 1.74401076647905e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/336.494976699884
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.00297181256554652
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 1.74401076647905e-06/${dt}
+variable dtratio equal 1.74401076647905e-06/2.97181256554652e-06
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 1.74401076647905e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 2.09281291977486e-06
+timestep ${dt}
+timestep 2.09281291977486e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   10000  0.017440108    3271.3729     50316.43   -9054.6805    865.59059   -8189.0899    336.49498 
+   11000  0.019532921    3080.3272    53805.887   -9012.2522    815.04077   -8197.2115    316.76319 
+   12000  0.021625734    2730.9223    61294.136   -8927.7933     722.5898   -8205.2035    267.79921 
+   13000  0.023718546    2970.5062    54132.088    -9006.667    785.98262   -8220.6844    315.75386 
+   14000  0.025811359    2882.2812     55352.48   -8988.1688    762.63868   -8225.5301    306.17644 
+   15000  0.027904172    2753.6751    58059.536   -8957.0084    728.61009   -8228.3983    294.34085 
+   16000  0.029996985    2768.5406    58468.809   -8967.5179    732.54343   -8234.9745     289.2151 
+   17000  0.032089798    2657.1121    60157.542   -8939.6074    703.05994   -8236.5475    277.20888 
+   18000  0.034182611     2651.449    61300.718   -8943.5015    701.56153     -8241.94    272.48437 
+   19000  0.036275424    2570.1473    63592.786   -8924.1534    680.04945   -8244.1039    267.56311 
+   20000  0.038368237    2535.6753     64882.63   -8917.8357    670.92831   -8246.9074     252.3795 
+Loop time of 270.995 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.007 ns/day, 3596.898 hours/ns, 36.901 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 60.829     | 60.829     | 60.829     |   0.0 | 22.45
+Neigh   | 0.087163   | 0.087163   | 0.087163   |   0.0 |  0.03
+Comm    | 0.61575    | 0.61575    | 0.61575    |   0.0 |  0.23
+Output  | 0.0011992  | 0.0011992  | 0.0011992  |   0.0 |  0.00
+Modify  | 209.33     | 209.33     | 209.33     |   0.0 | 77.25
+Other   |            | 0.1304     |            |       |  0.05
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5772 ave 5772 max 5772 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    229646 ave 229646 max 229646 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  459292 ave 459292 max 459292 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 459292
+Ave neighs/atom = 224.264
+Neighbor list builds = 6
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*2.09281291977486e-06+${T_total}
+variable T_new equal 10000*2.09281291977486e-06+0.0174401076647905
+variable T_total equal ${T_new}
+variable T_total equal 0.0383682368625391
+print "Total time: ${T_total}"
+Total time: 0.0383682368625391
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 2.09281291977486e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/252.379498404209
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.00396228697783688
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 2.09281291977486e-06/${dt}
+variable dtratio equal 2.09281291977486e-06/3.96228697783688e-06
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 2.09281291977486e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 2.51137550372983e-06
+timestep ${dt}
+timestep 2.51137550372983e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   20000  0.038368237    2535.6753     64882.63   -8917.8357    670.92831   -8246.9074     252.3795 
+   21000  0.040879612    2570.0713     64535.09   -8929.9707    680.02935   -8249.9413    250.92752 
+   22000  0.043390988    2453.9485     66940.61   -8902.6829    649.30378   -8253.3791    235.15258 
+   23000  0.045902363     2186.359    72309.674   -8836.4845    578.50079   -8257.9837    171.17292 
+   24000  0.048413739    2314.8472    70402.005   -8875.0704     612.4982   -8262.5722    230.06801 
+   25000  0.050925114    2331.7701    71800.415   -8880.8421    616.97592   -8263.8662     229.5401 
+   26000   0.05343649    2276.8364    73744.115   -8867.4544     602.4407   -8265.0137    223.15038 
+   27000  0.055947865    2139.3263    75780.946   -8834.1515    566.05615   -8268.0953    199.82633 
+   28000  0.058459241    2034.8673    77372.329   -8807.5243    538.41676   -8269.1075    136.47559 
+   29000  0.060970616    2165.3005    76585.346   -8844.8324     572.9288   -8271.9036    188.25523 
+   30000  0.063481992     2144.304    78730.937     -8840.09    567.37323   -8272.7168    189.07355 
+Loop time of 272.682 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.008 ns/day, 3016.081 hours/ns, 36.673 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 64.134     | 64.134     | 64.134     |   0.0 | 23.52
+Neigh   | 0.059696   | 0.059696   | 0.059696   |   0.0 |  0.02
+Comm    | 0.61108    | 0.61108    | 0.61108    |   0.0 |  0.22
+Output  | 0.0011404  | 0.0011404  | 0.0011404  |   0.0 |  0.00
+Modify  | 207.75     | 207.75     | 207.75     |   0.0 | 76.19
+Other   |            | 0.1279     |            |       |  0.05
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5793 ave 5793 max 5793 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    230142 ave 230142 max 230142 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  460284 ave 460284 max 460284 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 460284
+Ave neighs/atom = 224.748
+Neighbor list builds = 4
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*2.51137550372983e-06+${T_total}
+variable T_new equal 10000*2.51137550372983e-06+0.0383682368625391
+variable T_total equal ${T_new}
+variable T_total equal 0.0634819918998374
+print "Total time: ${T_total}"
+Total time: 0.0634819918998374
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 2.51137550372983e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/189.073551963276
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.00528894702414133
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 2.51137550372983e-06/${dt}
+variable dtratio equal 2.51137550372983e-06/5.28894702414133e-06
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 2.51137550372983e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 3.0136506044758e-06
+timestep ${dt}
+timestep 3.0136506044758e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   30000  0.063481992     2144.304    78730.937     -8840.09    567.37323   -8272.7168    189.07355 
+   31000  0.066495643    2030.6656    81249.432   -8810.6608    537.30502   -8273.3557    165.28259 
+   32000  0.069509293    2007.4631    82684.397   -8805.7763    531.16573   -8274.6106    152.44943 
+   33000  0.072522944    1950.6107    84334.256   -8792.0832    516.12284   -8275.9604    138.67509 
+   34000  0.075536594    1884.4916    87277.737   -8775.1316    498.62804   -8276.5036    110.28604 
+   35000  0.078550245    1876.5257     87788.94   -8773.5235     496.5203   -8277.0032    105.67072 
+   36000  0.081563896    1830.0454    88652.053   -8762.1351     484.2218   -8277.9133    109.47164 
+   37000  0.084577546    1775.4831    90647.419   -8748.1016    469.78486   -8278.3168    98.652226 
+   38000  0.087591197     1729.199    92631.561   -8735.7709     457.5383   -8278.2326    77.285158 
+   39000  0.090604847    1692.9749    93119.755   -8726.8297    447.95356   -8278.8761    73.671136 
+   40000  0.093618498     1662.953    93690.028   -8719.0619    440.00991    -8279.052    82.428074 
+Loop time of 272.112 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.010 ns/day, 2508.140 hours/ns, 36.750 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 67.56      | 67.56      | 67.56      |   0.0 | 24.83
+Neigh   | 0.043727   | 0.043727   | 0.043727   |   0.0 |  0.02
+Comm    | 0.596      | 0.596      | 0.596      |   0.0 |  0.22
+Output  | 0.0012517  | 0.0012517  | 0.0012517  |   0.0 |  0.00
+Modify  | 203.79     | 203.79     | 203.79     |   0.0 | 74.89
+Other   |            | 0.1245     |            |       |  0.05
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5864 ave 5864 max 5864 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    231157 ave 231157 max 231157 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  462314 ave 462314 max 462314 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 462314
+Ave neighs/atom = 225.739
+Neighbor list builds = 3
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*3.0136506044758e-06+${T_total}
+variable T_new equal 10000*3.0136506044758e-06+0.0634819918998374
+variable T_total equal ${T_new}
+variable T_total equal 0.0936184979445954
+print "Total time: ${T_total}"
+Total time: 0.0936184979445954
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 3.0136506044758e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/82.4280743763397
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0121317889270872
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 3.0136506044758e-06/${dt}
+variable dtratio equal 3.0136506044758e-06/1.21317889270872e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 3.0136506044758e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 3.61638072537096e-06
+timestep ${dt}
+timestep 3.61638072537096e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   40000  0.093618498     1662.953    93690.028   -8719.0619    440.00991    -8279.052    82.428074 
+   41000  0.097234879    1640.3947    95903.422   -8713.9528    434.04109   -8279.9117    83.468348 
+   42000   0.10085126    1607.9179     97339.82   -8706.2313    425.44787   -8280.7834    76.948273 
+   43000   0.10446764    1586.5975    97074.293   -8701.0603    419.80659   -8281.2537    74.112986 
+   44000   0.10808402     1577.085     96241.35   -8699.0519    417.28963   -8281.7623    65.820432 
+   45000    0.1117004     1560.791     96258.69   -8694.4488     412.9783   -8281.4705    62.946805 
+   46000   0.11531678    1540.2558     96206.92   -8687.9177    407.54478    -8280.373    61.915548 
+   47000   0.11893316    1501.5268    97036.067   -8677.7873    397.29727     -8280.49    58.689131 
+   48000   0.12254954    1467.4779    98069.024   -8668.7608    388.28807   -8280.4727     59.61543 
+   49000   0.12616592    1442.7388    99666.012   -8662.4333    381.74221   -8280.6911    58.800735 
+   50000   0.12978231    1431.0577    99241.712   -8658.7879    378.65144   -8280.1365    55.045466 
+Loop time of 276.017 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.011 ns/day, 2120.116 hours/ns, 36.230 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 73.385     | 73.385     | 73.385     |   0.0 | 26.59
+Neigh   | 0.029201   | 0.029201   | 0.029201   |   0.0 |  0.01
+Comm    | 0.60629    | 0.60629    | 0.60629    |   0.0 |  0.22
+Output  | 0.0011563  | 0.0011563  | 0.0011563  |   0.0 |  0.00
+Modify  | 201.87     | 201.87     | 201.87     |   0.0 | 73.14
+Other   |            | 0.1247     |            |       |  0.05
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5935 ave 5935 max 5935 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    233399 ave 233399 max 233399 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  466798 ave 466798 max 466798 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 466798
+Ave neighs/atom = 227.929
+Neighbor list builds = 2
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*3.61638072537096e-06+${T_total}
+variable T_new equal 10000*3.61638072537096e-06+0.0936184979445954
+variable T_total equal ${T_new}
+variable T_total equal 0.129782305198305
+print "Total time: ${T_total}"
+Total time: 0.129782305198305
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 3.61638072537096e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/55.0454661719391
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0181668004568517
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 3.61638072537096e-06/${dt}
+variable dtratio equal 3.61638072537096e-06/1.81668004568517e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 3.61638072537096e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 4.33965687044515e-06
+timestep ${dt}
+timestep 4.33965687044515e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.742 | 6.742 | 6.742 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   50000   0.12978231    1431.0577    99241.712   -8658.7879    378.65144   -8280.1365    55.045466 
+   51000   0.13412196    1399.6364    99170.445     -8650.68    370.33753   -8280.3425    56.296821 
+   52000   0.13846162    1349.5272    99917.972   -8637.4988    357.07886   -8280.4199    52.774645 
+   53000   0.14280128    1315.2181    101157.22   -8627.6159    348.00082   -8279.6151    49.851268 
+   54000   0.14714093    1300.5353    102120.55   -8623.5986    344.11581   -8279.4828    54.255885 
+   55000   0.15148059    1298.6382    101955.68   -8622.4063    343.61384   -8278.7924    51.079357 
+   56000   0.15582025    1281.8667    101764.29   -8618.2649    339.17617   -8279.0888    50.972854 
+   57000    0.1601599    1256.9312    102334.52    -8611.506    332.57836   -8278.9277    41.674233 
+   58000   0.16449956    1244.9392    102494.98   -8608.6343    329.40532    -8279.229    41.410175 
+   59000   0.16883922    1251.7811    102085.07   -8609.9846    331.21566    -8278.769    42.354673 
+   60000   0.17317887    1258.1425     101993.8   -8611.8274    332.89888   -8278.9285    46.998847 
+Loop time of 281.865 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.013 ns/day, 1804.193 hours/ns, 35.478 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 80.031     | 80.031     | 80.031     |   0.0 | 28.39
+Neigh   | 0.014543   | 0.014543   | 0.014543   |   0.0 |  0.01
+Comm    | 0.61007    | 0.61007    | 0.61007    |   0.0 |  0.22
+Output  | 0.0011032  | 0.0011032  | 0.0011032  |   0.0 |  0.00
+Modify  | 201.08     | 201.08     | 201.08     |   0.0 | 71.34
+Other   |            | 0.1264     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6030 ave 6030 max 6030 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    235046 ave 235046 max 235046 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  470092 ave 470092 max 470092 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 470092
+Ave neighs/atom = 229.537
+Neighbor list builds = 1
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*4.33965687044515e-06+${T_total}
+variable T_new equal 10000*4.33965687044515e-06+0.129782305198305
+variable T_total equal ${T_new}
+variable T_total equal 0.173178873902756
+print "Total time: ${T_total}"
+Total time: 0.173178873902756
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 4.33965687044515e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/46.9988467672265
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.021277117818502
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 4.33965687044515e-06/${dt}
+variable dtratio equal 4.33965687044515e-06/2.1277117818502e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 4.33965687044515e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 5.20758824453418e-06
+timestep ${dt}
+timestep 5.20758824453418e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.745 | 6.745 | 6.745 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   60000   0.17317887    1258.1425     101993.8   -8611.8274    332.89888   -8278.9285    46.998847 
+   61000   0.17838646    1240.6194    102489.25   -8607.0219    328.26233   -8278.7596    42.925816 
+   62000   0.18359405    1217.8738    102672.44    -8600.954    322.24396     -8278.71    31.854047 
+   63000   0.18880164    1211.8528    102872.12   -8599.6144    320.65082   -8278.9636    35.607042 
+   64000   0.19400923    1200.8389    103400.44   -8596.4758    317.73658   -8278.7392    42.240037 
+   65000   0.19921682    1188.1716     103356.4    -8592.683    314.38488   -8278.2981    36.031752 
+   66000    0.2044244    1192.4445    103010.54   -8593.5348    315.51546   -8278.0194    33.791982 
+   67000   0.20963199    1209.7576    101981.02   -8597.5292    320.09643   -8277.4328    34.309702 
+   68000   0.21483958    1219.9824    101436.52   -8599.9452    322.80188   -8277.1433    39.811429 
+   69000   0.22004717    1215.6622       101295   -8598.3576    321.65878   -8276.6988    34.231312 
+   70000   0.22525476    1203.1468    101459.59   -8595.1462    318.34725    -8276.799    25.394029 
+Loop time of 287.046 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.016 ns/day, 1531.134 hours/ns, 34.838 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.517     | 85.517     | 85.517     |   0.0 | 29.79
+Neigh   | 0.014563   | 0.014563   | 0.014563   |   0.0 |  0.01
+Comm    | 0.62387    | 0.62387    | 0.62387    |   0.0 |  0.22
+Output  | 0.0011597  | 0.0011597  | 0.0011597  |   0.0 |  0.00
+Modify  | 200.76     | 200.76     | 200.76     |   0.0 | 69.94
+Other   |            | 0.1265     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6172 ave 6172 max 6172 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    237926 ave 237926 max 237926 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  475852 ave 475852 max 475852 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 475852
+Ave neighs/atom = 232.35
+Neighbor list builds = 1
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*5.20758824453418e-06+${T_total}
+variable T_new equal 10000*5.20758824453418e-06+0.173178873902756
+variable T_total equal ${T_new}
+variable T_total equal 0.225254756348098
+print "Total time: ${T_total}"
+Total time: 0.225254756348098
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 5.20758824453418e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/25.3940294535853
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0393793352814598
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 5.20758824453418e-06/${dt}
+variable dtratio equal 5.20758824453418e-06/3.93793352814598e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 5.20758824453418e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 6.24910589344102e-06
+timestep ${dt}
+timestep 6.24910589344102e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   70000   0.22525476    1203.1468    101459.59   -8595.1462    318.34725    -8276.799    25.394029 
+   71000   0.23150386    1199.8169    100714.71   -8594.0937    317.46618   -8276.6275    31.390327 
+   72000   0.23775297    1203.5126    99352.429   -8594.4065    318.44404   -8275.9625    37.932925 
+   73000   0.24400207    1192.2211    100054.01    -8591.026    315.45636   -8275.5696    34.709207 
+   74000   0.25025118    1187.8354    100104.06   -8589.4078    314.29592   -8275.1119    23.433812 
+   75000   0.25650029    1206.2879    98679.867    -8594.099    319.17837   -8274.9206    26.266199 
+   76000   0.26274939     1231.891    97294.048   -8600.4218    325.95283   -8274.4689    32.561906 
+   77000    0.2689985    1247.1685    96236.794   -8604.2366    329.99519   -8274.2414    31.546426 
+   78000    0.2752476    1252.8892     95218.41   -8606.0983    331.50887   -8274.5894    28.654342 
+   79000   0.28149671    1252.5118    94766.933   -8605.4686      331.409   -8274.0596    25.596522 
+   80000   0.28774582    1249.2844    94497.935    -8603.833    330.55504   -8273.2779    27.449977 
+Loop time of 310.959 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.017 ns/day, 1382.236 hours/ns, 32.159 timesteps/s
+99.9% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 92.466     | 92.466     | 92.466     |   0.0 | 29.74
+Neigh   | 0.014783   | 0.014783   | 0.014783   |   0.0 |  0.00
+Comm    | 0.67943    | 0.67943    | 0.67943    |   0.0 |  0.22
+Output  | 0.0013413  | 0.0013413  | 0.0013413  |   0.0 |  0.00
+Modify  | 217.66     | 217.66     | 217.66     |   0.0 | 70.00
+Other   |            | 0.1341     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6251 ave 6251 max 6251 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    239068 ave 239068 max 239068 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  478136 ave 478136 max 478136 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 478136
+Ave neighs/atom = 233.465
+Neighbor list builds = 1
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*6.24910589344102e-06+${T_total}
+variable T_new equal 10000*6.24910589344102e-06+0.225254756348098
+variable T_total equal ${T_new}
+variable T_total equal 0.287745815282508
+print "Total time: ${T_total}"
+Total time: 0.287745815282508
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 6.24910589344102e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/27.4499773714862
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0364299025265775
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 6.24910589344102e-06/${dt}
+variable dtratio equal 6.24910589344102e-06/3.64299025265775e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 6.24910589344102e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 7.49892707212922e-06
+timestep ${dt}
+timestep 7.49892707212922e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   80000   0.28774582    1249.2844    94497.935    -8603.833    330.55504   -8273.2779    27.449977 
+   81000   0.29524474    1244.2247    93870.678   -8602.6871    329.21628   -8273.4709    29.754445 
+   82000   0.30274367    1248.2802      92739.6   -8603.7229    330.28935   -8273.4336    30.232656 
+   83000    0.3102426    1259.2562    92267.136   -8606.0631    333.19354   -8272.8696    28.976656 
+   84000   0.31774152    1262.5392    91716.876   -8606.6904     334.0622   -8272.6282    26.170314 
+   85000   0.32524045    1268.6646    90636.687   -8608.8427    335.68296   -8273.1598    22.456485 
+   86000   0.33273938    1280.9482    89675.579   -8611.5652    338.93316    -8272.632    23.937566 
+   87000    0.3402383    1300.7009    88246.106   -8616.1377    344.15964    -8271.978    23.944957 
+   88000   0.34773723    1330.7235     86580.44   -8623.6512    352.10347   -8271.5477    23.122114 
+   89000   0.35523616    1366.1848    85096.926   -8632.7677    361.48637   -8271.2813    24.627087 
+   90000   0.36273509    1404.2171    84076.712   -8641.8937    371.54955   -8270.3441    25.054591 
+Loop time of 289.724 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.022 ns/day, 1073.205 hours/ns, 34.516 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 87.282     | 87.282     | 87.282     |   0.0 | 30.13
+Neigh   | 0.014837   | 0.014837   | 0.014837   |   0.0 |  0.01
+Comm    | 0.63498    | 0.63498    | 0.63498    |   0.0 |  0.22
+Output  | 0.0011992  | 0.0011992  | 0.0011992  |   0.0 |  0.00
+Modify  | 201.66     | 201.66     | 201.66     |   0.0 | 69.60
+Other   |            | 0.1291     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6240 ave 6240 max 6240 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    238344 ave 238344 max 238344 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  476688 ave 476688 max 476688 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 476688
+Ave neighs/atom = 232.758
+Neighbor list builds = 1
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*7.49892707212922e-06+${T_total}
+variable T_new equal 10000*7.49892707212922e-06+0.287745815282508
+variable T_total equal ${T_new}
+variable T_total equal 0.3627350860038
+print "Total time: ${T_total}"
+Total time: 0.3627350860038
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 7.49892707212922e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/25.0545910440311
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0399128446456218
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 7.49892707212922e-06/${dt}
+variable dtratio equal 7.49892707212922e-06/3.99128446456218e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 7.49892707212922e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 8.99871248655506e-06
+timestep ${dt}
+timestep 8.99871248655506e-06
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+   90000   0.36273509    1404.2171    84076.712   -8641.8937    371.54955   -8270.3441    25.054591 
+   91000    0.3717338    1439.3423    83193.242   -8650.1947    380.84352   -8269.3512    23.649346 
+   92000   0.38073251    1454.8783    82889.179   -8653.0664    384.95428   -8268.1121    21.652682 
+   93000   0.38973122    1463.5125    81890.078   -8654.8913    387.23884   -8267.6525    22.474499 
+   94000   0.39872994    1462.7517    81153.492   -8654.5677    387.03755   -8267.5302    22.385253 
+   95000   0.40772865    1458.6813      80737.1   -8653.3627    385.96053   -8267.4021    21.939041 
+   96000   0.41672736    1470.8824    79441.909   -8655.5679    389.18888    -8266.379    22.255032 
+   97000   0.42572607    1500.9209    78158.463   -8662.9352    397.13695   -8265.7982    22.189007 
+   98000   0.43472479    1522.5301    76663.748   -8669.0406    402.85464   -8266.1859    21.553146 
+   99000    0.4437235     1517.355    76070.579   -8667.4469    401.48533   -8265.9615     21.30625 
+  100000   0.45272221    1493.9145    77054.026   -8660.8238    395.28309   -8265.5407    22.034807 
+Loop time of 285.558 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.027 ns/day, 881.478 hours/ns, 35.019 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.195     | 85.195     | 85.195     |   0.0 | 29.83
+Neigh   | 0.014573   | 0.014573   | 0.014573   |   0.0 |  0.01
+Comm    | 0.61444    | 0.61444    | 0.61444    |   0.0 |  0.22
+Output  | 0.0011601  | 0.0011601  | 0.0011601  |   0.0 |  0.00
+Modify  | 199.61     | 199.61     | 199.61     |   0.0 | 69.90
+Other   |            | 0.1271     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5956 ave 5956 max 5956 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    235649 ave 235649 max 235649 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  471298 ave 471298 max 471298 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 471298
+Ave neighs/atom = 230.126
+Neighbor list builds = 1
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*8.99871248655506e-06+${T_total}
+variable T_new equal 10000*8.99871248655506e-06+0.3627350860038
+variable T_total equal ${T_new}
+variable T_total equal 0.452722210869351
+print "Total time: ${T_total}"
+Total time: 0.452722210869351
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 8.99871248655506e-06
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/22.0348073164665
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0453827431135604
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 8.99871248655506e-06/${dt}
+variable dtratio equal 8.99871248655506e-06/4.53827431135604e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 8.99871248655506e-06*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 1.07984549838661e-05
+timestep ${dt}
+timestep 1.07984549838661e-05
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+  100000   0.45272221    1493.9145    77054.026   -8660.8238    395.28309   -8265.5407    22.034807 
+  101000   0.46352067     1470.171    76894.862    -8653.652    389.00065   -8264.6514    21.952838 
+  102000   0.47431912     1455.057    76814.324   -8649.7565    385.00157   -8264.7549    21.612213 
+  103000   0.48511758    1427.9352    76949.135   -8641.9502    377.82525    -8264.125    23.934255 
+  104000   0.49591603    1394.7596    77294.272   -8632.1018    369.04714   -8263.0547    21.854586 
+  105000   0.50671449    1361.0482    77601.995   -8622.1749    360.12725   -8262.0477    21.696774 
+  106000   0.51751294    1347.7693    77456.512   -8618.8416    356.61371   -8262.2278    26.072849 
+  107000    0.5283114    1347.5822    77478.167    -8619.261     356.5642   -8262.6968    30.533228 
+  108000   0.53910985    1349.4475     76847.06   -8620.1722    357.05776   -8263.1145    26.067125 
+  109000   0.54990831    1360.8882    75566.004    -8622.933    360.08492   -8262.8481    22.742564 
+  110000   0.56070676    1369.7617    74741.957   -8625.1862    362.43282   -8262.7533    24.222814 
+Loop time of 285.303 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.033 ns/day, 733.908 hours/ns, 35.050 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.301     | 85.301     | 85.301     |   0.0 | 29.90
+Neigh   | 0.028881   | 0.028881   | 0.028881   |   0.0 |  0.01
+Comm    | 0.59893    | 0.59893    | 0.59893    |   0.0 |  0.21
+Output  | 0.0011275  | 0.0011275  | 0.0011275  |   0.0 |  0.00
+Modify  | 199.25     | 199.25     | 199.25     |   0.0 | 69.84
+Other   |            | 0.1253     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5865 ave 5865 max 5865 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    236663 ave 236663 max 236663 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  473326 ave 473326 max 473326 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 473326
+Ave neighs/atom = 231.116
+Neighbor list builds = 2
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*1.07984549838661e-05+${T_total}
+variable T_new equal 10000*1.07984549838661e-05+0.452722210869351
+variable T_total equal ${T_new}
+variable T_total equal 0.560706760708012
+print "Total time: ${T_total}"
+Total time: 0.560706760708012
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 1.07984549838661e-05
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/24.2228140320924
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0412833950124505
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 1.07984549838661e-05/${dt}
+variable dtratio equal 1.07984549838661e-05/4.12833950124505e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 1.07984549838661e-05*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 1.29581459806393e-05
+timestep ${dt}
+timestep 1.29581459806393e-05
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+  110000   0.56070676    1369.7617    74741.957   -8625.1862    362.43282   -8262.7533    24.222814 
+  111000   0.57366491    1365.2159    74675.875   -8624.0375    361.23001   -8262.8075    25.898068 
+  112000   0.58662305    1376.5753    74620.106   -8625.9992    364.23566   -8261.7636    24.552234 
+  113000    0.5995812    1408.2968    74094.447   -8632.8389    372.62902   -8260.2099    22.063016 
+  114000   0.61253934     1435.904    73467.263   -8639.6964    379.93377   -8259.7627    22.277572 
+  115000   0.62549749    1437.0127    74235.106    -8639.632    380.22713   -8259.4048    22.396583 
+  116000   0.63845564    1434.9857    74387.699   -8639.2555    379.69078   -8259.5647    24.378684 
+  117000   0.65141378    1443.2775    73890.574   -8641.1769    381.88475   -8259.2921    21.254745 
+  118000   0.66437193    1453.1058    74063.754   -8644.0658    384.48529   -8259.5805    20.503662 
+  119000   0.67733007    1471.0921    73087.532   -8649.0173    389.24437   -8259.7729    23.662401 
+  120000   0.69028822    1483.8198     73223.67   -8652.4005    392.61207   -8259.7884    24.468655 
+Loop time of 286.322 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.039 ns/day, 613.775 hours/ns, 34.926 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.616     | 85.616     | 85.616     |   0.0 | 29.90
+Neigh   | 0.029229   | 0.029229   | 0.029229   |   0.0 |  0.01
+Comm    | 0.60482    | 0.60482    | 0.60482    |   0.0 |  0.21
+Output  | 0.0010631  | 0.0010631  | 0.0010631  |   0.0 |  0.00
+Modify  | 199.94     | 199.94     | 199.94     |   0.0 | 69.83
+Other   |            | 0.1264     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5894 ave 5894 max 5894 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    235485 ave 235485 max 235485 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  470970 ave 470970 max 470970 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 470970
+Ave neighs/atom = 229.966
+Neighbor list builds = 2
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*1.29581459806393e-05+${T_total}
+variable T_new equal 10000*1.29581459806393e-05+0.560706760708012
+variable T_total equal ${T_new}
+variable T_total equal 0.690288220514405
+print "Total time: ${T_total}"
+Total time: 0.690288220514405
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 1.29581459806393e-05
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/24.4686552458515
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.040868612923448
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 1.29581459806393e-05/${dt}
+variable dtratio equal 1.29581459806393e-05/4.0868612923448e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 1.29581459806393e-05*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 1.55497751767672e-05
+timestep ${dt}
+timestep 1.55497751767672e-05
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+  120000   0.69028822    1483.8198     73223.67   -8652.4005    392.61207   -8259.7884    24.468655 
+  121000     0.705838    1531.2219    73030.416   -8663.9131    405.15445   -8258.7587    22.752213 
+  122000   0.72138777    1541.9327    74160.973   -8666.7586    407.98848   -8258.7701    21.530115 
+  123000   0.73693755    1513.9099    74681.435   -8659.0266    400.57377   -8258.4528    22.083962 
+  124000   0.75248732     1507.055    74875.125   -8657.6581    398.75998   -8258.8981    22.729943 
+  125000    0.7680371    1487.0915    76761.253   -8652.0931    393.47774   -8258.6153    21.739896 
+  126000   0.78358687    1435.5753    79083.115   -8637.1879    379.84679   -8257.3411    19.287046 
+  127000   0.79913665    1386.9365    81066.843   -8623.7404    366.97717   -8256.7633     21.19003 
+  128000   0.81468642     1400.135    81893.949   -8625.9702    370.46944   -8255.5008    21.159023 
+  129000    0.8302362    1398.4778    82429.449   -8625.2279    370.03095   -8255.1969    21.111984 
+  130000   0.84578597    1369.6773     83631.32   -8617.3614    362.41047   -8254.9509    18.999743 
+Loop time of 285.972 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.047 ns/day, 510.855 hours/ns, 34.968 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.355     | 85.355     | 85.355     |   0.0 | 29.85
+Neigh   | 0.029288   | 0.029288   | 0.029288   |   0.0 |  0.01
+Comm    | 0.61598    | 0.61598    | 0.61598    |   0.0 |  0.22
+Output  | 0.0010192  | 0.0010192  | 0.0010192  |   0.0 |  0.00
+Modify  | 199.84     | 199.84     | 199.84     |   0.0 | 69.88
+Other   |            | 0.1274     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6072 ave 6072 max 6072 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    236664 ave 236664 max 236664 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  473328 ave 473328 max 473328 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 473328
+Ave neighs/atom = 231.117
+Neighbor list builds = 2
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*1.55497751767672e-05+${T_total}
+variable T_new equal 10000*1.55497751767672e-05+0.690288220514405
+variable T_total equal ${T_new}
+variable T_total equal 0.845785972282077
+print "Total time: ${T_total}"
+Total time: 0.845785972282077
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+variable dtold equal ${dt}
+variable dtold equal 1.55497751767672e-05
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable tau equal 1.0/18.9997425466725
+variable dt equal ${maxA}*${tau}
+variable dt equal 0.001*${tau}
+variable dt equal 0.001*0.0526322921241443
+variable dtratio equal ${dtold}/${dt}
+variable dtratio equal 1.55497751767672e-05/${dt}
+variable dtratio equal 1.55497751767672e-05/5.26322921241443e-05
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+variable dt equal ${dtold}*1.2
+variable dt equal 1.55497751767672e-05*1.2
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+Timestep: 1.86597302121206e-05
+timestep ${dt}
+timestep 1.86597302121206e-05
+
+## run until atom has traveled 1 A ##
+run 10000
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+  130000   0.84578597    1369.6773     83631.32   -8617.3614    362.41047   -8254.9509    18.999743 
+  131000    0.8644457    1372.7786    84866.915   -8616.6896    363.23107   -8253.4585    21.415473 
+  132000   0.88310543    1390.5157    85258.013   -8620.4169    367.92423   -8252.4926    19.435151 
+  133000   0.90176516    1380.3577    85620.117   -8617.2373    365.23647   -8252.0009    17.609474 
+  134000   0.92042489    1382.5467     84878.33   -8617.3971    365.81566   -8251.5814    19.461262 
+  135000   0.93908462    1425.1549    83295.277    -8628.007    377.08959   -8250.9174    18.738992 
+  136000   0.95774435    1457.3162    80884.356   -8636.7114    385.59933   -8251.1121    21.514574 
+  137000   0.97640408    1488.7085    78351.562   -8644.3858    393.90559   -8250.4802    18.647715 
+  138000   0.99506381     1520.744    76227.261   -8653.5262    402.38205   -8251.1442    22.745982 
+  139000    1.0137235    1552.6461    73662.211   -8662.8842    410.82319    -8252.061    22.643876 
+  140000    1.0323833    1564.8928    72097.847   -8664.8008    414.06363   -8250.7371    22.133047 
+Loop time of 285.873 on 1 procs for 10000 steps with 2048 atoms
+
+Performance: 0.056 ns/day, 425.565 hours/ns, 34.981 timesteps/s
+100.0% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 85.787     | 85.787     | 85.787     |   0.0 | 30.01
+Neigh   | 0.044511   | 0.044511   | 0.044511   |   0.0 |  0.02
+Comm    | 0.62802    | 0.62802    | 0.62802    |   0.0 |  0.22
+Output  | 0.0010579  | 0.0010579  | 0.0010579  |   0.0 |  0.00
+Modify  | 199.29     | 199.29     | 199.29     |   0.0 | 69.71
+Other   |            | 0.1265     |            |       |  0.04
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    6009 ave 6009 max 6009 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    234928 ave 234928 max 234928 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  469856 ave 469856 max 469856 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 469856
+Ave neighs/atom = 229.422
+Neighbor list builds = 3
+Dangerous builds = 0
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_new equal 10000*1.86597302121206e-05+${T_total}
+variable T_new equal 10000*1.86597302121206e-05+0.845785972282077
+variable T_total equal ${T_new}
+variable T_total equal 1.03238327440328
+print "Total time: ${T_total}"
+Total time: 1.03238327440328
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF loop_end
+run 0
+Per MPI rank memory allocation (min/avg/max) = 6.748 | 6.748 | 6.748 Mbytes
+Step Time Temp Press PotEng KinEng TotEng c_maxv 
+  140000    1.0323833    1564.8928    72097.847   -8664.8008    414.06363   -8250.7371    22.133047 
+Loop time of 1.19209e-06 on 1 procs for 0 steps with 2048 atoms
+
+167.8% CPU use with 1 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 1.192e-06  |            |       |100.00
+
+Nlocal:    2048 ave 2048 max 2048 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:    5965 ave 5965 max 5965 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    234847 ave 234847 max 234847 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+FullNghs:  469694 ave 469694 max 469694 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 469694
+Ave neighs/atom = 229.343
+Neighbor list builds = 0
+Dangerous builds = 0
+
+
+Total wall time: 1:05:59
