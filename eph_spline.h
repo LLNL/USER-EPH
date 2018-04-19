@@ -59,9 +59,9 @@ class EPH_Spline {
       unsigned int index = 0;
       
       if(x < this->x_First)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       else if(x > this->x_Last)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       
       index = FindIndex(x);
       
@@ -78,9 +78,9 @@ class EPH_Spline {
       unsigned int index = 0;
       
       if(x < this->x_First)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       else if(x > this->x_Last)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       
       index = FindIndex(x);
       
@@ -97,9 +97,9 @@ class EPH_Spline {
       unsigned int index = 0;
       
       if(x < this->x_First)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       else if(x > this->x_Last)
-        return std::numeric_limits<double>::quiet_NaN();
+        throw;
       
       index = FindIndex(x);
       

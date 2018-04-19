@@ -7,7 +7,6 @@
 
 // external headers
 #include <algorithm>
-#include <limits>
 #include <cmath>
 
 #ifdef DEBUG_EPH

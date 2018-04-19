@@ -20,7 +20,8 @@
 #include "update.h"
 #include "comm.h"
 
-#include <cstring>
+#include <cstring> // TODO: remove
+#include <string>
 #include <limits>
 #include <algorithm>
 
@@ -161,7 +162,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   for(unsigned int i = 0; i < types; ++i) {
     typeMap[i] = std::numeric_limits<unsigned int>::max();
     for(unsigned int j = 0; j < beta->getElementsNumber(); ++j) {
-      if(strcmp(beta->getName(j), arg[17+i]) == 0) typeMap[i] = j;
+      if((beta->getName(j)).compare(arg[17+i]) == 0) typeMap[i] = j;
     }
     if(typeMap[i] > types) {
       error->all(FLERR, "Fix eph: elements not found in input file");
