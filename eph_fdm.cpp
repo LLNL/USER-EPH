@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <cmath>
+#include <vector>
 
 #include <mpi.h>
 
@@ -20,7 +21,6 @@
 // internal headers
 #include "eph_fdm.h"
 
-// TODO: change to iostream, have been doing too much C coding
 EPH_FDM::EPH_FDM(const char* file) {
   std::ifstream fd;
   
@@ -41,7 +41,10 @@ EPH_FDM::EPH_FDM(const char* file) {
   fd >> ny;
   fd >> nz;
   
-  init();
+  ntotal = nx*ny*nz;
+  resize_vectors();
+  
+  //init();
   
   fd >> steps;
   
@@ -68,72 +71,33 @@ EPH_FDM::EPH_FDM(const char* file) {
   fd.close();
 }
 
-EPH_FDM::EPH_FDM(unsigned int nx, unsigned int ny, unsigned int nz) {
+EPH_FDM::EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz) {
   this->nx = nx;
   this->ny = ny;
   this->nz = nz;
   
-  init();
-}
-
-void EPH_FDM::init() {
   ntotal = nx*ny*nz;
+  resize_vectors();
   
-  x0 = y0 = z0 = 0.0;
-  x1 = y1 = z1 = 1.0;
-  
-  dx = (x1 - x0) / nx;
-  dy = (y1 - y0) / ny;
-  dz = (z1 - z0) / nz;
-  
-  dV = dx * dy * dz;
-  
-  T_e = new double[ntotal];
-  dT_e = new double[ntotal];
-  dT_e_x = new double[ntotal];
-  dT_e_y = new double[ntotal];
-  dT_e_z = new double[ntotal];
-  ddT_e = new double[ntotal];
-  S_e = new double[ntotal];
-  
-  rho_e = new double[ntotal];
-  C_e = new double[ntotal];
-  kappa_e = new double[ntotal];
-  flag = new int[ntotal];
-  
-  for(int i = 0; i < ntotal; i++) {
-    T_e[i] = 0.0;
-    dT_e[i] = 0.0;
-    dT_e_x[i] = 0.0;
-    dT_e_y[i] = 0.0;
-    dT_e_z[i] = 0.0;
-    ddT_e[i] = 0.0;
-    S_e[i] = 0.0;
-    
-    rho_e[i] = 0.0;
-    C_e[i] = 0.0;
-    kappa_e[i] = 0.0;
-    flag[i] = -1;
-  }
-  
-  steps = 1;
-  dt = 1.0;
+  setDt(1.0);
+  setSteps(1);
+  setBox(0.0, 1.0, 0.0, 1.0, 0.0, 1.0);
 }
 
-EPH_FDM::~EPH_FDM() {
-  delete T_e;
-  delete dT_e;
-  delete dT_e_x;
-  delete dT_e_y;
-  delete dT_e_z;
-  delete ddT_e;
+void EPH_FDM::resize_vectors() {
+  T_e.resize(ntotal, 0.0);
+  dT_e.resize(ntotal, 0.0);
+  dT_e_x.resize(ntotal, 0.0);
+  dT_e_y.resize(ntotal, 0.0);
+  dT_e_z.resize(ntotal, 0.0);
+  ddT_e.resize(ntotal, 0.0);
   
-  delete S_e;
+  C_e.resize(ntotal, 0.0);
+  rho_e.resize(ntotal, 0.0);
+  kappa_e.resize(ntotal, 0.0);
   
-  delete C_e;
-  delete rho_e;
-  delete kappa_e;
-  delete flag;
+  S_e.resize(ntotal, 0.0);
+  flag.resize(ntotal, 1);  
 }
 
 void EPH_FDM::solve() {

@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <vector>
 
 #include <mpi.h>
 
@@ -20,6 +21,7 @@ class EPH_FDM {
     unsigned int nx; // number of nodes in x
     unsigned int ny; // number of nodes in y
     unsigned int nz; // number of nodes in z
+    unsigned int ntotal; // total number of nodes
     
     double x0, x1; // box dimensions in x
     double y0, y1; // box dimensions in y
@@ -29,28 +31,26 @@ class EPH_FDM {
     double dx, dy, dz; // element size
     double dV; // volume of the element
     
-    unsigned int ntotal; // total number of nodes
-    
-    double *T_e; // electronic temperature grid
-    double *dT_e; // energy transfer
-    double *dT_e_x; // derivative in x direction
-    double *dT_e_y; // derivative in y direction
-    double *dT_e_z; // derivative in x direction
-    double *ddT_e; // second derivative
+    std::vector<double> T_e; // electronic temperature at a grid point
+    std::vector<double> dT_e; // energy transfer between atoms and electrons
+    std::vector<double> dT_e_x; // derivative in x
+    std::vector<double> dT_e_y; // derivative in y
+    std::vector<double> dT_e_z; // derivative in z
+    std::vector<double> ddT_e; // second derivative
     
     // temperature dependence will be added later
-    double *C_e; // specific heat at each point; 
-    double *rho_e; // electronic density at each point
-    double *kappa_e; // electronic heat conduction
+    std::vector<double> C_e; // specific heat at each point
+    std::vector<double> rho_e; // electronic density at each point
+    std::vector<double> kappa_e; // electronic heat conduction
     
-    double *S_e; // source or sink term for the electronic system
+    std::vector<double> S_e; // sink and source term
     
     /*
      * -1 -> uninitialised
      *  0 -> constant
      *  1 -> dynamic
      **/
-    int *flag; // term to create walls inside the contiinum
+    std::vector<int> flag; // point prorperty
     
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
@@ -60,11 +60,11 @@ class EPH_FDM {
     int nrPS;
     
   public:
+    EPH_FDM() = delete;
     EPH_FDM(const char* file);
-    EPH_FDM(unsigned int nx, unsigned int ny, unsigned int nz); // construct a system with 
-    ~EPH_FDM();
+    EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz); // construct a system with 
     
-    void setBox(double x0, double x1, double y0, double y1, double z0, double z1) {
+    void setBox(const double x0, const double x1, const double y0, const double y1, const double z0, const double z1) {
       this->x0 = x0;
       this->x1 = x1;
       this->y0 = y0;
@@ -83,7 +83,7 @@ class EPH_FDM {
       dV = dx*dy*dz;
     }
     
-    void setConstants(double T_e, double C_e, double rho_e, double kappa_e) {
+    void setConstants(const double T_e, const double C_e, const double rho_e, const double kappa_e) {
       for(int i = 0; i < ntotal; i++) {
         this->T_e[i] = T_e;
         
@@ -94,15 +94,15 @@ class EPH_FDM {
       }
     }
     
-    void setSteps(unsigned int steps) {
+    void setSteps(const unsigned int steps) {
       this->steps = steps;
     }
     
-    void setDt(double dt) {
+    void setDt(const double dt) {
       this->dt = dt;
     }
     
-    double getT(double x, double y, double z) {
+    double getT(const double x, const double y, const double z) const {
       unsigned int lx, ly, lz;
       double px, py, pz; // periodicity corrected
       
@@ -134,15 +134,12 @@ class EPH_FDM {
       return T_e[index];
     }
     
-    double getT(unsigned int lx, unsigned int ly, unsigned int lz) {
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      return T_e[lx + ly * nx + lz * nx * ny];
+    double getT(const unsigned int x, const unsigned int y, const unsigned int z) const {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
+      return T_e[index];
     }
     
-    bool insertEnergy(double x, double y, double z, double E) {
+    bool insertEnergy(const double x, const double y, const double z, const double E) {
       unsigned int lx, ly, lz;
       double px, py, pz; // periodicity corrected
       
@@ -182,7 +179,7 @@ class EPH_FDM {
         return false;
     }
     
-    void setT(double x, double y, double z, double T) {
+    void setT(const double x, const double y, const double z, const double T) {
       unsigned int lx, ly, lz;
       double px, py, pz; // periodicity corrected
       
@@ -208,12 +205,8 @@ class EPH_FDM {
       T_e[index] = T;
     }
     
-    void setT(unsigned int lx, unsigned int ly, unsigned int lz, double T) {
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
+    void setT(const unsigned int x, const unsigned int y, const unsigned int z, const double T) {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       
       T_e[index] = T;
     }
@@ -244,12 +237,8 @@ class EPH_FDM {
       S_e[index] = S;
     }
     
-    void setS(unsigned int lx, unsigned int ly, unsigned int lz, double S) {
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
+    void setS(const unsigned int x, const unsigned int y, const unsigned int z, double S) {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       
       S_e[index] = S;
     }
@@ -268,7 +257,7 @@ class EPH_FDM {
     // save current temperature map
     void saveTemperature(const char* file, int n);
     
-    double calcTtotal() {
+    double calcTtotal() const {
       double result = 0.0;
   
       for(int i = 0; i < ntotal; i++) {
@@ -282,7 +271,7 @@ class EPH_FDM {
   private:
     static constexpr unsigned int lineLength = 1024;
     
-    void init();
+    void resize_vectors();
     void syncBefore(); // this is for MPI sync before solve is called
     void syncAfter(); // this is for MPI sync after solve is called
 };
