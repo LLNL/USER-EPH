@@ -212,13 +212,13 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   // zero arrays, so they would not contain garbage
   int nlocal = atom->nlocal;
   //t_nlocal = nlocal;
-  std::fill_n(&(rho_i[0]), nlocal, 0.0D);
-  std::fill_n(&(beta_i[0]), nlocal, 0.0D);
-  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(rho_i[0]), nlocal, 0.0);
+  std::fill_n(&(beta_i[0]), nlocal, 0.0);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0);
   
   for(int i = 0; i < nlocal; ++i) {
     for(int j = 0; j < size_peratom_cols; ++j) {
@@ -556,7 +556,7 @@ void FixEPH::force_prb() {
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          if(rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D) {
+          if(rho_ji[i][j] > 0.0 && rho_i[i] > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double var = beta_i[i] * v_rho_ji / rho_i[i];
             f_EPH[i][0] -= var * v[jj][0];
@@ -616,7 +616,7 @@ void FixEPH::force_prbmod() {
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D) {
+          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double var = alpha_i * v_rho_ji / rho_i[i];
             w_i[i][0] -= var * v[jj][0];
@@ -652,7 +652,7 @@ void FixEPH::force_prbmod() {
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          if(rho_ij[i][j] > 0.0D &&rho_i[jj] > 0.0D) {
+          if(rho_ij[i][j] > 0.0 &&rho_i[jj] > 0.0) {
             double alpha_j = sqrt(beta_i[jj]);
             double v_rho_ij = rho_ij[i][j];
             double var = alpha_j * v_rho_ij / rho_i[jj];
@@ -688,7 +688,7 @@ void FixEPH::force_prbmod() {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           
-          if(rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0) {          
+          if(rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0) {          
             double v_rho_ij = rho_ij[i][j];
             var = sqrt(beta_i[jj]);
             var *= v_rho_ij / rho_i[jj];
@@ -746,7 +746,7 @@ void FixEPH::force_eta() {
           double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
@@ -760,7 +760,7 @@ void FixEPH::force_eta() {
           }
           
           // second sum
-          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * v[jj][0] + 
                           e_ij_y * v[jj][1] + 
@@ -810,7 +810,7 @@ void FixEPH::force_eta() {
           double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if (rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * w_i[i][0] + 
                           e_ij_y * w_i[i][1] + 
@@ -824,7 +824,7 @@ void FixEPH::force_eta() {
           }
           
           // second sum
-          if (rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0D && e_r_2 > 0.0D) {
+          if (rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ij = rho_ij[i][j];
             double e_v_v = e_ij_x * w_i[jj][0] + 
                           e_ij_y * w_i[jj][1] + 
@@ -870,7 +870,7 @@ void FixEPH::force_eta() {
           double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if(rho_ji[i][j] > 0.0D && rho_i[i] > 0.0D && e_r_2 > 0.0D) {
+          if(rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ji = rho_ji[i][j];
             double e_v_xi = e_ij_x * xi_i[i][0] + 
                             e_ij_y * xi_i[i][1] + 
@@ -884,7 +884,7 @@ void FixEPH::force_eta() {
           }
           
           // second sum
-          if(rho_ij[i][j] > 0.0D && rho_i[jj] > 0.0D && e_r_2 > 0.0D) {
+          if(rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ij = rho_ij[i][j];
             double e_v_xi = e_ij_x * xi_i[jj][0] + 
                             e_ij_y * xi_i[jj][1] + 

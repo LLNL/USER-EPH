@@ -177,6 +177,8 @@ class EPH_FDM {
       }
       else
         return false;
+      
+      return true;
     }
     
     void setT(const double x, const double y, const double z, const double T) {
