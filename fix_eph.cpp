@@ -1096,13 +1096,13 @@ void FixEPH::post_force(int vflag) {
   int *numneigh = list->numneigh;
   
   //zero all arrays
-  std::fill_n(&(rho_i[0]), nlocal, 0.0D);
-  std::fill_n(&(beta_i[0]), nlocal, 0.0D);
-  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0D);
-  std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0D);
+  std::fill_n(&(rho_i[0]), nlocal, 0.0);
+  std::fill_n(&(beta_i[0]), nlocal, 0.0);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0);
   
   for(int i = 0; i < nlocal; ++i) {
     rho_i[i] = 0.0;
@@ -1150,8 +1150,8 @@ void FixEPH::post_force(int vflag) {
   }
   
   // zero density contributions
-  std::fill_n(&(rho_ij[0][0]), rho_neigh * nlocal, 0.0D);
-  std::fill_n(&(rho_ji[0][0]), rho_neigh * nlocal, 0.0D);
+  std::fill_n(&(rho_ij[0][0]), rho_neigh * nlocal, 0.0);
+  std::fill_n(&(rho_ji[0][0]), rho_neigh * nlocal, 0.0);
   
   // calculate the site densities, gradients (future) and beta(rho)
   calculate_environment();
