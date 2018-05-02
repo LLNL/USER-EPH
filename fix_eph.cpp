@@ -1087,6 +1087,8 @@ void FixEPH::force_gapb() {
   }
 }
 
+void FixEPH::force_testing() {};
+
 void FixEPH::post_force(int vflag) {
   //if(myID == 0) std::cout << "DEBUG post_force()" << std::endl;
   double **f = atom->f;
@@ -1160,7 +1162,25 @@ void FixEPH::post_force(int vflag) {
    * we have separated the model specific codes to make it more readable 
    * at the expense of code duplication 
    */
+  switch(eph_model) {
+    case Model::TTM: force_ttm();
+      break;
+    case Model::PRB: force_prb();
+      break;
+    case Model::PRBMOD: force_prbmod();
+      break;
+    case Model::ETA: force_eta();
+      break;
+    case Model::GAP: force_gap();
+      break;
+    case Model::GAPB: force_gapb();
+      break;
+    case Model::TESTING: force_testing();
+      break;
+    default: throw;
+  }
   
+  /*
   if(eph_model == Model::TTM) {
     force_ttm();
   }
@@ -1179,6 +1199,7 @@ void FixEPH::post_force(int vflag) {
   else if(eph_model == Model::GAPB) {
     force_gapb();
   }
+  * */
   
   // second loop over atoms if needed
   // debug
@@ -1187,15 +1208,17 @@ void FixEPH::post_force(int vflag) {
   printf("%f %f %f\n", f_EPH[0][0], f_EPH[0][1], f_EPH[0][2]);
   printf("%f %f %f\n", f_RNG[0][0], f_RNG[0][1], f_RNG[0][2]);
   */
- 
-  for(int i = 0; i < nlocal; i++) {
-    if(eph_flag & Flag::FRICTION) {
+  
+  if((eph_flag & Flag::FRICTION) && !(eph_flag & Flag::NOFRICTION)) {
+    for(int i = 0; i < nlocal; i++) {
       f[i][0] += f_EPH[i][0];
       f[i][1] += f_EPH[i][1];
       f[i][2] += f_EPH[i][2];
     }
-    
-    if(eph_flag & Flag::RANDOM) {
+  }
+  
+  if((eph_flag & Flag::RANDOM) && !(eph_flag & Flag::NORANDOM)) {
+    for(int i = 0; i < nlocal; i++) {
       f[i][0] += f_RNG[i][0];
       f[i][1] += f_RNG[i][1];
       f[i][2] += f_RNG[i][2];

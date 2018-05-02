@@ -42,7 +42,9 @@ class FixEPH : public Fix {
       FRICTION = 0x01,
       RANDOM = 0x02,
       FDM = 0x04,
-      NOINT = 0x08 // disable integration
+      NOINT = 0x08, // disable integration
+      NOFRICTION = 0x10, // disable effect of friction force
+      NORANDOM = 0x20 // disable effect of random force
     };
     
     enum Model : unsigned int {
@@ -159,6 +161,7 @@ class FixEPH : public Fix {
     void force_eta();
     void force_gap();
     void force_gapb();
+    void force_testing();
     
     // tmp
     //int t_nlocal;
