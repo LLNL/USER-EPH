@@ -47,15 +47,15 @@ class FixEPH : public Fix {
       NORANDOM = 0x20 // disable effect of random force
     };
     
-    enum Model : unsigned int {
+    enum Model : int {
+      TESTING = -1, // special for testing purposes
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
       PRBMOD = 3, // random force idea
       ETA = 4, // random force idea with angular momentum
       GAP = 5, 
-      GAPB = 6,
-      TESTING = 9
+      GAPB = 6
     };
     
     FixEPH(class LAMMPS *, int, char **); // constructor
@@ -89,8 +89,8 @@ class FixEPH : public Fix {
     
     FixState state;
     
-    char eph_flag; // term flags
-    char eph_model; // model selection
+    unsigned int eph_flag; // term flags
+    int eph_model; // model selection
     
     unsigned int types; // number of different types
     unsigned int* typeMap; // type map

@@ -22,6 +22,7 @@
 
 #include <cstring> // TODO: remove
 #include <string>
+#include <cstdlib>
 #include <limits>
 #include <algorithm>
 
@@ -88,7 +89,21 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   random = new RanMars(lmp, seed + myID);
   
   // read model behaviour parameters
-  eph_flag = atoi(arg[4]);
+  //eph_flag = atoi(arg[4]);
+  eph_flag = strtol(arg[4], NULL, 0);
+  /* debug */
+  if(myID == 0) {
+    std::cout << std::endl;
+    std::cout << "Flag read: " << arg[4] << " -> " << eph_flag << '\n';
+    if(eph_flag & Flag::FRICTION) std::cout << "Friction evaluation: ON\n";
+    if(eph_flag & Flag::RANDOM) std::cout << "Random evaluation: ON\n";
+    if(eph_flag & Flag::FDM) std::cout << "FDM grid solving: ON\n";
+    if(eph_flag & Flag::NOINT) std::cout << "No integration: ON\n";
+    if(eph_flag & Flag::NOFRICTION) std::cout << "No friction application: ON\n";
+    if(eph_flag & Flag::NORANDOM) std::cout << "No random application: ON\n";
+    std::cout << std::endl;
+  }
+  
   eph_model = atoi(arg[5]);
   
   // TODO: magic parameters for passing values TEMPORARY
