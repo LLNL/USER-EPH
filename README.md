@@ -10,7 +10,7 @@ In LAMMPS, a "fix" is any operation that is applied to the system during
 timestepping or minimization.  
 We use this extension mechanism to generalize the two-temperature model to include electron-phonon coupling.
 The extension is flexible enough to represent cascades, laser heating and equilibration and study energy transport with realistic electron-phonon coupling.
-The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (Physical Review Letters, in press, https://arxiv.org/abs/1801.06610) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
+The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (https://dx.doi.org/10.1103/PhysRevLett.120.185501) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
 
 ## Installation Instructions
 
@@ -107,7 +107,7 @@ dump out all custom 10 strucs_out.dump.gz type x y z f_ephttm[1] f_ephttm[2]
 
 ### Beta(rho) input file
 
-This file provides the electronic densities and beta(rho) functions for individual species (see https://arxiv.org/abs/1801.06610).
+This file provides the electronic densities and beta(rho) functions for individual species (see https://dx.doi.org/10.1103/PhysRevLett.120.185501).
 The format is described in `Doc/Beta/input.beta`. 
 The file is similar to EAM setfl format. 
 The beta(rho) function has units of [eV ps/Ang^2]. 
