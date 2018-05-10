@@ -202,7 +202,7 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 
 ## History
 
-- 2018/01/01 Initial Release
+- 2018/05/10 Initial Release
 
 ## TODO
 
