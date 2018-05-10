@@ -198,10 +198,20 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 
 ![Alt text](Examples/Example_4/Tfieldout.png?raw=true "Temperature Example 4")
 
-# History
+# Release
+
+## History
 
 - 2018/01/01 Initial Release
 
-# TODO
+## TODO
 
 - Implement CUBE format output
+
+## License and Copying
+
+USER-EPH is licensed under the terms of the [GPL v3 License](/COPYING).
+
+USER-EPH is not part of the LAMMPS code https://github.com/lammps/lammps
+
+``LLNL-CODE-750832``
