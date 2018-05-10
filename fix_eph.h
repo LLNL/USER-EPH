@@ -61,25 +61,25 @@ class FixEPH : public Fix {
     FixEPH(class LAMMPS *, int, char **); // constructor
     ~FixEPH(); // destructor
     
-    void init();
-    void init_list(int id, NeighList *ptr);
-    int setmask();
-    void post_force(int);
-    void end_of_step();
-    void reset_dt();
-    void grow_arrays(int);
-    double compute_vector(int);
-    double memory_usage();
-    void post_run();
+    void init() override;
+    void init_list(int id, NeighList *ptr) override;
+    int setmask() override;
+    void post_force(int) override;
+    void end_of_step() override;
+    void reset_dt() override;
+    void grow_arrays(int) override;
+    double compute_vector(int) override;
+    double memory_usage() override;
+    void post_run() override;
     
     /** integrator functionality **/
-    void initial_integrate(int);
-    void final_integrate();
+    void initial_integrate(int) override;
+    void final_integrate() override;
     
     // forward communication copies information of owned local atoms to ghost
     // atoms, reverse communication does the opposite
-    int pack_forward_comm(int, int *, double *, int, int *);
-    void unpack_forward_comm(int, int, double *);
+    int pack_forward_comm(int, int *, double *, int, int *) override;
+    void unpack_forward_comm(int, int, double *) override;
     //int pack_reverse_comm(int, int, double *);
     //void unpack_reverse_comm(int, int *, double *);
   

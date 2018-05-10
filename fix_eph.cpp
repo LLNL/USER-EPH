@@ -201,24 +201,24 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   // eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
   
   // allocate arrays for fix_eph
-  f_EPH = NULL;
-  f_RNG = NULL;
+  f_EPH = nullptr;
+  f_RNG = nullptr;
   
-  w_i = NULL;
+  w_i = nullptr;
 
-  beta_i = NULL;
-  rho_i = NULL;
-  array = NULL;
+  beta_i = nullptr;
+  rho_i = nullptr;
+  array = nullptr;
   
-  xi_i = NULL;
+  xi_i = nullptr;
   
   rho_neigh = 512;
-  rho_ij = NULL;
-  rho_ji = NULL;
+  rho_ij = nullptr;
+  rho_ji = nullptr;
   
-  grad_rho_i = NULL;
+  grad_rho_i = nullptr;
   
-  list = NULL;
+  list = nullptr;
   
   // NO ARRAYS BEFORE THIS
   grow_arrays(atom->nmax);

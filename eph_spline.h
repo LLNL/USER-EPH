@@ -9,7 +9,6 @@
 #include <vector>
 
 class EPH_Spline {
-  public:
   private:
     double x_First; // coordinate of the first element
     double x_Last; // coordinate of the last element
@@ -35,14 +34,28 @@ class EPH_Spline {
     std::vector<double> dda;
     std::vector<double> ddb;
     
+    constexpr static int min_size = 4;
+    
   public:
     EPH_Spline() : EPH_Spline(0.0, 0.0) {} // default constructor
-    EPH_Spline(const double x0, const double dx) { 
-        x_First = x0;
-        this->dx = dx;
-        x_Last = x0 - 0.1; // this ensures that GetValue() will return NaN until FindCoefficients has been called
-    }
+    
+    EPH_Spline(const double x0, const double dx) : 
+      x_First {x0}, 
+      dx {dx}, 
+      x_Last {x0 - 0.1} 
+      { }
+      
     EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // initialise spline
+    
+    EPH_Spline(const double x0, const double dx, std::vector<double>&& y) : 
+      x_First {x0}, 
+      dx {dx}, 
+      x_Last {x0 + y.size()*dx},
+      y {std::move(y)}
+    {
+      if(y.size() > min_size) FindCoefficients();
+      else throw;
+    }
     
     // special type of initialisation (show off)
     void SetDiscretisation(const double x0, const double dx) {

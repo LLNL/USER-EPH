@@ -79,7 +79,9 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
     return *this;
   }
   
-  if((this->y).size() > 2) FindCoefficients();
+  if((this->y).size() > min_size) FindCoefficients();
+  else throw;
+  
   return *this; 
 }
 
