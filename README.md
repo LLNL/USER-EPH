@@ -1,6 +1,6 @@
 # USER-EPH
 
- LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction.
+ LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction.  LLNL-CODE-750832
 
 Artur Tamm and Alfredo A. Correa (LLNL)
 
@@ -198,12 +198,22 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 
 ![Alt text](Examples/Example_4/Tfieldout.png?raw=true "Temperature Example 4")
 
-# History
+# Release
+
+## History
 
 - 2018/01/01 Initial Release
 
-# TODO
+## TODO
 
 - Implement CUBE format output
 
+## License and Copying
+
+USER-EPH is licensed under the terms of the [GPL v3 License](/COPYING).
+
+USER-EPH is not part of the LAMMPS code https://github.com/lammps/lammps
+
 If you have any questions contact Artur Tamm <tamm3@llnl.gov> or Alfredo Correa <correaa@llnl.gov>
+
+``LLNL-CODE-750832``
