@@ -23,7 +23,7 @@ $ git clone https://github.com/lammps/lammps.git
 Get USER-EPH (this plugin, you have to have access to the repository)
 ```
 $ cd lammps/src
-$ git clone https://github.com/artuuuro/USER-EPH.git
+$ git clone https://github.com/LLNL/USER-EPH.git
 ```
 
 Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 66).
