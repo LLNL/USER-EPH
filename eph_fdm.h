@@ -9,12 +9,10 @@
 #include <iostream>
 #include <cassert>
 #include <vector>
+#include <stdexcept>
+#include <cmath>
 
 #include <mpi.h>
-
-/**
- * This is first stupid solution
- **/
 
 class EPH_FDM {
   private:
@@ -26,7 +24,7 @@ class EPH_FDM {
     double x0, x1; // box dimensions in x
     double y0, y1; // box dimensions in y
     double z0, z1; // box dimensions in z
-    double lx, ly, lz; // box size
+    //double lx, ly, lz; // box size ; possible source of errors
     
     double dx, dy, dz; // element size
     double dV; // volume of the element
@@ -50,7 +48,7 @@ class EPH_FDM {
      *  0 -> constant
      *  1 -> dynamic
      **/
-    std::vector<int> flag; // point prorperty
+    std::vector<signed char> flag; // point prorperty
     
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
@@ -60,10 +58,11 @@ class EPH_FDM {
     int nrPS;
     
   public:
-    EPH_FDM() = delete;
-    EPH_FDM(const char* file);
-    EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz); // construct a system with 
+    EPH_FDM() = delete; // no default constructor
+    EPH_FDM(const char* file); // initialise class from an input file
+    EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz); // initialise class manually
     
+    // set box size
     void setBox(const double x0, const double x1, const double y0, const double y1, const double z0, const double z1) {
       this->x0 = x0;
       this->x1 = x1;
@@ -72,17 +71,18 @@ class EPH_FDM {
       this->z0 = z0;
       this->z1 = z1;
       
-      lx = x1-x0;
-      ly = y1-y0;
-      lz = z1-z0;
-      
-      dx = lx/nx;
-      dy = ly/ny;
-      dz = lz/nz;
+      dx = (x1-x0)/nx;
+      dy = (y1-y0)/ny;
+      dz = (z1-z0)/nz;
       
       dV = dx*dy*dz;
+
+      if(dx < 0.0) throw;
+      if(dy < 0.0) throw;
+      if(dz < 0.0) throw;
     }
     
+    // set system properties
     void setConstants(const double T_e, const double C_e, const double rho_e, const double kappa_e) {
       for(int i = 0; i < ntotal; i++) {
         this->T_e[i] = T_e;
@@ -94,154 +94,65 @@ class EPH_FDM {
       }
     }
     
+    // define number of minimum steps for integration
     void setSteps(const unsigned int steps) {
       this->steps = steps;
     }
     
+    // define timestep
     void setDt(const double dt) {
       this->dt = dt;
     }
     
+    // get temperature of a cell
     double getT(const double x, const double y, const double z) const {
-      unsigned int lx, ly, lz;
-      double px, py, pz; // periodicity corrected
+      unsigned int index = get_index(x, y, z);
       
-      /** TODO: this is probably slow and should be redobne **/
-      if(x < x0) px = x + this->lx;
-      else if( x > x1) px = x - this->lx;
-      else px = x;
-      
-      if(y < y0) py = y + this->ly;
-      else if( y > y1) py = y - this->ly;
-      else py = y;
-      
-      if(z < z0) pz = z + this->lz;
-      else if( z > z1) pz = z - this->lz;
-      else pz = z;
-      
-      lx = (unsigned int)((px-x0)/dx+1e-12);
-      ly = (unsigned int)((py-y0)/dy+1e-12);
-      lz = (unsigned int)((pz-z0)/dz+1e-12);
-      
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
-      //printf("%f %f %f %d %d %d %d\n", x, y, z, lx, ly, lz, index);
+      #ifndef EPH_UNSAFE
       assert(index >= 0);
       assert(index < (nx*ny*nz));
+      #endif
       return T_e[index];
     }
     
+    // this has not been checked thoroughly
     double getT(const unsigned int x, const unsigned int y, const unsigned int z) const {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       return T_e[index];
     }
     
     bool insertEnergy(const double x, const double y, const double z, const double E) {
-      unsigned int lx, ly, lz;
-      double px, py, pz; // periodicity corrected
-      
-      /* wrap around */
-      /** TODO: this is probably slow and should be redobne **/
-      if(x < x0) px = x + this->lx;
-      else if( x > x1) px = x - this->lx;
-      else px = x;
-      
-      if(y < y0) py = y + this->ly;
-      else if( y > y1) py = y - this->ly;
-      else py = y;
-      
-      if(z < z0) pz = z + this->lz;
-      else if( z > z1) pz = z - this->lz;
-      else pz = z;
-      
-      lx = (unsigned int)((px-x0)/dx+1e-12);
-      ly = (unsigned int)((py-y0)/dy+1e-12);
-      lz = (unsigned int)((pz-z0)/dz+1e-12);
-      
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
-      //printf("%f %f %f %d %d %d %d\n", px, py, pz, lx, ly, lz, index);
+      unsigned int index = get_index(x, y, z);
       double prescale = dV * dt;
       
       // convert energy into power per area
-      if(prescale > 0.0) {
-        assert(index >= 0);
-        assert(index < (nx*ny*nz));
-        dT_e[index] += E / prescale;
-      }
-      else
-        return false;
+      #ifndef EPH_UNSAFE
+      assert(prescale >= 0.0);
+      assert(index >= 0);
+      assert(index < (nx*ny*nz));
+      #endif
+      dT_e[index] += E / prescale;
       
       return true;
     }
     
     void setT(const double x, const double y, const double z, const double T) {
-      unsigned int lx, ly, lz;
-      double px, py, pz; // periodicity corrected
-      
-      if(x < x0) px = x + this->lx;
-      else px = x;
-      
-      if(y < y0) py = y + this->ly;
-      else py = y;
-      
-      if(z < z0) pz = z + this->lz;
-      else pz = z;
-      
-      lx = (unsigned int)((px-x0)/dx+1e-12);
-      ly = (unsigned int)((py-y0)/dy+1e-12);
-      lz = (unsigned int)((pz-z0)/dz+1e-12);
-      
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
-      
+      unsigned int index = get_index(x, y, z);
       T_e[index] = T;
     }
     
     void setT(const unsigned int x, const unsigned int y, const unsigned int z, const double T) {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
-      
       T_e[index] = T;
     }
     
     void setS(double x, double y, double z, double S) {
-      unsigned int lx, ly, lz;
-      double px, py, pz; // periodicity corrected
-      
-      if(x < x0) px = x + this->lx;
-      else px = x;
-      
-      if(y < y0) py = y + this->ly;
-      else py = y;
-      
-      if(z < z0) pz = z + this->lz;
-      else pz = z;
-      
-      lx = (unsigned int)((px-x0)/dx+1e-12);
-      ly = (unsigned int)((py-y0)/dy+1e-12);
-      lz = (unsigned int)((pz-z0)/dz+1e-12);
-      
-      lx = lx%nx;
-      ly = ly%ny;
-      lz = lz%nz;
-      
-      unsigned int index = lx + ly * nx + lz * nx * ny;
-      
+      unsigned int index = get_index(x, y, z);
       S_e[index] = S;
     }
     
     void setS(const unsigned int x, const unsigned int y, const unsigned int z, double S) {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
-      
       S_e[index] = S;
     }
     
@@ -273,6 +184,23 @@ class EPH_FDM {
   private:
     static constexpr unsigned int lineLength = 1024;
     
+    // possible source of error if nx*ny*nz does not fit into int
+    unsigned int get_index(double x, double y, double z) const {
+      int lx = floor((x-x0) / dx);
+      if(lx < 0) lx += nx;
+      else if(lx >= nx) lx -= nx;
+
+      int ly = floor((y-y0) / dy);
+      if(ly < 0) ly += ny;
+      else if(ly >= ny) ly -= ny;
+
+      int lz = floor((z-z0) / dz);
+      if(lz < 0) lz += nz;
+      else if(lz >= nz) lz -= nz;
+      
+      return lx + ly*nx + lz*nx*ny;
+    }
+
     void resize_vectors();
     void syncBefore(); // this is for MPI sync before solve is called
     void syncAfter(); // this is for MPI sync after solve is called

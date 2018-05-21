@@ -12,6 +12,7 @@
 #include <string>
 #include <cmath>
 #include <vector>
+#include <algorithm>
 
 #include <mpi.h>
 
@@ -118,14 +119,18 @@ void EPH_FDM::solve() {
     //if(r > 0.5) {
     if(r > 0.4) {
       inner_dt = 0.4 * inner_dt / r; // be more conservative
-      //inner_dt = 0.5 * inner_dt / r; // be more conservative
-      new_steps = ((unsigned int)(dt / inner_dt)) + 1;
+      //inner_dt = 0.5 * inner_dt / r; // get new timestep
+      //new_steps = ((unsigned int)(dt / inner_dt)) + 1;
+      new_steps = floor(dt / inner_dt) + 1;
       inner_dt = dt / new_steps;
     }
     
     for(int n = 0; n < new_steps; n++) {
       // calculate derivatives
-      // TODO: add OMP parallelism here
+      #ifdef EPH_TESTING
+      #pragma omp parallel 
+      #endif
+      {
       for(int k = 0; k < nz; k++) {
         for(int j = 0; j < ny; j++) {
           for(int i = 0; i < nx; i++) {
@@ -143,8 +148,13 @@ void EPH_FDM::solve() {
           }
         }
       }
+      }
       
       // calculate second derivative
+      #ifdef EPH_TESTING
+      #pragma omp parallel 
+      #endif
+      {
       for(int k = 0; k < nz; k++) {
         for(int j = 0; j < ny; j++) {
           for(int i = 0; i < nx; i++) {
@@ -161,12 +171,16 @@ void EPH_FDM::solve() {
           }
         }
       }
+      }
       
       /* TODO: there might be an issue with grid volume here */
       // do the actual step
+      #ifdef EPH_TESTING
+      #pragma omp parallel 
+      #endif
+      {
       for(int i = 0; i < ntotal; i++) {
         double prescaler = rho_e[i] * C_e[i];
-        //std::cout << i << " " << T_e[i] << " " << ddT_e[i] / prescaler * inner_dt << std::endl;
         
         if(prescaler > 0.0 && flag[i] > 0)
           T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
@@ -176,21 +190,17 @@ void EPH_FDM::solve() {
         if(T_e[i] < 0.0)
           T_e[i] = 0.0;
       }
+      }
     
       // zero arrays
-      for(int i = 0; i < ntotal; i++) {
-        dT_e_x[i] = 0.0;
-        dT_e_y[i] = 0.0;
-        dT_e_z[i] = 0.0;
-        ddT_e[i] = 0.0;
-      }
+      std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
+      std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
+      std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
+      std::fill(ddT_e.begin(), ddT_e.end(), 0.0); 
     }
     
-    for(int i = 0; i < ntotal; i++) {
-      dT_e[i] = 0.0;
-    }
-    
-    //std::cout << "STEPS: " << new_steps << std::endl;
+    // zero energy exchange array
+    std::fill(dT_e.begin(), dT_e.end(), 0.0);
   }
   
   syncAfter();
@@ -199,7 +209,7 @@ void EPH_FDM::solve() {
 void EPH_FDM::saveState(const char* file) {
   FILE *fd = fopen(file, "w");
   
-  if(!fd) return; // give an error?
+  if(!fd) throw std::runtime_error("eph_fdm: could not open supplied file"); 
   // 3 first lines are comments
   fprintf(fd, "# A comment\n");
   fprintf(fd, "#\n");
@@ -230,7 +240,7 @@ void EPH_FDM::saveTemperature(const char* file, int n) {
   sprintf(fn, "%s_%06d", file, n);
   FILE *fd = fopen(fn, "w");
   
-  if(!fd) return; // give an error?
+  if(!fd) throw std::runtime_error("eph_fdm: could not open supplied file"); // give an error?
   
   // this is needed for visit Point3D
   fprintf(fd, "x y z Te\n");
@@ -260,13 +270,11 @@ void EPH_FDM::syncBefore() {
 
 void EPH_FDM::syncAfter() {
   // zero arrays
-  for(int i = 0; i < ntotal; i++) {
-    dT_e_x[i] = 0.0;
-    dT_e_y[i] = 0.0;
-    dT_e_z[i] = 0.0;
-    ddT_e[i] = 0.0;
-    dT_e[i] = 0.0;
-  }
+  // TODO: substitute with std::fill
+  std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
+  std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
+  std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
+  std::fill(ddT_e.begin(), ddT_e.end(), 0.0); 
   
   // synchronize electronic temperature
   if(nrPS > 0)

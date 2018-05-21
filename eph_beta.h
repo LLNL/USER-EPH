@@ -26,7 +26,7 @@ class EPH_Beta {
     
     // get element name described by the class
     std::string getName(const unsigned int element) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element >= elementName.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return elementName[element];
@@ -44,7 +44,7 @@ class EPH_Beta {
     
     // get the periodic table number for an element (this is not used)
     unsigned int getNumber(const unsigned int element) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element >= elementNumber.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return elementNumber[element];
@@ -52,7 +52,7 @@ class EPH_Beta {
     
     // return the density value
     double getRho(const unsigned int element, const double r) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element >= rho.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return rho[element].GetValue(r);
@@ -60,7 +60,7 @@ class EPH_Beta {
     
     // return the derivative of the density
     double getDRho(const unsigned int element, const double r) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element >= rho.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return rho[element].GetDValue(r);
@@ -68,7 +68,7 @@ class EPH_Beta {
     
     // get coupling parameter value
     double getBeta(const unsigned int element, const double rho) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element > beta.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return beta[element].GetValue(rho);
@@ -76,7 +76,7 @@ class EPH_Beta {
     
     // get the derivative of the coupling parameter
     double getDBeta(const unsigned int element, const double rho) const {
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(element > beta.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
       return beta[element].GetDValue(rho);

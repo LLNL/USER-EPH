@@ -76,7 +76,7 @@ class EPH_Spline {
       unsigned int index = 0;
       
       // maybe this should be a debug option and asserted instead?
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
@@ -99,7 +99,7 @@ class EPH_Spline {
       unsigned int index = 0;
       
       // maybe this should be a debug option and asserted instead?
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
@@ -122,7 +122,7 @@ class EPH_Spline {
       unsigned int index = 0;
       
       // maybe this should be a debug option and asserted instead?
-      #ifdef EPH_UNSAFE
+      #ifndef EPH_UNSAFE
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)

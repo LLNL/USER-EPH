@@ -111,7 +111,7 @@ compute keatom all ke/atom
 
 ## eph model ##
 ## model is applied only to the PKA atom (a small error is created because of this) ##
-fix friction all eph 1111 7 4 1.0 3.5e-6 0.1248 0.0 8 8 8 NULL 0 T_out Ni.beta Ni Ni
+fix friction all eph 1111 7 4 1.0 3.5e-6 0.1248 0.0 7 8 9 NULL 0 T_out Ni.beta Ni Ni
 run 0
 
 #################################
