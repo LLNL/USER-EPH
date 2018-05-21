@@ -6,14 +6,11 @@
 //#define DEBUG_EPH
 
 // external headers
-#ifdef DEBUG_EPH
-#include <iostream>
-#endif
-
 #include <fstream>
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <stdexcept>
 
 // internal headers
 #include "eph_beta.h"
@@ -43,7 +40,7 @@ EPH_Beta::EPH_Beta(const char* file) {
   fd >> nElements;
   
   if(nElements < 1) {
-    throw;
+    throw std::runtime_error("eph_beta: no elements provided in input file");
   }
   
   elementName.resize(nElements);
@@ -90,3 +87,4 @@ EPH_Beta::EPH_Beta(const char* file) {
 
   fd.close();
 }
+

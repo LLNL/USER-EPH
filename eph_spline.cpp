@@ -204,3 +204,4 @@ void EPH_Spline::FindCoefficients() {
     ddb[i] = 2.0*dc[i];
   }
 }
+
