@@ -7,6 +7,7 @@
 #define EPH_SPLINE
 
 #include <vector>
+#include <stdexcept>
 
 class EPH_Spline {
   private:
@@ -14,10 +15,9 @@ class EPH_Spline {
     double x_Last; // coordinate of the last element
     double dx; // discretisation step
     
-    //unsigned int points; // number of points in the spline
     std::vector<double> y; // y values
     
-    // coeffiecients for function values
+    // coeffiecients for splines
     // splines are always in a + b*x + c*x**2 + d*x**3 form
     std::vector<double> a;
     std::vector<double> b;
@@ -34,47 +34,52 @@ class EPH_Spline {
     std::vector<double> dda;
     std::vector<double> ddb;
     
+    // current version will brake if less there are less than 4 points
     constexpr static int min_size = 4;
     
   public:
     EPH_Spline() : EPH_Spline(0.0, 0.0) {} // default constructor
     
-    EPH_Spline(const double x0, const double dx) : 
+    EPH_Spline(const double x0, const double dx) : // constructor for use with << operator
       x_First {x0}, 
       dx {dx}, 
       x_Last {x0 - 0.1} 
       { }
       
-    EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // initialise spline
+    EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // constructor to initialise the spline fully
     
-    EPH_Spline(const double x0, const double dx, std::vector<double>&& y) : 
+    EPH_Spline(const double x0, const double dx, std::vector<double>&& y) : // constructor to initialise the spline fully
       x_First {x0}, 
       dx {dx}, 
       x_Last {x0 + y.size()*dx},
       y {std::move(y)}
     {
       if(y.size() > min_size) FindCoefficients();
-      else throw;
+      else throw std::runtime_error("eph_spline: not enough points supplied");
     }
     
-    // special type of initialisation (show off)
+    // special type of initialisation; useful when initialising from file
     void SetDiscretisation(const double x0, const double dx) {
       *this << false;
       this->x_First = this->x_Last = x0;
       this->dx = dx;
     }
     
+    // add a point to spline
     EPH_Spline& operator<< (const double y);
+    // initialise the spline based or points or reset
     EPH_Spline& operator<< (const bool init);
     
-    double GetValue(const double x) const { // get function value at x
+    // get the value of the function at x
+    double GetValue(const double x) const {
       double result = 0.0;
       unsigned int index = 0;
       
+      // maybe this should be a debug option and asserted instead?
       if(x < this->x_First)
-        throw;
+        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
-        throw;
+        throw std::runtime_error("eph_spline: argument larger than the upper bound");
       
       index = FindIndex(x);
       
@@ -86,14 +91,16 @@ class EPH_Spline {
       return result;
     }
     
-    double GetDValue(const double x) const { // get function derivative at x
+    // get a derivative of the function at x
+    double GetDValue(const double x) const { 
       double result = 0.0;
       unsigned int index = 0;
       
+      // maybe this should be a debug option and asserted instead?
       if(x < this->x_First)
-        throw;
+        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
-        throw;
+        throw std::runtime_error("eph_spline: argument larger than the upper bound");
       
       index = FindIndex(x);
       
@@ -104,15 +111,17 @@ class EPH_Spline {
       
       return result;
     }
-      
-    double GetDDValue(const double x) const { // get second derivative at x (discontinuous!)
+    
+    // get the second derivative of the function at x (discontinuous!)
+    double GetDDValue(const double x) const { 
       double result = 0.0;
       unsigned int index = 0;
       
+      // maybe this should be a debug option and asserted instead?
       if(x < this->x_First)
-        throw;
+        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
-        throw;
+        throw std::runtime_error("eph_spline: argument larger than the upper bound");
       
       index = FindIndex(x);
       

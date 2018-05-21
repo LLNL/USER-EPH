@@ -3,22 +3,17 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
-//#define DEBUG_EPH
-
 // external headers
 #include <algorithm>
 #include <cmath>
-
-#ifdef DEBUG_EPH
-#include <iostream>
-#endif
+#include <stdexcept>
 
 // internal headers
 #include "eph_spline.h"
 
 EPH_Spline::EPH_Spline(const double x0, const double dx, const double* y, const unsigned int points) : EPH_Spline(x0, dx) {
-  if(!y) throw;
-  if(points < 2) throw;
+  if(!y) throw std::runtime_error("eph_spline: null pointer supplied");
+  if(points <= min_size) throw std::runtime_error("eph_spline: not enough points supplied");
   
   // resize vectors so they would fit enough data
   this->y.resize(points);
@@ -80,7 +75,7 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
   }
   
   if((this->y).size() > min_size) FindCoefficients();
-  else throw;
+  else throw std::runtime_error("eph_spline: not enough points supplied");
   
   return *this; 
 }
@@ -89,11 +84,10 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
 void EPH_Spline::FindCoefficients() {
   unsigned int points = y.size();
   
-  if(!(dx > 0.0)) throw;
+  if(!(dx > 0.0)) throw std::runtime_error("eph_spline: negative incerement step provided");
   
   x_Last = x_First + points * dx;
   
-  // do the magic
   // we use da, db, and dc as temporary buffers
   double z0; // z_-2
   double z1; // z_-1
