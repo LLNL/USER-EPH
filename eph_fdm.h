@@ -186,17 +186,17 @@ class EPH_FDM {
     
     // possible source of error if nx*ny*nz does not fit into int
     unsigned int get_index(double x, double y, double z) const {
-      int lx = floor((x-x0) / dx);
-      if(lx < 0) lx += nx;
-      else if(lx >= nx) lx -= nx;
+      int lx = std::floor((x-x0) / dx);
+      int px = std::floor( ((double) lx) / nx);
+      lx -= px*nx;
 
-      int ly = floor((y-y0) / dy);
-      if(ly < 0) ly += ny;
-      else if(ly >= ny) ly -= ny;
+      int ly = std::floor((y-y0) / dy);
+      int py = std::floor( ((double) ly) / ny);
+      ly -= py * ny;
 
-      int lz = floor((z-z0) / dz);
-      if(lz < 0) lz += nz;
-      else if(lz >= nz) lz -= nz;
+      int lz = std::floor((z-z0) / dz);
+      int pz = std::floor( ((double) lz) / nz);
+      lz -= pz * nz;
       
       return lx + ly*nx + lz*nx*ny;
     }

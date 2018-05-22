@@ -1,0 +1,205 @@
+
+# initialisation
+units metal
+# mass -> grams/mole
+# distance -> Angstroms (A)
+# time -> picoseconds (ps)
+# energy -> eV
+# velocity -> A/ps
+# force -> eV/A
+# torque -> eV
+# temperature -> K
+# pressure -> bars
+# dynamic viscosity -> Poise
+# charge -> e
+# dipole -> e*A
+# electric field -> V/A
+# density -> gram/cm^3
+
+atom_style atomic
+
+boundary p p p
+atom_modify map array
+
+######################
+### create the box ###
+######################
+
+## box size ##
+variable n equal 8
+variable n_2 equal floor(${n}/2)
+
+## lattice constant ##
+variable a equal 3.52
+
+variable x index $n
+variable y index $n
+variable z index $n
+
+## lattice type ##
+lattice fcc $a
+region box block 0 $x 0 $y 0 $z
+
+## create box for two atom types ##
+create_box 2 box
+## fill box with atoms ##
+create_atoms 1 box
+
+## potential in use ##
+pair_style eam/alloy
+pair_coeff * * Ni.eam Ni Ni
+
+## create a vacancy in the center of the box ##
+# we need a vacancy somewhere (center of the box)
+region pka sphere ${n_2} ${n_2} ${n_2} 0.1 side in
+delete_atoms region pka
+region pka delete
+
+## put atom type 2 (Ni) at vacancy position ##
+# we create an interstitial somewhere else
+create_atoms 2 single ${n_2} ${n_2} ${n_2}
+group pka type 2
+
+########################
+### Set PKA velocity ###
+########################
+
+## SUB_VEL is substituted by sed ##
+# we give it some velocity
+variable vvx equal 0.835115
+variable vvy equal 0.543981
+variable vvz equal 0.081652
+
+variable vel equal 573.39111597
+
+variable vx equal ${vel}*${vvx}
+variable vy equal ${vel}*${vvy}
+variable vz equal ${vel}*${vvz}
+
+## set PKA energy to the selected atom ##
+velocity pka set ${vx} ${vy} ${vz} units box
+
+#############################
+### Find largest velocity ###
+#############################
+
+variable vv atom sqrt(vx*vx+vy*vy+vz*vz)
+compute maxv all reduce max v_vv
+
+#####################################
+### Initial intergration timestep ###
+#####################################
+
+## initial timestep; atom should not move more than 10 uA in one timestep ##
+variable maxA equal 1.0e-3
+variable tau equal 1.0/${vel}
+variable dt equal ${maxA}*${tau}
+timestep ${dt}
+
+## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
+thermo_style custom step time temp press pe ke etotal c_maxv
+thermo 1000
+
+compute keatom all ke/atom
+
+################################
+### Integrator and eph model ###
+################################
+
+## use velocity verlet integration 
+#fix integrate all nve
+
+## eph model ##
+## model is applied only to the PKA atom (a small error is created because of this) ##
+fix friction all eph 1111 7 4 1.0 3.5e-6 0.1248 0.0 7 8 9 NULL 0 T_out Ni.beta Ni Ni
+run 0
+
+#################################
+### Dump coordinates          ###
+### velocities forces and     ###
+### kinetic energy            ###
+#################################
+
+## create trajactory file where atom moves at the most 0.1 A
+#dump myDump all custom 1000 strucs.dump type x y z vx vy vz fx fy fz c_keatom
+#dump_modify myDump sort id
+
+#################################
+### these are for output file ###
+#################################
+variable N equal count(all)
+print "Number of atoms: $N"
+
+variable xe equal x[$N]
+variable ye equal y[$N]
+variable ze equal z[$N]
+
+variable Ep equal pe
+variable Ek equal ke
+variable Ee equal f_friction[1]
+variable Te equal f_friction[2]
+
+variable rho equal f_friction[$N][1]
+variable beta equal f_friction[$N][2]
+
+# print in nice format
+variable fxe format xe "%.12e"
+variable fye format ye "%.12e"
+variable fze format ze "%.12e"
+
+variable fEp format Ep "%.12e"
+variable fEk format Ek "%.12e"
+variable fEe format Ee "%.12e"
+variable fTe format Te "%.12e"
+
+variable frho format rho "%.12e"
+variable fbeta format beta "%.12e"
+
+#################################################################
+### print output every time atom has moved at the most 0.01 A ###
+#################################################################
+
+fix out all print 1000 "$(step) $(time) $(temp) ${Te} ${fxe} ${fye} ${fze} ${fEp} ${fEk} ${fEe} ${frho} ${fbeta}" file out.data screen no
+
+########################################
+### loop until 1 ps has been reached ###
+########################################
+
+variable T_total equal 0.0
+variable T_new equal 0.0
+
+#########################################
+### calculate kinetic energy per-atom ###
+#########################################
+
+label time_loop
+
+variable dtold equal ${dt}
+variable velo equal c_maxv
+variable tau equal 1.0/${velo}
+variable dt equal ${maxA}*${tau}
+variable dtratio equal ${dtold}/${dt}
+
+if "${dtratio} > 1.2" then "variable dt equal ${dtold}*0.8"
+if "${dtratio} < 0.8" then "variable dt equal ${dtold}*1.2"
+
+if "${dt} > 0.001" then "variable dt equal 0.001"
+
+print "Timestep: ${dt}"
+timestep ${dt}
+
+## run until atom has traveled 1 A ##
+run 10000
+
+variable T_new equal 10000*${dt}+${T_total}
+variable T_total equal ${T_new}
+print "Total time: ${T_total}"
+
+## check if 1 ps has passed ##
+if "${T_total} > 1.0" then "jump SELF loop_end"
+jump SELF time_loop
+
+label loop_end
+run 0
+
+

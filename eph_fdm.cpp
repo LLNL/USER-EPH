@@ -265,7 +265,7 @@ void EPH_FDM::saveTemperature(const char* file, int n) {
 void EPH_FDM::syncBefore() {
   // sync energy transfer
   if(nrPS > 0)
-    MPI_Allreduce(MPI_IN_PLACE, &(dT_e[0]), ntotal, MPI_DOUBLE, MPI_SUM, world);
+    MPI_Allreduce(MPI_IN_PLACE, dT_e.data(), ntotal, MPI_DOUBLE, MPI_SUM, world);
 }
 
 void EPH_FDM::syncAfter() {
@@ -278,5 +278,5 @@ void EPH_FDM::syncAfter() {
   
   // synchronize electronic temperature
   if(nrPS > 0)
-    MPI_Bcast(&(T_e[0]), ntotal, MPI_DOUBLE, 0, world);
+    MPI_Bcast(T_e.data(), ntotal, MPI_DOUBLE, 0, world);
 }
