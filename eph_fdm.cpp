@@ -274,7 +274,8 @@ void EPH_FDM::syncAfter() {
   std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
   std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
   std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
-  std::fill(ddT_e.begin(), ddT_e.end(), 0.0); 
+  std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
+  std::fill(dT_e.begin(), dT_e.end(), 0.0);
   
   // synchronize electronic temperature
   if(nrPS > 0)
