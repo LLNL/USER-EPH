@@ -200,7 +200,7 @@ void EPH_FDM::solve() {
     }
     
     // zero energy exchange array
-    std::fill(dT_e.begin(), dT_e.end(), 0.0);
+    //std::fill(dT_e.begin(), dT_e.end(), 0.0);
   }
   
   syncAfter();
