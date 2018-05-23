@@ -156,6 +156,16 @@ class EPH_FDM {
       S_e[index] = S;
     }
     
+    void setFlag(double x, double y, double z, signed char f) {
+      unsigned int index = get_index(x, y, z);
+      flag[index] = f;
+    }
+    
+    void setFlag(unsigned int x, unsigned int y, unsigned int z, signed char f) {
+      unsigned int index = x + y * nx + z * nx * ny;
+      flag[index] = f;
+    }
+    
     void setComm(MPI_Comm comm, int myID, int nrPS) {
       world = comm;
       this->myID = myID;

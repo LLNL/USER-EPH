@@ -3,8 +3,6 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
-//#define DEBUG_EPH
-
 // external headers
 #include <iostream>
 
@@ -81,7 +79,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   comm_forward = 1;
   //comm_reverse = 1;
   
-  // special needed for velocity things to work
+  // special: needed for velocity things to work
   comm->ghost_velocity = 1;
   
   // initialise rng
@@ -140,7 +138,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   else {
     fdm = new EPH_FDM(arg[13]);
     /* TODO: add error check here
-    if(fdm == NULL) { // this does not do the correct thing
+    if(fdm == nullptr) { // this does not do the correct thing
       error->all(FLERR, "FixEPH: loading FDM parameters from file failed.");
     }*/
     sprintf(Tstate, "%s.restart", arg[13]);
@@ -153,7 +151,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // set the communicator
   fdm->setComm(world, myID, nrPS);
-  // oops
   fdm->setDt(update->dt);
   
   // initialise beta(rho)
@@ -192,14 +189,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
   
-  // beta_factor = 1.0 / force->ftm2v;
-  
-  // uniform distribution
-  // eta_factor = sqrt(24.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
-  
-  // gaussian distribution
-  // eta_factor = sqrt(2.0 * force->boltz / update->dt / force->mvv2e) / force->ftm2v;
-  
   // allocate arrays for fix_eph
   f_EPH = nullptr;
   f_RNG = nullptr;
@@ -226,7 +215,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // zero arrays, so they would not contain garbage
   int nlocal = atom->nlocal;
-  //t_nlocal = nlocal;
   std::fill_n(&(rho_i[0]), nlocal, 0.0);
   std::fill_n(&(beta_i[0]), nlocal, 0.0);
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
@@ -242,8 +230,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   }
   
   Ee = 0.0; // electronic energy is zero in the beginning
-  
-  // we ignore all other input parameters at the moment
 }
 
 // destructor
@@ -308,7 +294,6 @@ int FixEPH::setmask() {
 
 /** integrator functionality **/
 void FixEPH::initial_integrate(int) {
-  //if(myID == 0) std::cout << "DEBUG initial_integrate()" << std::endl;
   if(eph_flag & Flag::NOINT) return;
 
   double dtfm;
@@ -336,7 +321,6 @@ void FixEPH::initial_integrate(int) {
 }
 
 void FixEPH::final_integrate() {
-  //sif(myID == 0) std::cout << "DEBUG final_integrate()" << std::endl;
   if(eph_flag & Flag::NOINT) return;
   
   double dtfm;
@@ -360,7 +344,6 @@ void FixEPH::final_integrate() {
 }
 
 void FixEPH::end_of_step() {
-  //if(myID == 0) std::cout << "DEBUG end_of_step()" << std::endl;
   double **x = atom->x;
   double **v = atom->v;
   double **f = atom->f;
@@ -415,16 +398,9 @@ void FixEPH::end_of_step() {
   
   // this is for checking energy conservation
   MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
-  //if(v_alpha > 0.0)
-  //  v_Te += E_local / v_Ce / v_rho; // v_Ce * v_rho [K / eV]
   
   Ee += E_local;
-  
-  // store per atom values into array
-  /*if(nlocal != t_nlocal) {
-    std::cout << "NLOCAL CHANGED " << t_nlocal << " -> " << nlocal << std::endl;
-    t_nlocal = nlocal;
-  }*/
+
   for(unsigned int i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
       array[i][ 0] = rho_i[i];
@@ -1105,7 +1081,6 @@ void FixEPH::force_gapb() {
 void FixEPH::force_testing() {};
 
 void FixEPH::post_force(int vflag) {
-  //if(myID == 0) std::cout << "DEBUG post_force()" << std::endl;
   double **f = atom->f;
   int *mask = atom->mask;
   int *tag = atom->tag;
@@ -1257,9 +1232,6 @@ void FixEPH::post_force(int vflag) {
 }
 
 void FixEPH::reset_dt() {
-  // DEBUG
-  //std::cout << "###### Timestep changed" << std::endl;
-  
   // this should be correct if beta is in eV ps / Ang^2
   beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
@@ -1278,7 +1250,6 @@ void FixEPH::reset_dt() {
 }
 
 void FixEPH::grow_arrays(int ngrow) {
-  //if(myID == 0) std::cout << "DEBUG grow_arrays()" << std::endl;
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
   
@@ -1300,7 +1271,6 @@ void FixEPH::grow_arrays(int ngrow) {
 }
 
 double FixEPH::compute_vector(int i) {
-  //if(myID == 0) std::cout << "DEBUG compute_vector()" << std::endl;
   if(i == 0)
     return Ee;
   else if(i == 1) {

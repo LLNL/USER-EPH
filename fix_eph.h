@@ -84,6 +84,8 @@ class FixEPH : public Fix {
     //void unpack_reverse_comm(int, int *, double *);
   
   private:
+    static constexpr unsigned int fileLength = 256; // max filename length
+  
     int myID; // mpi rank for current instance
     int nrPS; // number of processes
     
@@ -94,7 +96,7 @@ class FixEPH : public Fix {
     
     unsigned int types; // number of different types
     unsigned int* typeMap; // type map
-    EPH_Beta* beta; // instance for
+    EPH_Beta* beta; // instance for beta(rho) parametrisation
     EPH_FDM* fdm; // electronic FDM grid
     
     /** integrator functionality **/
@@ -103,12 +105,12 @@ class FixEPH : public Fix {
     
     double rcutoff; // cutoff for beta
     
-    // TODO: fix this; confusing names and 256
+    // TODO: fix this; confusing names
     int Tfreq;
-    char Tout[256]; // this will print temperature heatmap
-    char Tstate[256]; // this will store the final state into file
+    char Tout[fileLength]; // this will print temperature heatmap
+    char Tstate[fileLength]; // this will store the final state into file
     
-    double beta_factor; // this is for the conversion from amu/ps -> force
+    double beta_factor; // this is for the conversion from energy/ps -> force
     double eta_factor; // this is for the conversion from energy/ps -> force
     
     int seed; // seed for random number generator
@@ -147,7 +149,7 @@ class FixEPH : public Fix {
     double **xi_i; // size = [nlocal][3]
     
     // per atom array
-    double **array; // size = [nlocal][5]
+    double **array; // size = [nlocal][8]
     
     // these are temporary
     double v_alpha;

@@ -3,8 +3,6 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
-//#define DEBUG_EPH
-
 // external headers
 #include <fstream>
 #include <string>

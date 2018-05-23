@@ -3,10 +3,6 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
-#ifdef DEBUG_EPH
-#include <iostream>
-#endif
-
 // external headers
 #include <fstream>
 #include <string>
