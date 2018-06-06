@@ -6,8 +6,33 @@
 #ifndef EPH_SPLINE
 #define EPH_SPLINE
 
+#ifndef NDEBUG
+#include <iostream>
+#endif
+
 #include <vector>
 #include <stdexcept>
+
+namespace EPH {
+  template <typename Atype, typename Vtype>
+  class Spline_Base {
+    private:
+    
+    
+    
+    public:
+      Spline_Base();
+      ~Spline_Base();
+      
+      Vtype operator () (Atype); // 
+      Vtype operator [] (Atype);
+    
+    
+    
+    
+  };
+}
+
 
 class EPH_Spline {
   private:
@@ -16,6 +41,15 @@ class EPH_Spline {
     double dx; // discretisation step
     
     std::vector<double> y; // y values
+    
+    /*struct Spline_Coefs {
+      double a, b, c, d;
+      double da, db, dc;
+      double dda, ddb;
+    };
+    
+    std::vector<Spline_Coefs> coefs;
+    */
     
     // coeffiecients for splines
     // splines are always in a + b*x + c*x**2 + d*x**3 form
@@ -79,7 +113,7 @@ class EPH_Spline {
       #ifndef EPH_UNSAFE
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
-      else if(x > this->x_Last)
+      else if(x > (this->x_First + (y.size()*dx)))
         throw std::runtime_error("eph_spline: argument larger than the upper bound");
       #endif
       
