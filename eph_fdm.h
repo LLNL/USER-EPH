@@ -40,6 +40,9 @@ class EPH_FDM {
     std::vector<double> C_e; // specific heat at each point
     std::vector<double> rho_e; // electronic density at each point
     std::vector<double> kappa_e; // electronic heat conduction
+    std::vector<double> dkappa_e_x; // electronic heat conduction
+    std::vector<double> dkappa_e_y; // electronic heat conduction
+    std::vector<double> dkappa_e_z; // electronic heat conduction
     
     std::vector<double> S_e; // sink and source term
     
@@ -47,6 +50,7 @@ class EPH_FDM {
      * -1 -> uninitialised
      *  0 -> constant
      *  1 -> dynamic
+     *  2 -> derivative 0
      **/
     std::vector<signed char> flag; // point prorperty
     
@@ -60,10 +64,10 @@ class EPH_FDM {
   public:
     EPH_FDM() = delete; // no default constructor
     EPH_FDM(const char* file); // initialise class from an input file
-    EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz); // initialise class manually
+    EPH_FDM(unsigned int nx, unsigned int ny, unsigned int nz); // initialise class manually
     
     // set box size
-    void setBox(const double x0, const double x1, const double y0, const double y1, const double z0, const double z1) {
+    void setBox(double x0, double x1, double y0, double y1, double z0, double z1) {
       this->x0 = x0;
       this->x1 = x1;
       this->y0 = y0;
@@ -83,7 +87,7 @@ class EPH_FDM {
     }
     
     // set system properties
-    void setConstants(const double T_e, const double C_e, const double rho_e, const double kappa_e) {
+    void setConstants(double T_e, double C_e, double rho_e, double kappa_e) {
       for(int i = 0; i < ntotal; i++) {
         this->T_e[i] = T_e;
         
@@ -94,18 +98,34 @@ class EPH_FDM {
       }
     }
     
+    // individual setters
+    void set_C_e(unsigned int x, unsigned int y, unsigned int z, double C_e) {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
+      this->C_e[index] = C_e;
+    }
+    
+    void set_rho_e(unsigned int x, unsigned int y, unsigned int z, double rho_e) {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
+      this->rho_e[index] = rho_e;
+    }
+    
+    void set_kappa_e(unsigned int x, unsigned int y, unsigned int z, double kappa_e) {
+      unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
+      this->kappa_e[index] = kappa_e;
+    }
+    
     // define number of minimum steps for integration
-    void setSteps(const unsigned int steps) {
+    void setSteps(unsigned int steps) {
       this->steps = steps;
     }
     
     // define timestep
-    void setDt(const double dt) {
+    void setDt(double dt) {
       this->dt = dt;
     }
     
     // get temperature of a cell
-    double getT(const double x, const double y, const double z) const {
+    double getT(double x, double y, double z) const {
       unsigned int index = get_index(x, y, z);
       
       #ifndef EPH_UNSAFE
@@ -116,12 +136,12 @@ class EPH_FDM {
     }
     
     // this has not been checked thoroughly
-    double getT(const unsigned int x, const unsigned int y, const unsigned int z) const {
+    double getT(unsigned int x, unsigned int y, unsigned int z) const {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       return T_e[index];
     }
     
-    bool insertEnergy(const double x, const double y, const double z, const double E) {
+    bool insertEnergy(double x, double y, double z, double E) {
       unsigned int index = get_index(x, y, z);
       double prescale = dV * dt;
       
@@ -136,7 +156,22 @@ class EPH_FDM {
       return true;
     }
     
-    void setT(const double x, const double y, const double z, const double T) {
+    bool insertEnergy(unsigned int x, unsigned y, unsigned z, double E) {
+      unsigned int index = x + y*nx + z*nx*ny;
+      double prescale = dV * dt;
+      
+      // convert energy into power per area
+      #ifndef EPH_UNSAFE
+      assert(prescale >= 0.0);
+      assert(index >= 0);
+      assert(index < (nx*ny*nz));
+      #endif
+      dT_e[index] += E / prescale;
+      
+      return true;
+    }
+    
+    void setT(double x, double y, double z, double T) {
       unsigned int index = get_index(x, y, z);
       T_e[index] = T;
     }
@@ -151,7 +186,7 @@ class EPH_FDM {
       S_e[index] = S;
     }
     
-    void setS(const unsigned int x, const unsigned int y, const unsigned int z, double S) {
+    void setS(unsigned int x, unsigned int y, unsigned int z, double S) {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       S_e[index] = S;
     }

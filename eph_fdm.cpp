@@ -88,6 +88,9 @@ void EPH_FDM::resize_vectors() {
   dT_e_y.resize(ntotal, 0.0);
   dT_e_z.resize(ntotal, 0.0);
   ddT_e.resize(ntotal, 0.0);
+  dkappa_e_x.resize(ntotal, 0.0);
+  dkappa_e_y.resize(ntotal, 0.0);
+  dkappa_e_z.resize(ntotal, 0.0);
   
   C_e.resize(ntotal, 0.0);
   rho_e.resize(ntotal, 0.0);
@@ -108,10 +111,25 @@ void EPH_FDM::solve() {
     double dtdxdydz = inner_dt * (1.0/dx/dx + 1.0/dy/dy + 1.0/dz/dz);
     
     // this does not work corectly
-    double r = dtdxdydz / C_e[0] / rho_e[0] * kappa_e[0];
+    /* find smallest C_e and rho_e and largest kappa */
+    double c_min = C_e[0];
+    double rho_min = rho_e[0];
+    double kappa_max = kappa_e[0];
+    
+    for(unsigned int i = 1; i < ntotal; ++i) {
+      if(flag[i] > 0) {
+        if(C_e[i] < c_min) c_min = C_e[i];
+        if(rho_e[i] < rho_min) rho_min = rho_e[i];
+        if(kappa_e[i] > kappa_max) kappa_max = kappa_e[i];
+      }
+    }
+    
+    double r = dtdxdydz / c_min / rho_min * kappa_max;
     
     unsigned int new_steps = steps;
     
+    // This will become unstable if there are any large fluctuations 
+    // during the solving process; calling this at every step is expensive
     //if(r > 0.5) {
     if(r > 0.4) {
       inner_dt = 0.4 * inner_dt / r; // be more conservative
@@ -122,25 +140,54 @@ void EPH_FDM::solve() {
     }
     
     for(int n = 0; n < new_steps; n++) {
+      std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
+      std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
+      std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
+      std::fill(dkappa_e_x.begin(), dkappa_e_x.end(), 0.0); 
+      std::fill(dkappa_e_y.begin(), dkappa_e_y.end(), 0.0); 
+      std::fill(dkappa_e_z.begin(), dkappa_e_z.end(), 0.0); 
+      std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
+      
       // calculate derivatives
       #ifdef EPH_TESTING
       #pragma omp parallel 
       #endif
       {
-      for(int k = 0; k < nz; k++) {
-        for(int j = 0; j < ny; j++) {
-          for(int i = 0; i < nx; i++) {
-            unsigned int p, q;
-            p = i + j*nx + k*nx*ny;
+      for(int k = 0; k < nz; ++k) {
+        for(int j = 0; j < ny; ++j) {
+          for(int i = 0; i < nx; ++i) {
+            unsigned int q, p, r;
+            r = i + j*nx + k*nx*ny;
             
-            q = (i+1)%nx + j*nx + k*nx*ny;
-            dT_e_x[p] = (T_e[q] - T_e[p])/dx;
+            // +- dx
+            if(i > 0) p = (i-1) + j*nx + k*nx*ny;
+            else p = (nx-1) + j*nx + k*nx*ny;
             
-            q = i + ((j+1)%ny)*nx + k*nx*ny;
-            dT_e_y[p] = (T_e[q] - T_e[p])/dy;
+            if(i < (nx - 1)) q = (i+1) + j*nx + k*nx*ny;
+            else q = j*nx + k*nx*ny;
             
-            q = i + j*nx + ((k+1)%nz)*nx*ny;
-            dT_e_z[p] = (T_e[q] - T_e[p])/dz;
+            dT_e_x[r] = (T_e[q] - T_e[p]) / dx / 2.0;
+            dkappa_e_x[r] = (kappa_e[q] - kappa_e[p]) / dx / 2.0;
+            
+            // +- dy
+            if(j > 0) p = i + (j-1)*nx + k*nx*ny;
+            else p = i + (ny-1)*nx + k*nx*ny;
+            
+            if(j < (ny - 1)) q = i + (j+1)*nx + k*nx*ny;
+            else q = i + k*nx*ny;
+            
+            dT_e_y[r] = (T_e[q] - T_e[p]) / dy / 2.0;
+            dkappa_e_y[r] = (kappa_e[q] - kappa_e[p]) / dy / 2.0;
+            
+            // +- dz
+            if(k > 0) p = i + j*nx + (k-1)*nx*ny;
+            else p = i + j*nx + (nz-1)*nx*ny;
+            
+            if(k < (nz - 1)) q = i + j*nx + (k+1)*nx*ny;
+            else q = i + j*nx;
+            
+            dT_e_z[r] = (T_e[q] - T_e[p]) / dz / 2.0;
+            dkappa_e_z[r] = (kappa_e[q] - kappa_e[p]) / dz / 2.0;
           }
         }
       }
@@ -151,19 +198,41 @@ void EPH_FDM::solve() {
       #pragma omp parallel 
       #endif
       {
-      for(int k = 0; k < nz; k++) {
-        for(int j = 0; j < ny; j++) {
-          for(int i = 0; i < nx; i++) {
-            unsigned int p, q;
-            p = i + j*nx + k*nx*nz;
-            q = (i+1)%nx + j*nx + k*nx*ny;
-            ddT_e[q] += (kappa_e[q] * dT_e_x[q] - kappa_e[p] * dT_e_x[p])/dx;
+      for(int k = 0; k < nz; ++k) {
+        for(int j = 0; j < ny; ++j) {
+          for(int i = 0; i < nx; ++i) {
+            unsigned int q, p, r;
+            r = i + j*nx + k*nx*ny;
             
-            q = i + ((j+1)%ny)*nx + k*nx*ny;
-            ddT_e[q] += (kappa_e[q] * dT_e_y[q] - kappa_e[p] * dT_e_y[p])/dy;
+            // +- dx
+            if(i > 0) p = (i-1) + j*nx + k*nx*ny;
+            else p = (nx-1) + j*nx + k*nx*ny;
             
-            q = i + j*nx + ((k+1)%nz)*nx*ny;
-            ddT_e[q] += (kappa_e[q] * dT_e_z[q] - kappa_e[p] * dT_e_z[p])/dz;
+            if(i < (nx - 1)) q = (i+1) + j*nx + k*nx*ny;
+            else q = j*nx + k*nx*ny;
+            
+            ddT_e[r] += dkappa_e_x[r] * dT_e_x[r];
+            ddT_e[r] += kappa_e[r] * ((dT_e_x[q]-dT_e_x[p]) / dx / 2.0);
+            
+            // +- dy
+            if(j > 0) p = i + (j-1)*nx + k*nx*ny;
+            else p = i + (ny-1)*nx + k*nx*ny;
+            
+            if(j < (ny - 1)) q = i + (j+1)*nx + k*nx*ny;
+            else q = i + k*nx*ny;
+            
+            ddT_e[r] += dkappa_e_y[r] * dT_e_y[r];
+            ddT_e[r] += kappa_e[r] * ((dT_e_y[q]-dT_e_y[p]) / dy / 2.0);
+            
+            // +- dz
+            if(k > 0) p = i + j*nx + (k-1)*nx*ny;
+            else p = i + j*nx + (nz-1)*nx*ny;
+            
+            if(k < (nz - 1)) q = i + j*nx + (k+1)*nx*ny;
+            else q = i + j*nx;
+            
+            ddT_e[r] += dkappa_e_z[r] * dT_e_z[r];
+            ddT_e[r] += kappa_e[r] * ((dT_e_z[q]-dT_e_z[p]) / dz / 2.0);
           }
         }
       }
@@ -178,8 +247,9 @@ void EPH_FDM::solve() {
       for(int i = 0; i < ntotal; i++) {
         double prescaler = rho_e[i] * C_e[i];
         
-        if(prescaler > 0.0 && flag[i] > 0)
+        if(prescaler > 0.0 && flag[i] > 0) {
           T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
+        }
         
         // energy conservation issues
         /* Add a sanity check somewhere for this */
@@ -187,12 +257,6 @@ void EPH_FDM::solve() {
           T_e[i] = 0.0;
       }
       }
-    
-      // zero arrays
-      std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
-      std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
-      std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
-      std::fill(ddT_e.begin(), ddT_e.end(), 0.0); 
     }
     
     // zero energy exchange array
@@ -266,11 +330,6 @@ void EPH_FDM::syncBefore() {
 
 void EPH_FDM::syncAfter() {
   // zero arrays
-  // TODO: substitute with std::fill
-  std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
-  std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
-  std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
-  std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
   std::fill(dT_e.begin(), dT_e.end(), 0.0);
   
   // synchronize electronic temperature
