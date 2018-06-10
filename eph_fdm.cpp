@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <algorithm>
+#include <stdexcept>
 
 #include <mpi.h>
 
@@ -84,13 +85,7 @@ EPH_FDM::EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned in
 void EPH_FDM::resize_vectors() {
   T_e.resize(ntotal, 0.0);
   dT_e.resize(ntotal, 0.0);
-  dT_e_x.resize(ntotal, 0.0);
-  dT_e_y.resize(ntotal, 0.0);
-  dT_e_z.resize(ntotal, 0.0);
   ddT_e.resize(ntotal, 0.0);
-  dkappa_e_x.resize(ntotal, 0.0);
-  dkappa_e_y.resize(ntotal, 0.0);
-  dkappa_e_z.resize(ntotal, 0.0);
   
   C_e.resize(ntotal, 0.0);
   rho_e.resize(ntotal, 0.0);
@@ -135,20 +130,14 @@ void EPH_FDM::solve() {
       inner_dt = 0.4 * inner_dt / r; // be more conservative
       //inner_dt = 0.5 * inner_dt / r; // get new timestep
       //new_steps = ((unsigned int)(dt / inner_dt)) + 1;
-      new_steps = std::floor(dt / inner_dt) + 1;
+      //new_steps = std::floor(dt / inner_dt) + 1;
+      new_steps = static_cast<unsigned int> ((dt /inner_dt)+1.0);
       inner_dt = dt / new_steps;
     }
     
     for(int n = 0; n < new_steps; n++) {
-      std::fill(dT_e_x.begin(), dT_e_x.end(), 0.0); 
-      std::fill(dT_e_y.begin(), dT_e_y.end(), 0.0); 
-      std::fill(dT_e_z.begin(), dT_e_z.end(), 0.0); 
-      std::fill(dkappa_e_x.begin(), dkappa_e_x.end(), 0.0); 
-      std::fill(dkappa_e_y.begin(), dkappa_e_y.end(), 0.0); 
-      std::fill(dkappa_e_z.begin(), dkappa_e_z.end(), 0.0); 
       std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
       
-      // calculate derivatives
       #ifdef EPH_TESTING
       #pragma omp parallel 
       #endif
@@ -159,50 +148,8 @@ void EPH_FDM::solve() {
             unsigned int q, p, r;
             r = i + j*nx + k*nx*ny;
             
-            // +- dx
-            if(i > 0) p = (i-1) + j*nx + k*nx*ny;
-            else p = (nx-1) + j*nx + k*nx*ny;
-            
-            if(i < (nx - 1)) q = (i+1) + j*nx + k*nx*ny;
-            else q = j*nx + k*nx*ny;
-            
-            dT_e_x[r] = (T_e[q] - T_e[p]) / dx / 2.0;
-            dkappa_e_x[r] = (kappa_e[q] - kappa_e[p]) / dx / 2.0;
-            
-            // +- dy
-            if(j > 0) p = i + (j-1)*nx + k*nx*ny;
-            else p = i + (ny-1)*nx + k*nx*ny;
-            
-            if(j < (ny - 1)) q = i + (j+1)*nx + k*nx*ny;
-            else q = i + k*nx*ny;
-            
-            dT_e_y[r] = (T_e[q] - T_e[p]) / dy / 2.0;
-            dkappa_e_y[r] = (kappa_e[q] - kappa_e[p]) / dy / 2.0;
-            
-            // +- dz
-            if(k > 0) p = i + j*nx + (k-1)*nx*ny;
-            else p = i + j*nx + (nz-1)*nx*ny;
-            
-            if(k < (nz - 1)) q = i + j*nx + (k+1)*nx*ny;
-            else q = i + j*nx;
-            
-            dT_e_z[r] = (T_e[q] - T_e[p]) / dz / 2.0;
-            dkappa_e_z[r] = (kappa_e[q] - kappa_e[p]) / dz / 2.0;
-          }
-        }
-      }
-      }
-      
-      // calculate second derivative
-      #ifdef EPH_TESTING
-      #pragma omp parallel 
-      #endif
-      {
-      for(int k = 0; k < nz; ++k) {
-        for(int j = 0; j < ny; ++j) {
-          for(int i = 0; i < nx; ++i) {
-            unsigned int q, p, r;
-            r = i + j*nx + k*nx*ny;
+            ddT_e[r] = 0.0;
+            if(flag[r] == 2) continue;
             
             // +- dx
             if(i > 0) p = (i-1) + j*nx + k*nx*ny;
@@ -211,8 +158,11 @@ void EPH_FDM::solve() {
             if(i < (nx - 1)) q = (i+1) + j*nx + k*nx*ny;
             else q = j*nx + k*nx*ny;
             
-            ddT_e[r] += dkappa_e_x[r] * dT_e_x[r];
-            ddT_e[r] += kappa_e[r] * ((dT_e_x[q]-dT_e_x[p]) / dx / 2.0);
+            if(flag[q] == 2) q = r;
+            else if(flag[p] == 2) p = r;
+            
+            ddT_e[r] += (kappa_e[q]-kappa_e[p]) * (T_e[q] - T_e[p]) / dx / dx / 4.0;
+            ddT_e[r] += kappa_e[r] * ((T_e[q]+T_e[p]-2.0*T_e[r]) / dx / dx);
             
             // +- dy
             if(j > 0) p = i + (j-1)*nx + k*nx*ny;
@@ -221,8 +171,11 @@ void EPH_FDM::solve() {
             if(j < (ny - 1)) q = i + (j+1)*nx + k*nx*ny;
             else q = i + k*nx*ny;
             
-            ddT_e[r] += dkappa_e_y[r] * dT_e_y[r];
-            ddT_e[r] += kappa_e[r] * ((dT_e_y[q]-dT_e_y[p]) / dy / 2.0);
+            if(flag[q] == 2) q = r;
+            else if(flag[p] == 2) p = r;
+            
+            ddT_e[r] += (kappa_e[q]-kappa_e[p]) * (T_e[q] - T_e[p]) / dy / dy / 4.0;
+            ddT_e[r] += kappa_e[r] * ((T_e[q]+T_e[p]-2.0*T_e[r]) / dy / dy);
             
             // +- dz
             if(k > 0) p = i + j*nx + (k-1)*nx*ny;
@@ -231,8 +184,11 @@ void EPH_FDM::solve() {
             if(k < (nz - 1)) q = i + j*nx + (k+1)*nx*ny;
             else q = i + j*nx;
             
-            ddT_e[r] += dkappa_e_z[r] * dT_e_z[r];
-            ddT_e[r] += kappa_e[r] * ((dT_e_z[q]-dT_e_z[p]) / dz / 2.0);
+            if(flag[q] == 2) q = r;
+            else if(flag[p] == 2) p = r;
+            
+            ddT_e[r] += (kappa_e[q]-kappa_e[p]) * (T_e[q] - T_e[p]) / dz / dz / 4.0;
+            ddT_e[r] += kappa_e[r] * ((T_e[q]+T_e[p]-2.0*T_e[r]) / dz / dz);
           }
         }
       }
@@ -247,8 +203,18 @@ void EPH_FDM::solve() {
       for(int i = 0; i < ntotal; i++) {
         double prescaler = rho_e[i] * C_e[i];
         
-        if(prescaler > 0.0 && flag[i] > 0) {
-          T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
+        if(prescaler > 0.0) {
+          switch(flag[i]) {
+            case 1:
+              T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
+              break;
+            case 2:
+              T_e[i] = 0.0;
+              break;
+          }
+        }
+        else {
+          throw std::runtime_error("eph_fdm.cpp solve(): negative prescaler");
         }
         
         // energy conservation issues
@@ -258,9 +224,6 @@ void EPH_FDM::solve() {
       }
       }
     }
-    
-    // zero energy exchange array
-    //std::fill(dT_e.begin(), dT_e.end(), 0.0);
   }
   
   syncAfter();

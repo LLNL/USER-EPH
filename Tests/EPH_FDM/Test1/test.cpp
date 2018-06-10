@@ -10,7 +10,7 @@
  */
 
 // grid size
-constexpr unsigned int n_x {20};
+constexpr unsigned int n_x {1000};
 constexpr unsigned int n_y {1};
 constexpr unsigned int n_z {1};
 

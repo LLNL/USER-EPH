@@ -104,10 +104,9 @@ int main(int args, char **argv) {
   }
   
   electrons.setFlag(n_x/4, 0, 0, 2);
-  electrons.setFlag(n_x/4+1, 0, 0, 2);
   electrons.setFlag(3*n_x/4, 0, 0, 2);
   
-  electrons.saveState("T_before.data");
+  //electrons.saveState("T_before.data");
   
   for(unsigned int i = 0; i <= max_steps; ++i) {
     add_energy(i*dt);
@@ -115,11 +114,24 @@ int main(int args, char **argv) {
     
     if(i%save_freq == 0) {
       printf("Saving step %06d; t = %8.3f ps; T = %8.3f K;\n", i, dt*i, electrons.calcTtotal());
-      electrons.saveTemperature(save, i/save_freq);
+      switch (i/save_freq) {
+        case 0:
+        case 1:
+        case 2:
+        case 4:
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+          electrons.saveTemperature(save, i/save_freq);
+          break;
+        default:
+          break;
+      }
     }
   }
   
-  electrons.saveState("T_after.data");
+  //electrons.saveState("T_after.data");
   
   // do the MPI_Finalise
   MPI_Finalize();

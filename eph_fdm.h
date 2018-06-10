@@ -31,18 +31,12 @@ class EPH_FDM {
     
     std::vector<double> T_e; // electronic temperature at a grid point
     std::vector<double> dT_e; // energy transfer between atoms and electrons
-    std::vector<double> dT_e_x; // derivative in x
-    std::vector<double> dT_e_y; // derivative in y
-    std::vector<double> dT_e_z; // derivative in z
     std::vector<double> ddT_e; // second derivative
     
     // temperature dependence will be added later
     std::vector<double> C_e; // specific heat at each point
     std::vector<double> rho_e; // electronic density at each point
     std::vector<double> kappa_e; // electronic heat conduction
-    std::vector<double> dkappa_e_x; // electronic heat conduction
-    std::vector<double> dkappa_e_y; // electronic heat conduction
-    std::vector<double> dkappa_e_z; // electronic heat conduction
     
     std::vector<double> S_e; // sink and source term
     
@@ -216,7 +210,7 @@ class EPH_FDM {
     void saveTemperature(const char* file, int n);
     
     double calcTtotal() const {
-      double result = 0.0;
+      double result {0.0};
   
       for(int i = 0; i < ntotal; i++) {
         result += T_e[i];
