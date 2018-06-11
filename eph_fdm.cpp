@@ -139,15 +139,20 @@ void EPH_FDM::solve() {
       std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
       
       #ifdef EPH_TESTING
-      #pragma omp parallel for
+      #pragma omp parallel for collapse(3)
       #endif
-      for(unsigned int r = 0 ; r < ntotal; ++r) {
-            unsigned int i, j, k;
+      //for(unsigned int r = 0 ; r < ntotal; ++r) {
+      for(unsigned int k = 0; k < nz; ++k) {
+        for(unsigned int j = 0; j < ny; ++j) {
+          for(unsigned int i = 0; i < nx; ++i) {
+            //unsigned int i, j, k;
+            //i = r%nx;
+            //j = (r - i)%ny;
+            //k = (r - i - j)%nz;
+            
             unsigned int q, p;
-            i = r%nx;
-            j = (r - i)%ny;
-            k = (r - i - j)%nz;
-            //r = i + j*nx + k*nx*ny;
+            unsigned int r;
+            r = i + j*nx + k*nx*ny;
             
             ddT_e[r] = 0.0;
             if(flag[r] == 2) continue;
@@ -190,6 +195,8 @@ void EPH_FDM::solve() {
             
             ddT_e[r] += (kappa_e[q]-kappa_e[p]) * (T_e[q] - T_e[p]) / dz / dz / 4.0;
             ddT_e[r] += kappa_e[r] * ((T_e[q]+T_e[p]-2.0*T_e[r]) / dz / dz);
+          }
+        }
       }
       
       /* TODO: there might be an issue with grid volume here */

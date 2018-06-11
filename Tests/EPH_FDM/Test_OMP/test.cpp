@@ -12,16 +12,16 @@
 
 // grid size
 constexpr unsigned int n_x {1000};
-constexpr unsigned int n_y {1};
-constexpr unsigned int n_z {1};
+constexpr unsigned int n_y {2};
+constexpr unsigned int n_z {4};
 
 // grid extent
 constexpr double x_0 {-10.0};
 constexpr double x_1 { 10.0};
-constexpr double y_0 {-1.0};
-constexpr double y_1 { 1.0};
-constexpr double z_0 {-1.0};
-constexpr double z_1 { 1.0};
+constexpr double y_0 {-2.0};
+constexpr double y_1 { 2.0};
+constexpr double z_0 {-4.0};
+constexpr double z_1 { 4.0};
 constexpr double d_x {(x_1-x_0)/n_x};
 constexpr double d_y {(y_1-y_0)/n_y};
 constexpr double d_z {(z_1-z_0)/n_z};
@@ -49,6 +49,8 @@ constexpr unsigned int save_freq {static_cast<unsigned int> (freq_t/dt)};
 
 constexpr const char* save {"Out/T_out"};
 
+int on_off = 0;
+
 // energy transfer from laser to electronic system
 double dE[n_x]; // per timestep in eV
 
@@ -67,15 +69,26 @@ void laser_hit() {
 
 // laser profile to energy input into the system
 void add_energy(double t) {
-  if(t >= t_0 && t < (t_1)) {
-    for(unsigned int i = 0; i < n_x; ++i) {
-      electrons.setS(i, 0, 0, dE[i]);
+  if((t >= t_0 && t < (t_1)) && !on_off) {
+    on_off = 1;
+    for(unsigned int k = 0; k < n_z; ++k) {
+      for(unsigned int j = 0; j < n_y; ++j) {
+        for(unsigned int i = 0; i < n_x; ++i) {
+          electrons.setS(i, j, k, dE[i]);
+        }
+      }
     }
   }
-  else {
-    for(unsigned int i = 0; i < n_x; ++i) {
-      electrons.setS(i, 0, 0, 0.0);
+  else if((t < t_0 || t >= (t_1)) && on_off){
+    for(unsigned int k = 0; k < n_z; ++k) {
+      for(unsigned int j = 0; j < n_y; ++j) {
+        for(unsigned int i = 0; i < n_x; ++i) {
+          electrons.setS(i, j, k, 0.0);
+        }
+      }
     }
+    
+    on_off = 0;
   }
 }
 
@@ -98,9 +111,13 @@ int main(int args, char **argv) {
   laser_hit();
   
   /** define C_e as 1+sin(x) **/
-  for(unsigned int i = 0; i < n_x; ++i) {
-    electrons.set_C_e(i, 0, 0, 2.0 * c_e + c_e * sin(i*2.0*M_PI / n_x));
-    electrons.set_kappa_e(i, 0, 0, 2.0 * kappa_e - kappa_e * sin(i*2.0*M_PI / n_x));
+  for(unsigned int k = 0; k < n_z; ++k) {
+    for(unsigned int j = 0; j < n_y; ++j) {
+      for(unsigned int i = 0; i < n_x; ++i) {
+        electrons.set_C_e(i, j, k, 2.0 * c_e + c_e * sin(i*2.0*M_PI / n_x));
+        electrons.set_kappa_e(i, j, k, 2.0 * kappa_e - kappa_e * sin(i*2.0*M_PI / n_x));
+      }
+    }
   }
   
   //electrons.saveState("T_before.data");
