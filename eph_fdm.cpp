@@ -139,14 +139,15 @@ void EPH_FDM::solve() {
       std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
       
       #ifdef EPH_TESTING
-      #pragma omp parallel 
+      #pragma omp parallel for
       #endif
-      {
-      for(int k = 0; k < nz; ++k) {
-        for(int j = 0; j < ny; ++j) {
-          for(int i = 0; i < nx; ++i) {
-            unsigned int q, p, r;
-            r = i + j*nx + k*nx*ny;
+      for(unsigned int r = 0 ; r < ntotal; ++r) {
+            unsigned int i, j, k;
+            unsigned int q, p;
+            i = r%nx;
+            j = (r - i)%ny;
+            k = (r - i - j)%nz;
+            //r = i + j*nx + k*nx*ny;
             
             ddT_e[r] = 0.0;
             if(flag[r] == 2) continue;
@@ -189,17 +190,13 @@ void EPH_FDM::solve() {
             
             ddT_e[r] += (kappa_e[q]-kappa_e[p]) * (T_e[q] - T_e[p]) / dz / dz / 4.0;
             ddT_e[r] += kappa_e[r] * ((T_e[q]+T_e[p]-2.0*T_e[r]) / dz / dz);
-          }
-        }
-      }
       }
       
       /* TODO: there might be an issue with grid volume here */
       // do the actual step
       #ifdef EPH_TESTING
-      #pragma omp parallel 
+      #pragma omp parallel for
       #endif
-      {
       for(int i = 0; i < ntotal; i++) {
         double prescaler = rho_e[i] * C_e[i];
         
@@ -221,7 +218,6 @@ void EPH_FDM::solve() {
         /* Add a sanity check somewhere for this */
         if(T_e[i] < 0.0)
           T_e[i] = 0.0;
-      }
       }
     }
   }
