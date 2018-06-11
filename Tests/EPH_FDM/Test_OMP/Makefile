@@ -6,6 +6,7 @@ test: test.cpp ../../../eph_fdm.cpp ../../../eph_fdm.h
 
 test_omp: test.cpp ../../../eph_fdm.cpp ../../../eph_fdm.h 
 	mpic++ -DEPH_TESTING -O2 -g -fopenmp -std=c++11 -o test_omp test.cpp ../../../eph_fdm.cpp -I ../../../
+
 clean:
 	rm test
 	rm test_omp
