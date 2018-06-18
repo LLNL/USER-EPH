@@ -138,7 +138,7 @@ void EPH_FDM::solve() {
     for(int n = 0; n < new_steps; n++) {
       std::fill(ddT_e.begin(), ddT_e.end(), 0.0);
       
-      #ifdef EPH_TESTING
+      #ifdef EPH_OMP
       #pragma omp parallel for collapse(3)
       #endif
       //for(unsigned int r = 0 ; r < ntotal; ++r) {
@@ -201,7 +201,7 @@ void EPH_FDM::solve() {
       
       /* TODO: there might be an issue with grid volume here */
       // do the actual step
-      #ifdef EPH_TESTING
+      #ifdef EPH_OMP
       #pragma omp parallel for
       #endif
       for(int i = 0; i < ntotal; i++) {

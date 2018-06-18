@@ -1,9 +1,11 @@
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
 #include <mpi.h>
 
 #include "eph_fdm.h"
+#include "eph_spline.h"
 
 /* 
  * This example will create an electronic system and heat it from one end with
@@ -31,15 +33,20 @@ constexpr double d_V {d_x*d_y*d_z};
 // electronic system properties
 constexpr double c_e {3.5e-6}; // in eV
 constexpr double rho_e {1.0}; // scaling factor
-constexpr double kappa_e {0.10};
+constexpr double kappa_e {5.68e-2};
 constexpr double T_e {300.0}; // initial temperature
 
 constexpr double c_l {2.3e-5}; // in eV
 constexpr double rho_l {1.0}; // scaling factor
-constexpr double kappa_l {0.001};
+constexpr double kappa_l {6.2e-3};
 constexpr double T_l {300.0}; // initial temperature
 
 constexpr double g_eph {6.6e-6}; // electron-phonon coupling parameter
+
+// this are special electronic conductivity numbers from Zhigilei
+constexpr double vF2 {2.25e+8}; // (A/ps)^2
+constexpr double A {1.4e-6}; // K^2/ps
+constexpr double B {16.24}; // K/ps
 
 constexpr double t_0 {0.0}; // laser turned on
 constexpr double t_1 {15000.0}; // laser turned off
@@ -64,6 +71,10 @@ constexpr const char* save_l {"Out/T_l_out"};
 // energy transfer from laser to electronic system
 double dE[n_x]; // per timestep in eV
 int on_off {0};
+
+// temperature dependent parameters
+EPH_Spline c_e_T;
+EPH_Spline g_eph_T;
 
 // electrons as an FDM system
 EPH_FDM electrons {n_x, n_y, n_z};
@@ -98,20 +109,37 @@ void electron_phonon() {
   for(unsigned int k = 0; k < n_z; ++k) {
     for(unsigned int j = 0; j < n_y; ++j) {
       for(unsigned int i = 0; i < n_x; ++i) {
-        double dT = electrons.getT(i, j, k) - lattice.getT(i, j, k);
-        double dE = dT * g_eph * d_V * dt;
-        
-        /*if(dE > 0.0)
-          std::cout << dT << " " << dE << std::endl;
-        */
+        double varTe = electrons.getT(i,j,k);
+        double dT = varTe - lattice.getT(i, j, k);
+        double varG = g_eph_T.GetValue(varTe);
+        double dE = dT * varG * d_V * dt;
           
         electrons.insertEnergy(i, j, k, -dE);
         lattice.insertEnergy(i, j, k, dE);
       }
     }
   }
-  
-  //std::cout << "NEXT FRAME" << std::endl;
+}
+
+void change_parameters() {
+  for(unsigned int k = 0; k < n_z; ++k) {
+    for(unsigned int j = 0; j < n_y; ++j) {
+      for(unsigned int i = 0; i < n_x; ++i) {
+        double varTe = electrons.getT(i, j, k);
+        double varTl = lattice.getT(i, j, k);
+        double varC = c_e_T.GetValue(varTe);
+        
+        if((varTe > 0.0) && (varTl > 0.0)) {
+          electrons.set_C_e(i,j,k, varC);
+        
+          double varK = vF2 * varC * 1.0/(A*varTe*varTe+B*varTl);
+          electrons.set_kappa_e(i,j,k, varK);
+          
+          //std::cout << varTe << " " << varTl << " " << varC << " " << varK << std::endl;
+        }
+      }
+    }
+  }
 }
 
 int main(int args, char **argv) {
@@ -122,6 +150,35 @@ int main(int args, char **argv) {
   MPI_Init(&args, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_id);
   MPI_Comm_size(MPI_COMM_WORLD, &nr_ps);
+  
+  // initialise splines
+  {
+  std::ifstream fd("Data/C_e.data");
+  
+  double valT, valC;
+  c_e_T.SetDiscretisation(0.0, 100.0);
+  
+  while(! (fd.eof())) {
+    fd >> valT >> valC;
+    c_e_T << valC;
+  }
+  
+  c_e_T << true;
+  }
+  
+  {
+  std::ifstream fd("Data/C_e.data");
+  
+  double valT, valG;
+  g_eph_T.SetDiscretisation(0.0, 100.0);
+  
+  while(! (fd.eof())) {
+    fd >> valT >> valG;
+    g_eph_T << valG;
+  }
+  
+  g_eph_T << true;
+  }
   
   electrons.setComm(MPI_COMM_WORLD, my_id, nr_ps);
   electrons.setBox(x_0, x_1, y_0, y_1, z_0, z_1);
@@ -151,10 +208,14 @@ int main(int args, char **argv) {
   //electrons.saveState("T_before.data");
   
   for(unsigned int i = 0; i <= max_steps; ++i) {
+    change_parameters();
     add_energy(i*dt);
     electron_phonon();
     electrons.solve();
     lattice.solve();
+    
+    //std::cout << c_e << " " << kappa_e << std::endl;
+    //throw;
     
     if(i%save_freq == 0) {
       printf("Saving step %06d in %06d; t = %10.3f ps; T_e = %8.3f K; T_l = %8.3f K;\n", i, i/save_freq, dt*i, electrons.calcTtotal(), lattice.calcTtotal());
