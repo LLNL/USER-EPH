@@ -46,7 +46,7 @@ class EPH_FDM {
      *  1 -> dynamic
      *  2 -> derivative 0
      **/
-    std::vector<signed char> flag; // point prorperty
+    std::vector<signed short> flag; // point prorperty
     
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
