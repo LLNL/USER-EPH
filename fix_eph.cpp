@@ -405,12 +405,12 @@ void FixEPH::end_of_step() {
     if(mask[i] & groupbit) {
       array[i][ 0] = rho_i[i];
       array[i][ 1] = beta_i[i];
-      array[i][ 2] = w_i[i][0];
-      array[i][ 3] = w_i[i][1];
-      array[i][ 4] = w_i[i][2];
-      array[i][ 5] = xi_i[i][0];
-      array[i][ 6] = xi_i[i][1];
-      array[i][ 7] = xi_i[i][2];
+      array[i][ 2] = f_EPH[i][0];
+      array[i][ 3] = f_EPH[i][1];
+      array[i][ 4] = f_EPH[i][2];
+      array[i][ 5] = f_RNG[i][0];
+      array[i][ 6] = f_RNG[i][1];
+      array[i][ 7] = f_RNG[i][2];
     }
     else {
       array[i][ 0] = 0.0;
