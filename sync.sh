@@ -9,7 +9,7 @@ cd $OUT
 git pull
 
 echo "Syncing files in private repo with public repo"
-SRC=("README.md" "LICENSE" "eph_spline.h" "eph_spline.cpp" "eph_beta.h" "eph_beta.cpp" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp")
+SRC=("README.md" "LICENSE" "eph_spline.h" "eph_spline.cpp" "eph_beta.h" "eph_beta.cpp" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp" "Examples/Beta/Ni.beta" "Examples/Beta/Ni_model_4.beta")
 
 N=${#SRC[*]}
 echo $N
