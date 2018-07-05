@@ -1,6 +1,6 @@
+# Version from paper (A. Tamm et al. PRL 120 2018)
 # Constant beta function that reproduces correct e-ph coupling in equlibrium
 # This file can only be used with model = 4
-# 
 1 Ni
 1001 0.005 50001 0.01 5.00
 28
