@@ -1,0 +1,9 @@
+In this example atomic data is read from struc_in.data. In this simulation only the friction term is active, thus the initial velocites will only be damped. After a while the system will end up at 0K.
+
+Ionic temperature is written into out.data and can be easily plotted in gnuplot with:
+plot "out.data" u 2:3 w lp lw 2
+Also, net energy trnasfer between electronic and ionic system is written into out.data and 
+can be plotted:
+plot "out.data" u 2:4 w lp lw 2
+
+The T.restart and struc_out.data can be used to continue simulation from last step (see Example_4).

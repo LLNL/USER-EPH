@@ -1,0 +1,16 @@
+# Three lines of comments
+# r -> in Ang
+# beta -> in eV * ps / Ang^2
+Nelem A B C ...
+Nrho dr Nbeta drho rcut
+Z_A
+rho_A(0*dr)
+...
+rho_A((Nrho-1)*dr)
+beta_A(0*drho)
+...
+beta_A((Nbeta-1)*drho)
+Z_B
+...
+Z_C
+...

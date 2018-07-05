@@ -1,4 +1,4 @@
-# Version 6 from the paper
+# Version 6 from the paper (A. Tamm et al. PRB 94 2016)
 # beta(rho) = 0.113364*rho**2 + 0.0241622*rho
 # unit conversion eV*ps/A^2 * 9648.5 -> amu / ps 
 1 Ni

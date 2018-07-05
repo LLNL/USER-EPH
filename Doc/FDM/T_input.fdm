@@ -1,0 +1,8 @@
+#
+# 3 lines of comments
+#
+Nx Ny Nz steps
+x0 x1
+y0 y1
+z0 z1
+i j k T_e S rho_e C_e kappa_e f
