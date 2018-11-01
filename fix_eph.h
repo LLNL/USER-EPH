@@ -52,8 +52,8 @@ class FixEPH : public Fix {
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
-      PRBMOD = 3, // random force idea
-      ETA = 4, // random force idea with angular momentum
+      PRBMOD = 3, // CM model in PRL 120, 185501 (2018) 
+      ETA = 4, // full model in PRL 120, 185501 (2018)
       GAP = 5, 
       GAPB = 6
     };
@@ -141,6 +141,12 @@ class FixEPH : public Fix {
     int rho_neigh; // 512 by default
     double** rho_ij; // size = [nlocal][rho_neigh] contribution by atom i to site j
     double** rho_ji; // size = [nlocal][rho_neigh] contribution by atom j to site i
+    
+    // per atom temperatures
+    // electronic temperature per atom
+    double *Te_i; // size = [nlocal]
+    // lattice temperature per atom
+    double *Tl_i; // size = [nlocal]
     
     // gradient of the density
     double** grad_rho_i; // size [nlocal][3]

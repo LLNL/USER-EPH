@@ -103,6 +103,37 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   }
   
   eph_model = atoi(arg[5]);
+  /* debug */
+  if(myID == 0) {
+    std::cout << std::endl;
+    std::cout << "Model read: ";
+    switch(eph_model) {
+      case Model::TESTING:
+        std::cout << "Model::TESTING -> Model development";
+        break;
+      case Model::TTM:
+        std::cout << "Model::TTM -> Standard langevin";
+        break;
+      case Model::PRB:
+        std::cout << "Model::PRB -> Center of mass correction PRB 94, 024305 (2016)";
+        break;
+      case Model::PRBMOD:
+        std::cout << "Model::PRBMOD -> Center of mass correction PRL 120, 185501 (2018)";
+        break;
+      case Model::ETA:
+        std::cout << "Model::ETA -> Model from PRL 120, 185501 (2018)";
+        break;
+      case Model::GAP:
+      case Model::GAPB:
+        std::cout << "To be removed";
+        break;
+      default:
+        eph_model = Model::NONE;
+        std::cout << "Model::NONE -> Standard langevin";
+        break;
+    }
+    std::cout << std::endl;
+  }
   
   // TODO: magic parameters for passing values TEMPORARY
   v_alpha = 1.0;
@@ -223,6 +254,9 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(grad_rho_i[0][0]), 3 * nlocal, 0.0);
   
+  std::fill_n(&(Te_i[0]), nlocal, v_Te);
+  std::fill_n(&(Tl_i[0]), nlocal, 0.0);
+  
   for(int i = 0; i < nlocal; ++i) {
     for(int j = 0; j < size_peratom_cols; ++j) {
       array[i][j] = 0.0;
@@ -256,6 +290,9 @@ FixEPH::~FixEPH() {
   
   memory->destroy(xi_i);
   memory->destroy(w_i);
+  
+  memory->destroy(Te_i);
+  memory->destroy(Tl_i);
 }
 
 void FixEPH::init() {
@@ -1078,7 +1115,7 @@ void FixEPH::force_gapb() {
   }
 }
 
-void FixEPH::force_testing() {};
+
 
 void FixEPH::post_force(int vflag) {
   double **f = atom->f;
@@ -1264,6 +1301,9 @@ void FixEPH::grow_arrays(int ngrow) {
   
   memory->grow(grad_rho_i, ngrow, 3, "eph:grad_rho_i");
   
+  memory->grow(Te_i, ngrow, "eph:T_e");
+  memory->grow(Tl_i, ngrow, "eph:T_l");
+  
   // per atom values
   // we need only nlocal elements here
   memory->grow(array, ngrow, size_peratom_cols, "eph:array");
@@ -1279,6 +1319,20 @@ double FixEPH::compute_vector(int i) {
   
   return Ee;
 }
+
+/** special per atom temperature version parts **/
+// this handles friction force and random force part
+void FixEPH::force_testing() {};
+
+// this calculates lattice temperature per atom
+void FixEPH::calculate_temperature() {
+  
+};
+
+// this evolves the electronic temperature
+void FixEPH::evolve_temperature() {
+
+};
 
 /** TODO: There might be synchronisation issues here; maybe should add barrier for sync **/
 int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
