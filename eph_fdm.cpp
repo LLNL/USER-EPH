@@ -69,13 +69,37 @@ EPH_FDM::EPH_FDM(const char* file) {
   fd.close();
 }
 
-EPH_FDM::EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz) {
-  this->nx = nx;
-  this->ny = ny;
-  this->nz = nz;
-  
+EPH_FDM::EPH_FDM(const unsigned int nx, const unsigned int ny, const unsigned int nz) :
+  nx {nx}, 
+  ny {ny},
+  nz {nz},
+  C_e_T_e(0.0, 10.0), 
+  kappa_e_T_e(0.0, 10.0)
+{
   ntotal = nx*ny*nz;
   resize_vectors();
+  
+  /* HACK */
+  FILE* fd_C_e = fopen("C_ee.data", "r");
+  FILE* fd_kappa_e = fopen("kappa_e.data", "r");
+  
+  double lx, ly;
+  int size;
+  while(!feof(fd_C_e)) {
+    size = fscanf(fd_C_e, "%lf %lf", &lx, &ly);
+    if(size == 2) C_e_T_e << ly;
+  }
+  C_e_T_e << true;
+  
+  while(!feof(fd_kappa_e)) {
+    size = fscanf(fd_kappa_e, "%lf %lf", &lx, &ly);
+    if(size == 2) kappa_e_T_e << ly;
+  }
+  kappa_e_T_e << true;
+  
+  fclose(fd_C_e);
+  fclose(fd_kappa_e);
+  /* END HACK */
   
   setDt(1.0);
   setSteps(1);

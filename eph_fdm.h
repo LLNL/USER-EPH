@@ -14,6 +14,8 @@
 
 #include <mpi.h>
 
+#include "eph_spline.h"
+
 class EPH_FDM {
   private:
     unsigned int nx; // number of nodes in x
@@ -39,6 +41,9 @@ class EPH_FDM {
     std::vector<double> kappa_e; // electronic heat conduction
     
     std::vector<double> S_e; // sink and source term
+    
+    EPH_Spline C_e_T_e; // temperature dependent heat capacity
+    EPH_Spline kappa_e_T_e; // temperature dependent heat conduction
     
     /*
      * -1 -> uninitialised
