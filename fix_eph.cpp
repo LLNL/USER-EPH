@@ -497,6 +497,13 @@ void FixEPH::force_ttm() {
     for(int i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
         double var = -beta_factor * beta_i[i];
+        
+        // HACK
+        double v2_mod = v[i][0]*v[i][0] + v[i][1]*v[i][1] + v[i][2]*v[i][2];
+        if(v2_mod > v2_th) var = -beta_factor * beta_se;
+        else var = -beta_factor * beta_eph;
+        // END HACK
+        
         f_EPH[i][0] = var * v[i][0];
         f_EPH[i][1] = var * v[i][1];
         f_EPH[i][2] = var * v[i][2];
@@ -510,6 +517,10 @@ void FixEPH::force_ttm() {
       if(mask[i] & groupbit) {
         double v_Te = fdm->getT(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te * beta_i[i]);
+        // HACK
+        var = eta_factor * sqrt(v_Te * beta_eph);
+        // END HACK
+        
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
         f_RNG[i][2] = var * xi_i[i][2];

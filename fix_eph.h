@@ -113,6 +113,14 @@ class FixEPH : public Fix {
     double beta_factor; // this is for the conversion from energy/ps -> force
     double eta_factor; // this is for the conversion from energy/ps -> force
     
+    // hardcoded parameters for Ni
+    // SRIM Se and e-ph coupling from our fit
+    // HACK
+    double beta_eph {4.5e-4};
+    double beta_se {3.6e-3};
+    double v2_th {1.0}; // (Ang/ps)**2; 2*Ec; Ec = -4.45
+    // END HACK
+    
     int seed; // seed for random number generator
     class RanMars *random; // rng
     
