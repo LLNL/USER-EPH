@@ -118,7 +118,7 @@ class FixEPH : public Fix {
     // HACK
     double beta_eph {4.5e-4};
     double beta_se {3.6e-3};
-    double v2_th {1.0}; // (Ang/ps)**2; 2*Ec; Ec = -4.45
+    double v2_th {2959.0}; // (Ang/ps)**2; 2*Ec; Ec = -4.45 v=54.3966575
     // END HACK
     
     int seed; // seed for random number generator
