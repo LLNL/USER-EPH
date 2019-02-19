@@ -500,8 +500,14 @@ void FixEPH::force_ttm() {
         
         // HACK
         double v2_mod = v[i][0]*v[i][0] + v[i][1]*v[i][1] + v[i][2]*v[i][2];
-        if(v2_mod > v2_th) var = -beta_factor * beta_se;
-        else var = -beta_factor * beta_eph;
+        if(v2_mod > v2_th) {
+          var = -beta_factor * beta_se;
+          beta_i[i] = beta_se;
+        }
+        else {
+          var = -beta_factor * beta_eph;
+          beta_i[i] = beta_eph;
+        }
         // END HACK
         
         f_EPH[i][0] = var * v[i][0];
