@@ -208,11 +208,15 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 
 - Implement CUBE format output
 
+## Acknowledgements
+
+Development initially supported by the Energy Dissipation to Defect Evolution Center, an Energy Frontier Research Center funded by the U.S. Department of Energy (Award Number 2014ORNL1026).
+
 ## License and Copying
 
 USER-EPH is licensed under the terms of the [GPL v3 License](/COPYING).
 
-USER-EPH is not part of the LAMMPS code https://github.com/lammps/lammps
+USER-EPH is not an official part of the LAMMPS code https://github.com/lammps/lammps
 
 If you have any questions contact Artur Tamm <tamm3@llnl.gov> or Alfredo Correa <correaa@llnl.gov>
 
