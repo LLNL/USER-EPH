@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <limits>
 #include <algorithm>
+#include <cassert>
 
 // internal headers
 #include "fix_eph.h"
@@ -104,6 +105,19 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   eph_model = atoi(arg[5]);
   
+  if(myID == 0) {
+    std::cout << std::endl;
+    std::cout << "Model read: " << arg[5] << " -> " << eph_model << '\n';
+    if(eph_model & Model::NONE) std::cout << "No friction model\n";
+    else if(eph_model & Model::TTM) std::cout << "Standard TTM with beta(rho)\n";
+    else if(eph_model & Model::PRB) std::cout << "PRB 94, 024305 (2016)\n";
+    else if(eph_model & Model::PRBMOD) std::cout << "PRL 120, 185501 (2018) CM model\n";
+    else if(eph_model & Model::ETA) std::cout << "PRL 120, 185501 (2018)\n";
+    else if(eph_model & Model::TESTING) std::cout << "Testing model\n";
+    
+    std::cout << std::endl;
+  }
+  
   // TODO: magic parameters for passing values TEMPORARY
   v_alpha = 1.0;
   v_struc = 1.0;
@@ -132,15 +146,13 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     double z1 = domain->boxhi[2];
     fdm->setBox(x0, x1, y0, y1, z0, z1);
     fdm->setConstants(v_Te, v_Ce, v_rho, v_kappa);
+    
     // now the FDM should be defined
     strcpy(Tstate, "T.restart");
   }
   else {
     fdm = new EPH_FDM(arg[13]);
-    /* TODO: add error check here
-    if(fdm == nullptr) { // this does not do the correct thing
-      error->all(FLERR, "FixEPH: loading FDM parameters from file failed.");
-    }*/
+    
     sprintf(Tstate, "%s.restart", arg[13]);
   }
   

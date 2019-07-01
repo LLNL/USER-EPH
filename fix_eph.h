@@ -52,8 +52,8 @@ class FixEPH : public Fix {
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
-      PRBMOD = 3, // random force idea
-      ETA = 4, // random force idea with angular momentum
+      PRBMOD = 3, // CM model in PRL 120, 185501 (2018)
+      ETA = 4, // full model in PRL 120, 185501 (2018)
       GAP = 5, 
       GAPB = 6
     };
