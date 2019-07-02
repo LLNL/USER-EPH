@@ -34,6 +34,7 @@ int main(int args, char **argv) {
   for(int i = 0; i < n; ++i) {
     spline << y[i];
   }
+  
   std::cout << "Testing call to GetValue before initing" << std::endl;
   try {
     spline.GetValue(x0);
