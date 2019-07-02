@@ -161,12 +161,8 @@ class FixEPH : public Fix {
     void force_prb();
     void force_prbmod();
     void force_eta();
-    void force_gap();
-    void force_gapb();
     void force_testing();
     
-    // tmp
-    //int t_nlocal;
 };
 
 }

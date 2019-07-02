@@ -20,12 +20,12 @@ class EPH_Beta {
     EPH_Beta() = delete;
     
     // how many types are described by this class
-    int getElementsNumber() const {
+    inline int getElementsNumber() const {
       return elementName.size();
     }
     
     // get element name described by the class
-    std::string getName(const unsigned int element) const {
+    inline std::string getName(const unsigned int element) const {
       #ifndef EPH_UNSAFE
       if(element >= elementName.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
@@ -33,17 +33,17 @@ class EPH_Beta {
     }
     
     // get a cutoff used in rho(r)
-    double getCutoff() const {
+    inline double getCutoff() const {
       return rcut;
     }
     
     // get a cutoff used in beta(rho)
-    double getRhoCutoff() const {
+    inline double getRhoCutoff() const {
       return rhocut;
     }
     
     // get the periodic table number for an element (this is not used)
-    unsigned int getNumber(const unsigned int element) const {
+    inline unsigned int getNumber(const unsigned int element) const {
       #ifndef EPH_UNSAFE
       if(element >= elementNumber.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
@@ -51,7 +51,7 @@ class EPH_Beta {
     }
     
     // return the density value
-    double getRho(const unsigned int element, const double r) const {
+    inline double getRho(const unsigned int element, const double r) const {
       #ifndef EPH_UNSAFE
       if(element >= rho.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
@@ -59,7 +59,7 @@ class EPH_Beta {
     }
     
     // return the derivative of the density
-    double getDRho(const unsigned int element, const double r) const {
+    inline double getDRho(const unsigned int element, const double r) const {
       #ifndef EPH_UNSAFE
       if(element >= rho.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
@@ -67,7 +67,7 @@ class EPH_Beta {
     }
     
     // get coupling parameter value
-    double getBeta(const unsigned int element, const double rho) const {
+    inline double getBeta(const unsigned int element, const double rho) const {
       #ifndef EPH_UNSAFE
       if(element > beta.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif
@@ -75,7 +75,7 @@ class EPH_Beta {
     }
     
     // get the derivative of the coupling parameter
-    double getDBeta(const unsigned int element, const double rho) const {
+    inline double getDBeta(const unsigned int element, const double rho) const {
       #ifndef EPH_UNSAFE
       if(element > beta.size()) throw std::runtime_error("eph_beta: out of scope index provided");
       #endif

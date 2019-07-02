@@ -224,7 +224,7 @@ class EPH_FDM {
     static constexpr unsigned int lineLength = 1024;
     
     // possible source of error if nx*ny*nz does not fit into int
-    unsigned int get_index(double x, double y, double z) const {
+    inline unsigned int get_index(double x, double y, double z) const {
       int lx = std::floor((x-x0) / dx);
       int px = std::floor( ((double) lx) / nx);
       lx -= px*nx;
