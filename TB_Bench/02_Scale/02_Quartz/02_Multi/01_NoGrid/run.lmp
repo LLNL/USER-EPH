@@ -1,0 +1,60 @@
+
+units metal
+
+atom_style atomic
+
+boundary p p p
+atom_modify map array
+
+variable Tdump equal 1000
+
+variable nx equal 16
+variable ny equal 16
+variable nz equal 16
+
+variable x index ${nx}
+variable y index ${ny}
+variable z index ${nz}
+
+variable a equal 3.52
+
+lattice fcc $a
+region box block 0 $x 0 $y 0 $z
+
+create_box 3 box
+create_atoms 1 box
+
+# randomise composition
+variable conc equal 1.0/3.0
+group Ni type 1
+set group Ni type/fraction 2 ${conc} 1
+group Ni delete
+group Ni type 1
+
+variable conc equal 1.0/2.0
+set group Ni type/fraction 3 ${conc} 2
+group Ni delete
+
+group Ni type 1
+group Fe type 2
+group Cr type 3
+
+pair_style eam/alloy
+pair_coeff * * NiFeCr.eam Ni Fe Cr
+
+thermo_style custom step time temp press pe ke etotal
+thermo ${Tdump}
+
+timestep 1.0e-4
+
+velocity all create 600.0 101 mom yes rot yes
+
+#fix integrate all nve
+fix friction all eph 1111 7 4 1.0 3.5e-6 0.01248 300.0 1 1 1 NULL 0 Te_out NiFeCrCo.beta Ni Fe Cr
+run 0
+
+run 10000
+
+
+
+

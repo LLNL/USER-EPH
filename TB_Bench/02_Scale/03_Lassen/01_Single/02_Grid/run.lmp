@@ -1,0 +1,45 @@
+
+units metal
+
+atom_style atomic
+
+boundary p p p
+atom_modify map array
+
+variable Tdump equal 1000
+
+variable nx equal 16
+variable ny equal 16
+variable nz equal 16
+
+variable x index ${nx}
+variable y index ${ny}
+variable z index ${nz}
+
+variable a equal 3.52
+
+lattice fcc $a
+region box block 0 $x 0 $y 0 $z
+
+create_box 1 box
+create_atoms 1 box
+
+pair_style eam/alloy
+pair_coeff * * Ni.eam Ni
+
+thermo_style custom step time temp press pe ke etotal
+thermo ${Tdump}
+
+timestep 1.0e-4
+
+velocity all create 600.0 101 mom yes rot yes
+
+#fix integrate all nve
+fix friction all eph 1111 7 4 1.0 3.5e-6 0.01248 300.0 16 16 16 NULL 0 Te_out Ni.beta Ni
+run 0
+
+run 10000
+
+
+
+
