@@ -54,8 +54,7 @@ class EPH_Spline {
       x_Last {x0 + y.size()*dx},
       y {std::move(y)}
     {
-      if(y.size() > min_size) FindCoefficients();
-      else throw std::runtime_error("eph_spline: not enough points supplied");
+      FindCoefficients();
     }
     
     // special type of initialisation; useful when initialising from file
@@ -71,7 +70,7 @@ class EPH_Spline {
     EPH_Spline& operator<< (const bool init);
     
     // get the value of the function at x
-    double GetValue(const double x) const {
+    inline double GetValue(const double x) const {
       double result = 0.0;
       unsigned int index = 0;
       
@@ -94,7 +93,7 @@ class EPH_Spline {
     }
     
     // get a derivative of the function at x
-    double GetDValue(const double x) const { 
+    inline double GetDValue(const double x) const { 
       double result = 0.0;
       unsigned int index = 0;
       
@@ -109,7 +108,6 @@ class EPH_Spline {
       index = FindIndex(x);
       
       double x2 = x*x;
-      double x3 = x*x2;
       
       result = da[index] + db[index] * x + dc[index] * x2;
       
@@ -117,7 +115,7 @@ class EPH_Spline {
     }
     
     // get the second derivative of the function at x (discontinuous!)
-    double GetDDValue(const double x) const { 
+    inline double GetDDValue(const double x) const { 
       double result = 0.0;
       unsigned int index = 0;
       
@@ -131,16 +129,13 @@ class EPH_Spline {
       
       index = FindIndex(x);
       
-      double x2 = x*x;
-      double x3 = x*x2;
-      
       result = dda[index] + ddb[index] * x;
       
       return result;
     }
   
   private: // some private functions for spline initialisation and value calculation
-    unsigned int FindIndex(const double x) const {
+    inline unsigned int FindIndex(const double x) const {
       return ((x-this->x_First)/dx);
     }
     
