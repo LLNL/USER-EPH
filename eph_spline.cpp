@@ -13,7 +13,6 @@
 
 EPH_Spline::EPH_Spline(const double x0, const double dx, const double* y, const unsigned int points) : EPH_Spline(x0, dx) {
   if(!y) throw std::runtime_error("eph_spline: null pointer supplied");
-  if(points <= min_size) throw std::runtime_error("eph_spline: not enough points supplied");
   
   // resize vectors so they would fit enough data
   this->y.resize(points);
@@ -74,8 +73,7 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
     return *this;
   }
   
-  if((this->y).size() > min_size) FindCoefficients();
-  else throw std::runtime_error("eph_spline: not enough points supplied");
+  FindCoefficients();
   
   return *this; 
 }
@@ -84,6 +82,7 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
 void EPH_Spline::FindCoefficients() {
   unsigned int points = y.size();
   
+  if(points <= min_size) std::runtime_error("eph_spline: not enough points supplied");
   if(!(dx > 0.0)) throw std::runtime_error("eph_spline: negative incerement step provided");
   
   x_Last = x_First + points * dx;
@@ -120,7 +119,7 @@ void EPH_Spline::FindCoefficients() {
   dc[0] = fabs(z1-z0);
   
   db[1] = fabs(da[2]-da[1]);
-  db[1] = fabs(da[0]-z1);
+  dc[1] = fabs(da[0]-z1);
   
   db[points-2] = fabs(z2-da[points-2]);
   dc[points-2] = fabs(da[points-3]-da[points-4]);
