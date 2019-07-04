@@ -40,25 +40,58 @@ class EPH_Spline {
   public:
     EPH_Spline() : EPH_Spline(0.0, 0.0) {} // default constructor
     
-    EPH_Spline(const double x0, const double dx) : // constructor for use with << operator
+    EPH_Spline(double x0, double dx) : // constructor for use with << operator
       x_First {x0}, 
       dx {dx}, 
       x_Last {x0 - 0.1} 
       { }
       
-    EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // constructor to initialise the spline fully
+    EPH_Spline(double x0, double dx, const double *y, size_t points); // constructor to initialise the spline fully
     
-    EPH_Spline(const double x0, const double dx, std::vector<double>&& y) : // constructor to initialise the spline fully
+    EPH_Spline(double x0, double dx, const std::vector<double>& a_y) : // constructor to initialise the spline fully
+      x_First {x0}, 
+      dx {dx}, 
+      x_Last {x0 + a_y.size()*dx},
+      y {a_y}
+    {
+      a.resize(y.size());
+      b.resize(y.size());
+      c.resize(y.size());
+      d.resize(y.size());
+
+      da.resize(y.size());
+      db.resize(y.size());
+      dc.resize(y.size());
+
+      dda.resize(y.size());
+      ddb.resize(y.size());
+
+      FindCoefficients();
+    }
+    
+    EPH_Spline(double x0, double dx, std::vector<double>&& y) : // constructor to initialise the spline fully
       x_First {x0}, 
       dx {dx}, 
       x_Last {x0 + y.size()*dx},
       y {std::move(y)}
     {
+      a.resize(y.size());
+      b.resize(y.size());
+      c.resize(y.size());
+      d.resize(y.size());
+
+      da.resize(y.size());
+      db.resize(y.size());
+      dc.resize(y.size());
+
+      dda.resize(y.size());
+      ddb.resize(y.size());
+
       FindCoefficients();
     }
     
     // special type of initialisation; useful when initialising from file
-    void SetDiscretisation(const double x0, const double dx) {
+    void SetDiscretisation(double x0, double dx) {
       *this << false;
       this->x_First = this->x_Last = x0;
       this->dx = dx;
@@ -70,73 +103,53 @@ class EPH_Spline {
     EPH_Spline& operator<< (const bool init);
     
     // get the value of the function at x
-    inline double GetValue(const double x) const {
-      double result = 0.0;
-      unsigned int index = 0;
-      
+    double GetValue(double x) const {
       // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
         throw std::runtime_error("eph_spline: argument larger than the upper bound");
       #endif
       
-      index = FindIndex(x);
+      auto const index = FindIndex(x);
       
-      double x2 = x*x;
-      double x3 = x*x2;
-  
-      result = a[index] + b[index] * x + c[index] * x2 + d[index] * x3;
-  
-      return result;
+      return a[index] + x * (b[index] + x * (c[index] + x * d[index]));
     }
     
     // get a derivative of the function at x
-    inline double GetDValue(const double x) const { 
-      double result = 0.0;
-      unsigned int index = 0;
-      
+    inline double GetDValue(double x) const { 
       // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
         throw std::runtime_error("eph_spline: argument larger than the upper bound");
       #endif
       
-      index = FindIndex(x);
+      auto index = FindIndex(x);
       
-      double x2 = x*x;
-      
-      result = da[index] + db[index] * x + dc[index] * x2;
-      
-      return result;
+      return  da[index] + x * (db[index] + x * dc[index]);
     }
     
     // get the second derivative of the function at x (discontinuous!)
-    inline double GetDDValue(const double x) const { 
-      double result = 0.0;
-      unsigned int index = 0;
-      
+    double GetDDValue(double x) const { 
       // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       if(x < this->x_First)
         throw std::runtime_error("eph_spline: argument smaller than the lower bound");
       else if(x > this->x_Last)
         throw std::runtime_error("eph_spline: argument larger than the upper bound");
       #endif
       
-      index = FindIndex(x);
+      auto index = FindIndex(x);
       
-      result = dda[index] + ddb[index] * x;
-      
-      return result;
+      return dda[index] + ddb[index] * x;
     }
   
   private: // some private functions for spline initialisation and value calculation
-    inline unsigned int FindIndex(const double x) const {
-      return ((x-this->x_First)/dx);
+    size_t FindIndex(double x) const {
+      return (x-x_First)/dx;
     }
     
     void FindCoefficients();

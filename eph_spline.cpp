@@ -11,7 +11,7 @@
 // internal headers
 #include "eph_spline.h"
 
-EPH_Spline::EPH_Spline(const double x0, const double dx, const double* y, const unsigned int points) : EPH_Spline(x0, dx) {
+EPH_Spline::EPH_Spline(double x0, double dx, const double* y, size_t points) : EPH_Spline(x0, dx) {
   if(!y) throw std::runtime_error("eph_spline: null pointer supplied");
   
   // resize vectors so they would fit enough data
@@ -29,14 +29,14 @@ EPH_Spline::EPH_Spline(const double x0, const double dx, const double* y, const 
   dda.resize(points);
   ddb.resize(points);
   
-  for(int i = 0; i < points; ++i) {
+  for(size_t i = 0; i < points; ++i) {
     this->y[i] = y[i];
   }
   
   FindCoefficients();
 }
 
-EPH_Spline& EPH_Spline::operator<< (const double y) {
+EPH_Spline& EPH_Spline::operator<< (double y) {
   this->y.push_back(y);
   a.push_back(0.0);
   b.push_back(0.0);
@@ -53,7 +53,7 @@ EPH_Spline& EPH_Spline::operator<< (const double y) {
   return *this;
 }
 
-EPH_Spline& EPH_Spline::operator<< (const bool init) {
+EPH_Spline& EPH_Spline::operator<< (bool init) {
   if(!init) {
     x_Last = x_First - 0.1;
     y.clear();
@@ -81,9 +81,11 @@ EPH_Spline& EPH_Spline::operator<< (const bool init) {
 // calculate coeffiecients based on x0, x1, ,y0, y1, y0' and y1'
 void EPH_Spline::FindCoefficients() {
   unsigned int points = y.size();
-  
+ 
+  #ifndef DNDEBUG
   if(points <= min_size) std::runtime_error("eph_spline: not enough points supplied");
   if(!(dx > 0.0)) throw std::runtime_error("eph_spline: negative incerement step provided");
+  #endif
   
   x_Last = x_First + points * dx;
   
@@ -94,7 +96,7 @@ void EPH_Spline::FindCoefficients() {
   double z2; // z_k-1
   double z3; // z_k
   
-  for(int i = 0; i < points-1; ++i) {
+  for(size_t i = 0; i < points-1; ++i) {
     //da -> z
     da[i] = (y[i+1]-y[i])/dx;
   }
@@ -107,7 +109,7 @@ void EPH_Spline::FindCoefficients() {
   
   da[points-1] = z2;
   
-  for(int i = 2; i < points-2; ++i) {
+  for(size_t i = 2; i < points-2; ++i) {
     //db -> w_i-1 ; dc -> w_i
 
     db[i] = fabs(da[i+1] - da[i]);
@@ -128,7 +130,7 @@ void EPH_Spline::FindCoefficients() {
   dc[points-1] = fabs(da[points-2]-da[points-3]);
   
   //derivatives
-  for(unsigned int i = 0; i < points; ++i) {
+  for(size_t i = 0; i < points; ++i) {
     double w0,w1;
     double d_2, d_1, d0, d1;
     
@@ -171,7 +173,7 @@ void EPH_Spline::FindCoefficients() {
   }
   
   // solve the equations
-  for(unsigned int i = 0; i < points-1; ++i) {
+  for(size_t i = 0; i < points-1; ++i) {
     double dx3 = dx*dx*dx;
     
     double x0_1 = (x_First + i*dx);
@@ -194,7 +196,7 @@ void EPH_Spline::FindCoefficients() {
   d[points-1] = 0.0;
   
   // initialise other parts
-  for(unsigned int i = 0; i < points; ++i) {
+  for(size_t i = 0; i < points; ++i) {
     da[i] = b[i];
     db[i] = 2.0*c[i];
     dc[i] = 3.0*d[i];
