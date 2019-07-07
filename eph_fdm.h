@@ -122,7 +122,7 @@ class EPH_FDM {
     double getT(double x, double y, double z) const {
       unsigned int index = get_index(x, y, z);
       
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(index >= 0);
       assert(index < (nx*ny*nz));
       #endif
@@ -140,7 +140,7 @@ class EPH_FDM {
       double prescale = dV * dt;
       
       // convert energy into power per area
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(prescale >= 0.0);
       assert(index >= 0);
       assert(index < (nx*ny*nz));
@@ -155,7 +155,7 @@ class EPH_FDM {
       double prescale = dV * dt;
       
       // convert energy into power per area
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(prescale >= 0.0);
       assert(index >= 0);
       assert(index < (nx*ny*nz));

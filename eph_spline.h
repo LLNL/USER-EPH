@@ -98,9 +98,9 @@ class EPH_Spline {
     }
     
     // add a point to spline
-    EPH_Spline& operator<< (const double y);
+    EPH_Spline& operator<< (double y);
     // initialise the spline based or points or reset
-    EPH_Spline& operator<< (const bool init);
+    EPH_Spline& operator<< (bool init);
     
     // get the value of the function at x
     double GetValue(double x) const {
@@ -118,7 +118,7 @@ class EPH_Spline {
     }
     
     // get a derivative of the function at x
-    inline double GetDValue(double x) const { 
+    double GetDValue(double x) const { 
       // maybe this should be a debug option and asserted instead?
       #ifndef DNDEBUG
       if(x < this->x_First)

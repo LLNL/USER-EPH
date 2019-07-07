@@ -52,10 +52,8 @@ class FixEPH : public Fix {
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
-      PRBMOD = 3, // CM model in PRL 120, 185501 (2018)
-      ETA = 4, // full model in PRL 120, 185501 (2018)
-      GAP = 5, 
-      GAPB = 6
+      PRLCM = 3, // CM model in PRL 120, 185501 (2018)
+      PRL = 4 // full model in PRL 120, 185501 (2018)
     };
     
     FixEPH(class LAMMPS *, int, char **); // constructor
@@ -80,8 +78,6 @@ class FixEPH : public Fix {
     // atoms, reverse communication does the opposite
     int pack_forward_comm(int, int *, double *, int, int *) override;
     void unpack_forward_comm(int, int, double *) override;
-    //int pack_reverse_comm(int, int, double *);
-    //void unpack_reverse_comm(int, int *, double *);
   
   private:
     static constexpr unsigned int fileLength = 256; // max filename length
@@ -103,7 +99,9 @@ class FixEPH : public Fix {
     double dtv;
     double dtf;
     
-    double rcutoff; // cutoff for beta
+    double rcutoff; // cutoff for rho(r)
+    double rcutoffsq;
+    double rhocutoff; // cutoff for beta(rho)
     
     // TODO: fix this; confusing names
     int Tfreq;
@@ -142,9 +140,6 @@ class FixEPH : public Fix {
     double** rho_ij; // size = [nlocal][rho_neigh] contribution by atom i to site j
     double** rho_ji; // size = [nlocal][rho_neigh] contribution by atom j to site i
     
-    // gradient of the density
-    double** grad_rho_i; // size [nlocal][3]
-    
     // random numbers
     double **xi_i; // size = [nlocal][3]
     
@@ -159,8 +154,8 @@ class FixEPH : public Fix {
     void calculate_environment();
     void force_ttm();
     void force_prb();
-    void force_prbmod();
-    void force_eta();
+    void force_prlcm();
+    void force_prl();
     void force_testing();
     
 };
