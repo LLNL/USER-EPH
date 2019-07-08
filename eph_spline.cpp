@@ -120,7 +120,7 @@ void EPH_Spline::FindCoefficients() {
   dc[0] = fabs(z1-z0);
   
   db[1] = fabs(da[2]-da[1]);
-  db[1] = fabs(da[0]-z1);
+  dc[1] = fabs(da[0]-z1);
   
   db[points-2] = fabs(z2-da[points-2]);
   dc[points-2] = fabs(da[points-3]-da[points-4]);
