@@ -729,12 +729,16 @@ void FixEPH::force_prl() {
           
           double e_r_2 = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          double alpha_j = sqrt(beta_i[jj]);
+          //double alpha_j = sqrt(beta_i[jj]);
           
           // first sum
-          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 < rcutoffsq && e_r_2 > 0) {
-            //double v_rho_ji = beta->getRho(typemap[jtype - 1], sqrt(e_r_2));
+          //if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 < rcutoffsq && e_r_2 > 0) {
+          if (e_r_2 < rcutoffsq) {
+            //double e_r = sqrt(e_r_2);
+            
+            //double v_rho_ji = beta->getRho(typeMap[jtype - 1], e_r);
             double v_rho_ji = rho_ji[i][j];
+            
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
                           e_ij_z * v[i][2];
@@ -744,16 +748,18 @@ void FixEPH::force_prl() {
             w_i[i][0] += var * e_ij_x;
             w_i[i][1] += var * e_ij_y;
             w_i[i][2] += var * e_ij_z;
-          }
+          
+          //}
           
           // second sum
-          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 < rcutoffsq && e_r_2 > 0.0) {
-            double v_rho_ji = rho_ji[i][j];
-            double e_v_v = e_ij_x * v[jj][0] + 
+          //if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 < rcutoffsq && e_r_2 > 0.0) {
+            //double v_rho_ji = rho_ji[i][j];
+            
+            e_v_v = e_ij_x * v[jj][0] + 
                           e_ij_y * v[jj][1] + 
                           e_ij_z * v[jj][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_2;
+            var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_2;
             
             w_i[i][0] -= var * e_ij_x;
             w_i[i][1] -= var * e_ij_y;
@@ -792,10 +798,12 @@ void FixEPH::force_prl() {
           
           double e_r_2 = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          double alpha_j = sqrt(beta_i[jj]);
-          
           // first sum
-          if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
+          //if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
+          if(e_r_2 < rcutoffsq) {
+            //double e_r = sqrt(e_r_2);
+            double alpha_j = sqrt(beta_i[jj]);
+            //double v_rho_ji = beta->getRho(typeMap[jtype - 1], e_r);
             double v_rho_ji = rho_ji[i][j];
             double e_v_v = e_ij_x * w_i[i][0] + 
                           e_ij_y * w_i[i][1] + 
@@ -806,16 +814,17 @@ void FixEPH::force_prl() {
             f_EPH[i][0] += var * e_ij_x;
             f_EPH[i][1] += var * e_ij_y;
             f_EPH[i][2] += var * e_ij_z;
-          }
+          //}
           
           // second sum
-          if (rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
+          //if (rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
             double v_rho_ij = rho_ij[i][j];
-            double e_v_v = e_ij_x * w_i[jj][0] + 
+            //double v_rho_ij = beta->getRho(typeMap[itype - 1], e_r);
+            e_v_v = e_ij_x * w_i[jj][0] + 
                           e_ij_y * w_i[jj][1] + 
                           e_ij_z * w_i[jj][2];
             
-            double var = alpha_j * v_rho_ij / rho_i[jj] * e_v_v / e_r_2;
+            var = alpha_j * v_rho_ij / rho_i[jj] * e_v_v / e_r_2;
             
             f_EPH[i][0] -= var * e_ij_x;
             f_EPH[i][1] -= var * e_ij_y;
