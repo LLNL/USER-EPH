@@ -215,9 +215,9 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   xi_i = nullptr;
   
-  rho_neigh = 512;
-  rho_ij = nullptr;
-  rho_ji = nullptr;
+  //rho_neigh = 512;
+  //rho_ij = nullptr;
+  //rho_ji = nullptr;
   
   list = nullptr;
   
@@ -260,8 +260,8 @@ FixEPH::~FixEPH() {
   memory->destroy(f_EPH);
   memory->destroy(f_RNG);
   
-  memory->destroy(rho_ij);
-  memory->destroy(rho_ji);
+  //memory->destroy(rho_ij);
+  //memory->destroy(rho_ji);
   
   memory->destroy(xi_i);
   memory->destroy(w_i);
@@ -951,6 +951,7 @@ void FixEPH::post_force(int vflag) {
   
   /* do a quick check for number of neighbours */
   // TODO: remove this an use function calls instead
+  /*
   if(update->ntimestep % 1000 == 0) {
     bool increase_neighs = false;
     for(int i = 0; i < nlocal; ++i) {
@@ -973,8 +974,9 @@ void FixEPH::post_force(int vflag) {
   // zero density contributions
   std::fill_n(&(rho_ij[0][0]), rho_neigh * nlocal, 0.0);
   std::fill_n(&(rho_ji[0][0]), rho_neigh * nlocal, 0.0);
+  */
   
-  // calculate the site densities, gradients (future) and beta(rho)
+  // calculate the site densities and beta(rho)
   calculate_environment();
   
   /* 
@@ -1041,8 +1043,8 @@ void FixEPH::grow_arrays(int ngrow) {
   memory->grow(w_i, ngrow, 3, "eph:w_i");
   memory->grow(xi_i, ngrow, 3, "eph:xi_i");
   
-  memory->grow(rho_ij, ngrow, rho_neigh, "eph:rho_ij");
-  memory->grow(rho_ji, ngrow, rho_neigh, "eph:rho_ji");
+  //memory->grow(rho_ij, ngrow, rho_neigh, "eph:rho_ij");
+  //memory->grow(rho_ji, ngrow, rho_neigh, "eph:rho_ji");
   
   // per atom values
   // we need only nlocal elements here
