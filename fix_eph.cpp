@@ -461,10 +461,10 @@ void FixEPH::calculate_environment() {
         if(r_sq < rcutoffsq) {
           double r = sqrt(r_sq);          
           double v_rho_ji = beta->getRho(typeMap[jtype-1], r);
-          double v_rho_ij = beta->getRho(typeMap[itype-1], r);
+          //double v_rho_ij = beta->getRho(typeMap[itype-1], r);
           
-          rho_ij[i][j] = v_rho_ij;
-          rho_ji[i][j] = v_rho_ji;
+          //rho_ij[i][j] = v_rho_ij;
+          //rho_ji[i][j] = v_rho_ji;
           
           rho_i[i] += v_rho_ji;
         }
@@ -734,8 +734,9 @@ void FixEPH::force_prl() {
           // first sum
           //if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 < rcutoffsq && e_r_2 > 0) {
           if(e_r_2 < rcutoffsq) {
-            //double v_rho_ji = beta->getRho(typemap[jtype - 1], sqrt(e_r_2));
-            double v_rho_ji = rho_ji[i][j];
+            double e_r = sqrt(e_r_2);
+            //double v_rho_ji = rho_ji[i][j];
+            double v_rho_ji = beta->getRho(typeMap[jtype - 1], e_r);
             {
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
@@ -800,8 +801,10 @@ void FixEPH::force_prl() {
           // first sum
           //if (rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
           if (e_r_2 < rcutoffsq) {
+            double e_r = sqrt(e_r_2);
             {
-            double v_rho_ji = rho_ji[i][j];
+            //double v_rho_ji = rho_ji[i][j];
+            double v_rho_ji = beta->getRho(typeMap[jtype - 1], e_r);
             double e_v_v = e_ij_x * w_i[i][0] + 
                           e_ij_y * w_i[i][1] + 
                           e_ij_z * w_i[i][2];
@@ -818,7 +821,8 @@ void FixEPH::force_prl() {
           //if (rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
             {
             double alpha_j = sqrt(beta_i[jj]);
-            double v_rho_ij = rho_ij[i][j];
+            //double v_rho_ij = rho_ij[i][j];
+            double v_rho_ij = beta->getRho(typeMap[itype - 1], e_r);
             double e_v_v = e_ij_x * w_i[jj][0] + 
                           e_ij_y * w_i[jj][1] + 
                           e_ij_z * w_i[jj][2];
@@ -853,6 +857,7 @@ void FixEPH::force_prl() {
         for(int j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
+          int jtype = type[jj];
           
           // calculate the e_ij vector
           double e_ij_x = x[jj][0] - x[i][0];
@@ -864,8 +869,10 @@ void FixEPH::force_prl() {
           // first sum
           //if(rho_ji[i][j] > 0.0 && rho_i[i] > 0.0 && e_r_2 > 0.0) {
           if(e_r_2 < rcutoffsq) {
+            double e_r = sqrt(e_r_2);
             {
-            double v_rho_ji = rho_ji[i][j];
+            //double v_rho_ji = rho_ji[i][j];
+            double v_rho_ji = beta->getRho(typeMap[jtype - 1], e_r);
             double e_v_xi = e_ij_x * xi_i[i][0] + 
                             e_ij_y * xi_i[i][1] + 
                             e_ij_z * xi_i[i][2];
@@ -882,7 +889,8 @@ void FixEPH::force_prl() {
           //if(rho_ij[i][j] > 0.0 && rho_i[jj] > 0.0 && e_r_2 > 0.0) {
             {
             double alpha_j = sqrt(beta_i[jj]);
-            double v_rho_ij = rho_ij[i][j];
+            //double v_rho_ij = rho_ij[i][j];
+            double v_rho_ij = beta->getRho(typeMap[itype - 1], e_r);
             double e_v_xi = e_ij_x * xi_i[jj][0] + 
                             e_ij_y * xi_i[jj][1] + 
                             e_ij_z * xi_i[jj][2];
