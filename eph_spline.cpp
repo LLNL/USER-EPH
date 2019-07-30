@@ -11,6 +11,7 @@
 // internal headers
 #include "eph_spline.h"
 
+#if 0
 EPH_Spline::EPH_Spline(double x0, double dx, const double* y, size_t points) : EPH_Spline(x0, dx) {
   if(!y) throw std::runtime_error("eph_spline: null pointer supplied");
   
@@ -206,3 +207,4 @@ void EPH_Spline::FindCoefficients() {
   }
 }
 
+#endif
