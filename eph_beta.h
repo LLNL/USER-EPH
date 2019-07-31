@@ -9,20 +9,59 @@
 // external headers 
 #include <vector>
 #include <string>
-#include <stdexcept>
+#include <cassert>
 
 // internal headers
 #include "eph_spline.h"
 
+#if 1
+template<typename Container = std::vector<double>>
 class EPH_Beta {
   public:
-  
+    EPH_Beta() {}
+    EPH_Beta(const char* file) {
+      
+    }
   
   private:
-  
+    static constexpr unsigned int max_line_length = 1024; // this is for parsing
+    double r_cutoff; // cutoff for locality
+    double rho_cutoff; // cutoff for largest site density
+    size_t n_elements; // number of elements
+    
+    std::vector<uint8_t> element_number;
+    std::vector<std::string> element_name;
+    std::vector<EPH_Spline<Container>> rho;
+    std::vector<EPH_Spline<Container>> beta;
 };
+#endif
 
 #if 0
+template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
+class EPH_Beta {
+  public:
+    EPH_Beta() {}
+    EPH_Beta(const char* file) {
+      
+    }
+  
+  private:
+    static constexpr unsigned int max_line_length = 1024; // this is for parsing
+    double r_cutoff; // cutoff for locality
+    double rho_cutoff; // cutoff for largest site density
+    size_t n_elements; // number of elements
+    
+    std::vector<int> elementNumber;
+    std::vector<std::string> elementName;
+    std::vector<EPH_Spline> rho;
+    std::vector<EPH_Spline> beta;
+};
+#endif
+
+
+#if 0
+#include <stdexcept>
+
 class EPH_Beta {
   public:
     EPH_Beta(const char* file); // initialise EPH_Beta based on file

@@ -290,7 +290,9 @@ class EPH_Spline {
 };
 
 #if 0
-class EPH_Spline_OLD {
+#include <stdexcept>
+
+class EPH_Spline {
   private:
     double x_First; // coordinate of the first element
     double x_Last; // coordinate of the last element
