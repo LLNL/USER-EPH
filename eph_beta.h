@@ -1,5 +1,5 @@
 /*
- * Authors of the extension Artur Tamm, Alfredo Caro, Alfredo Correa, Mattias Klintenberg
+ * Authors of the extension Artur Tamm, Alfredo Correa
  * e-mail: artur.tamm.work@gmail.com
  */
 
@@ -14,6 +14,15 @@
 // internal headers
 #include "eph_spline.h"
 
+class EPH_Beta {
+  public:
+  
+  
+  private:
+  
+};
+
+#if 0
 class EPH_Beta {
   public:
     EPH_Beta(const char* file); // initialise EPH_Beta based on file
@@ -92,5 +101,6 @@ class EPH_Beta {
     std::vector<EPH_Spline> rho;
     std::vector<EPH_Spline> beta;
 };
+#endif
 
 #endif
