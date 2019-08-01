@@ -15,7 +15,7 @@
  * 
  * 
  */
-#if 0
+#if 1
 template<typename Container = std::vector<double>>
 class EPH_Spline {
   using Float = typename Container::value_type;
@@ -152,9 +152,7 @@ class EPH_Spline {
 };
 #endif
 
-//using EPH_Spline = EPH_Spline_Generic<double, std::allocator, std::vector>;
-//using EPH_Spline = EPH_Spline_Generic<>;
-
+#if 0
 template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
 class EPH_Spline {
   public:
@@ -288,6 +286,9 @@ class EPH_Spline {
     Container<> y;
     Container<Coefficients, Allocator<Coefficients>> c;
 };
+
+using EPH_Spline_D = EPH_Spline<double, std::allocator, std::vector>;
+#endif
 
 #if 0
 #include <stdexcept>
