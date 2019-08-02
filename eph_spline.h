@@ -137,7 +137,7 @@ class EPH_Spline {
     Float operator() (Float i_x) const {
       assert(i_x >= 0);
       
-      size_t index = i_x/dx;
+      size_t index = i_x/dx; // use inv_dx = 1. / dx instead
       assert(index < y.size());
       
       return a[index] + i_x * (b[index] + i_x * (c[index] + i_x * d[index]));
@@ -147,7 +147,7 @@ class EPH_Spline {
     constexpr static size_t min_size {3};
     
     Float dx;
-    Container y;
+    Container y; // drop y
     Container a, b, c, d;
 };
 #endif
@@ -269,7 +269,7 @@ class EPH_Spline {
     Float operator() (Float i_x) const {
       assert(i_x >= 0);
       
-      size_t index = i_x/dx;
+      size_t index = i_x/dx; // use inv_dx = 1./dx instead
       assert(index < y.size());
       
       return c[index].a + i_x * (c[index].b + i_x * (c[index].c + i_x * c[index].d));
@@ -283,7 +283,7 @@ class EPH_Spline {
     };
     
     Float dx;
-    Container<> y;
+    Container<> y; // drop y
     Container<Coefficients, Allocator<Coefficients>> c;
 };
 

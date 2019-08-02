@@ -85,13 +85,13 @@ class EPH_Beta {
         for(size_t j = 0; j < n_points_rho; ++j)
           fd >> l_rho[j];
         
-        rho[i] = EPH_Spline<>(dr, l_rho);
+        rho[i] = Spline(dr, l_rho);
         
         Container l_beta(n_points_beta);
         for(size_t j = 0; j < n_points_beta; ++j)
           fd >> l_beta[i];
         
-        beta[i] = EPH_Spline<>(drho, l_beta);
+        beta[i] = Spline(drho, l_beta);
       }
 
       fd.close();
@@ -143,7 +143,7 @@ class EPH_Beta {
     std::vector<uint8_t> element_number;
     std::vector<std::string> element_name;
     std::vector<Spline> rho;
-    std::vector<EPH_Spline<Container>> beta;
+    std::vector<Spline> beta;
 };
 #endif
 
@@ -153,7 +153,10 @@ class EPH_Beta {
   using Spline = EPH_Spline<Float, Allocator, Container>;
   
   public:
-    EPH_Beta() : n_elements {0} {}
+    EPH_Beta() : 
+      n_elements {0},
+      r_cutoff {0},
+      rho_cutoff {0} {}
     
     EPH_Beta(const char* file) {
       
