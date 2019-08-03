@@ -175,7 +175,6 @@ class EPH_Beta {
 };
 #endif
 
-
 #if 0
 #include <stdexcept>
 

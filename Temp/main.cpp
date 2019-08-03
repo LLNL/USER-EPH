@@ -25,7 +25,7 @@ int main() {
 }
 #endif
 
-#if 1
+#if 0
 int main() {
   EPH_Beta<> beta;
   beta = EPH_Beta<>("Beta_Rho.beta");
@@ -53,3 +53,28 @@ int main() {
 
 #endif
 
+#if 1
+
+using Float = double;
+
+template <typename _F = Float>
+using Allocator = std::allocator<_F>;
+
+template<typename _F = Float, typename _A = Allocator<_F>>
+using Container = std::vector<_F, _A>;
+
+using Beta = EPH_Beta<Container<Float, Allocator<Float>>>;
+
+int main() {
+  Container<uint8_t> a = {'1', '2', '3'};
+  Container<> b = {1.0, 2.0, 3.0};
+  
+  std::cout << a[0] << ' ' << a[1] << ' ' << a[2] << '\n';
+  std::cout << b[0] << ' ' << b[1] << ' ' << b[2] << '\n';
+  
+  Beta beta();
+  
+  return 0;
+}
+
+#endif

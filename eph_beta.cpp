@@ -14,6 +14,7 @@
 #include "eph_beta.h"
 #include "eph_spline.h"
 
+#if 0
 EPH_Beta::EPH_Beta(const char* file) {
   std::ifstream fd(file);
   
@@ -85,4 +86,4 @@ EPH_Beta::EPH_Beta(const char* file) {
 
   fd.close();
 }
-
+#endif

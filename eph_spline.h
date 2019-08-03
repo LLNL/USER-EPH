@@ -22,13 +22,12 @@ class EPH_Spline {
   
   public:
     EPH_Spline() {}
-    EPH_Spline(Float i_dx, Container &i_y) :
-      dx {i_dx},
-      y {i_y},
-      a(i_y.size()),
-      b(i_y.size()),
-      c(i_y.size()),
-      d(i_y.size())
+    EPH_Spline(Float dx, Container &y) :
+      inv_dx {1./dx},
+      a(y.size()),
+      b(y.size()),
+      c(y.size()),
+      d(y.size())
     {
       size_t points = y.size();
       
@@ -44,7 +43,7 @@ class EPH_Spline {
       
       for(size_t i = 0; i < points-1; ++i) {
         //b -> z
-        b[i] = (y[i+1]-y[i])/dx;
+        b[i] = (y[i+1] - y[i])/dx;
       }
     
       z1 = 2.0*b[0] - b[1];
@@ -63,17 +62,17 @@ class EPH_Spline {
       }
     
       // special cases
-      c[0] = fabs(b[1]-b[0]);
-      d[0] = fabs(z1-z0);
+      c[0] = fabs(b[1] - b[0]);
+      d[0] = fabs(z1 - z0);
       
-      c[1] = fabs(b[2]-b[1]);
-      d[1] = fabs(b[0]-z1);
+      c[1] = fabs(b[2] - b[1]);
+      d[1] = fabs(b[0] - z1);
       
-      c[points-2] = fabs(z2-b[points-2]);
-      d[points-2] = fabs(b[points-3]-b[points-4]);
+      c[points-2] = fabs(z2 - b[points-2]);
+      d[points-2] = fabs(b[points-3] - b[points-4]);
       
-      c[points-1] = fabs(z3-z2);
-      d[points-1] = fabs(b[points-2]-b[points-3]);
+      c[points-1] = fabs(z3 - z2);
+      d[points-1] = fabs(b[points-2] - b[points-3]);
       
       //derivatives
       for(size_t i = 0; i < points; ++i) {
@@ -93,21 +92,16 @@ class EPH_Spline {
         d0 = b[i]; w1 = c[i]; w0 = d[i];
         
         // special cases
-        if(d_2 == d_1 && d0 != d1) {
+        if(d_2 == d_1 && d0 != d1)
           a[i] = d_1;
-        }
-        else if(d0 == d1 && d_2 == d_1) {
+        else if(d0 == d1 && d_2 == d_1)
           a[i] = d0;
-        }
-        else if(d_1 == d0) {
+        else if(d_1 == d0)
           a[i] = d0;
-        }
-        else if(d_2 == d_1 && d0 == d1 && d0 != d_1) {
+        else if(d_2 == d_1 && d0 == d1 && d0 != d_1)
           a[i] = 0.5 * (d_1 + d0);
-        }
-        else {
-          a[i] = (d_1*w1 + d0*w0) / (w1+w0);
-        }
+        else
+          a[i] = (d_1*w1 + d0*w0) / (w1 + w0);
       }
   
       // solve the equations
@@ -134,20 +128,19 @@ class EPH_Spline {
       d[points-1] = 0.0;
     }
     
-    Float operator() (Float i_x) const {
-      assert(i_x >= 0);
+    Float operator() (Float x) const {
+      assert(x >= 0);
       
-      size_t index = i_x/dx; // use inv_dx = 1. / dx instead
-      assert(index < y.size());
+      size_t index = x * inv_dx; // use inv_dx = 1. / dx instead
+      assert(index < a.size());
       
-      return a[index] + i_x * (b[index] + i_x * (c[index] + i_x * d[index]));
+      return a[index] + x * (b[index] + x * (c[index] + x * d[index]));
     }
     
   private:
     constexpr static size_t min_size {3};
     
-    Float dx;
-    Container y; // drop y
+    Float inv_dx;
     Container a, b, c, d;
 };
 #endif
@@ -157,10 +150,9 @@ template<typename Float = double, template<typename> class Allocator = std::allo
 class EPH_Spline {
   public:
     EPH_Spline() {}
-    EPH_Spline(Float i_dx, Container<> &i_y) :
-      dx {i_dx},
-      y {i_y},
-      c(i_y.size())
+    EPH_Spline(Float dx, Container<> &y) :
+      inv_dx {1./dx},
+      c(y.size())
     {
       size_t points = y.size();
       
@@ -176,7 +168,7 @@ class EPH_Spline {
       
       for(size_t i = 0; i < points-1; ++i) {
         //b -> z
-        c[i].b = (y[i+1]-y[i])/dx;
+        c[i].b = (y[i+1]-y[i]) / dx;
       }
     
       z1 = 2.0*c[0].b - c[1].b;
@@ -195,17 +187,17 @@ class EPH_Spline {
       }
     
       // special cases
-      c[0].c = fabs(c[1].b-c[0].b);
+      c[0].c = fabs(c[1].b - c[0].b);
       c[0].d = fabs(z1-z0);
       
-      c[1].c = fabs(c[2].b-c[1].b);
+      c[1].c = fabs(c[2].b - c[1].b);
       c[1].d = fabs(c[0].b-z1);
       
-      c[points-2].c = fabs(z2-c[points-2].b);
-      c[points-2].d = fabs(c[points-3].b-c[points-4].b);
+      c[points-2].c = fabs(z2 - c[points-2].b);
+      c[points-2].d = fabs(c[points-3].b - c[points-4].b);
       
-      c[points-1].c = fabs(z3-z2);
-      c[points-1].d = fabs(c[points-2].b-c[points-3].b);
+      c[points-1].c = fabs(z3 - z2);
+      c[points-1].d = fabs(c[points-2].b - c[points-3].b);
       
       //derivatives
       for(size_t i = 0; i < points; ++i) {
@@ -225,21 +217,16 @@ class EPH_Spline {
         d0 = c[i].b; w1 = c[i].c; w0 = c[i].d;
         
         // special cases
-        if(d_2 == d_1 && d0 != d1) {
+        if(d_2 == d_1 && d0 != d1)
           c[i].a = d_1;
-        }
-        else if(d0 == d1 && d_2 == d_1) {
+        else if(d0 == d1 && d_2 == d_1)
           c[i].a = d0;
-        }
-        else if(d_1 == d0) {
+        else if(d_1 == d0)
           c[i].a = d0;
-        }
-        else if(d_2 == d_1 && d0 == d1 && d0 != d_1) {
+        else if(d_2 == d_1 && d0 == d1 && d0 != d_1)
           c[i].a = 0.5 * (d_1 + d0);
-        }
-        else {
+        else
           c[i].a = (d_1*w1 + d0*w0) / (w1+w0);
-        }
       }
   
       // solve the equations
@@ -266,13 +253,13 @@ class EPH_Spline {
       c[points-1].d = 0.0;
     }
     
-    Float operator() (Float i_x) const {
-      assert(i_x >= 0);
+    Float operator() (Float x) const {
+      assert(x >= 0);
       
-      size_t index = i_x/dx; // use inv_dx = 1./dx instead
-      assert(index < y.size());
+      size_t index = x * inv_dx; // use inv_dx = 1./dx instead
+      assert(index < c.size());
       
-      return c[index].a + i_x * (c[index].b + i_x * (c[index].c + i_x * c[index].d));
+      return c[index].a + x * (c[index].b + x * (c[index].c + x * c[index].d));
     }
     
   private:
@@ -282,12 +269,9 @@ class EPH_Spline {
       Float a, b, c, d;
     };
     
-    Float dx;
-    Container<> y; // drop y
+    Float inv_dx;
     Container<Coefficients, Allocator<Coefficients>> c;
 };
-
-using EPH_Spline_D = EPH_Spline<double, std::allocator, std::vector>;
 #endif
 
 #if 0
