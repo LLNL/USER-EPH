@@ -172,9 +172,9 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   if(beta.get_n_elements() < 1)
     error->all(FLERR, "Fix eph: no elements found in input file");
   
-  rcutoff = beta.get_r_cutoff();
-  rcutoffsq = rcutoff * rcutoff;
-  rhocutoff = beta.get_rho_cutoff();
+  r_cutoff = beta.get_r_cutoff();
+  r_cutoff_sq = r_cutoff * r_cutoff;
+  rho_cutoff = beta.get_rho_cutoff();
   
   // do element mapping
   for(size_t i = 0; i < types; ++i) {
@@ -420,14 +420,14 @@ void FixEPH::calculate_environment() {
   int **firstneigh = list->firstneigh;
   
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(int i = 0; i < nlocal; ++i) {
+  for(size_t i = 0; i < nlocal; ++i) {
     // check if current atom belongs to fix group and if an atom is local
     if(mask[i] & groupbit) {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
       
-      for(int j = 0; j < jnum; ++j) {
+      for(size_t j = 0; j < jnum; ++j) {
         int jj = jlist[j];
         jj &= NEIGHMASK;
         
@@ -442,7 +442,7 @@ void FixEPH::calculate_environment() {
         */
         double r_sq = get_distance_sq(x[jj], x[i]);
         
-        if(r_sq < rcutoffsq) {
+        if(r_sq < r_cutoff_sq) {
           //double r = sqrt(r_sq);          
           //double v_rho_ji = beta->getRho(typeMap[jtype-1], r);
           //double v_rho_ij = beta->getRho(typeMap[itype-1], r);
@@ -531,8 +531,9 @@ void FixEPH::force_prb() {
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
-          if(rho_i[i] > 0.0 && r_sq < rcutoffsq) {
+          if(r_sq < r_cutoff_sq && rho_i[i] > 0.0) {
             double var = beta_i[i] * beta.get_rho(jtype - 1, sqrt(r_sq)) / rho_i[i];
+            
             f_EPH[i][0] -= var * v[jj][0];
             f_EPH[i][1] -= var * v[jj][1];
             f_EPH[i][2] -= var * v[jj][2];
@@ -593,7 +594,7 @@ void FixEPH::force_prlcm() {
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
-          if (rho_i[i] > 0.0 && r_sq < rcutoffsq) {
+          if (r_sq < r_cutoff_sq && rho_i[i] > 0.0) {
             double var = alpha_i * beta.get_rho(jtype-i, sqrt(r_sq)) / rho_i[i];
             
             w_i[i][0] -= var * v[jj][0];
@@ -610,7 +611,6 @@ void FixEPH::force_prlcm() {
     comm->forward_comm_fix(this);
     state = FixState::WZ;
     comm->forward_comm_fix(this);
-    //MPI_Allreduce(MPI_IN_PLACE, &(w_i[0][0]), 3 * atom->natoms, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     
     // now calculate the forces
     for(size_t i = 0; i < nlocal; ++i) {
@@ -631,9 +631,10 @@ void FixEPH::force_prlcm() {
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
-          if(rho_i[jj] > 0.0 && r_sq < rcutoff) {
+          if(r_sq < r_cutoff_sq && rho_i[jj] > 0.0) {
             double alpha_j = sqrt(beta_i[jj]); // switch formalism to alpha everywhere to avoid unnecessary sqrt
             double var = alpha_j * beta.get_rho(itype - 1, sqrt(r_sq)) / rho_i[jj];
+            
             f_EPH[i][0] -= var * w_i[jj][0];
             f_EPH[i][1] -= var * w_i[jj][1];
             f_EPH[i][2] -= var * w_i[jj][2];
@@ -668,7 +669,7 @@ void FixEPH::force_prlcm() {
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
-          if(rho_i[jj] > 0.0 && r_sq < rcutoff) {
+          if(r_sq < r_cutoff_sq && rho_i[jj] > 0) {
             var = sqrt(beta_i[jj]);
             var *= beta.get_rho(itype - 1, sqrt(r_sq)) / rho_i[jj];
             
@@ -722,7 +723,7 @@ void FixEPH::force_prl() {
           double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
           // first sum
-          if (e_r_sq < rcutoffsq) {
+          if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
             
             double e_v_v = e_ij_x * v[i][0] + 
@@ -778,7 +779,7 @@ void FixEPH::force_prl() {
           
           double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          if(e_r_sq < rcutoffsq) {
+          if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double alpha_j = sqrt(beta_i[jj]);
             double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
             
@@ -835,7 +836,7 @@ void FixEPH::force_prl() {
           
           double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
           
-          if(e_r_sq < rcutoffsq) {
+          if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double alpha_j = sqrt(beta_i[jj]);
             
             double v_rho_ji = beta.get_rho(jtype - 1, sqrt(e_r_sq));

@@ -119,9 +119,9 @@ class FixEPH : public Fix {
     double dtv;
     double dtf;
     
-    double rcutoff; // cutoff for rho(r)
-    double rcutoffsq;
-    double rhocutoff; // cutoff for beta(rho)
+    double r_cutoff; // cutoff for rho(r)
+    double r_cutoff_sq;
+    double rho_cutoff; // cutoff for beta(rho)
     
     int T_freq; // frequency for printing electronic temperatures to files 
     char T_out[max_file_length]; // this will print temperature heatmap
@@ -146,10 +146,14 @@ class FixEPH : public Fix {
     double **f_RNG; // size = [nlocal][3] // TODO: try switching to vector
     
     // stopping power for each atom
+    // double* alpha_i; // size = [nlocal] // TODO: try switching to vector
     double* beta_i; // size = [nlocal] // TODO: try switching to vector
     
     // Electronic density at each atom
     double* rho_i; // size = [nlocal] // TODO: try switching to vector
+    
+    // Inverse of electronic density in order to avoid 1./rho_i
+    double* inv_rho_i; // size = [nlocal] // TODO: try switching to vector
     
     // dissipation vector W_ij v_j
     double** w_i; // size = [nlocal][3] // TODO: try switching to vector
@@ -168,12 +172,20 @@ class FixEPH : public Fix {
     void force_prl(); // PRL model with full functionality
     void force_testing(); // reserved for testing purposes
     
-    double get_distance_sq(double* x, double* y) {
+    static double get_distance_sq(const double* x, const double* y) {
       double dx = x[0] - y[0];
       double dy = x[1] - y[1];
       double dz = x[2] - y[2]; 
       
       return dx*dx + dy*dy + dz*dz;
+    }
+    
+    static double get_difference_sq(const double* x, const double* y, double* z) {
+      z[0] = x[0] - y[0];
+      z[1] = x[1] - y[1];
+      z[2] = x[2] - y[2];
+      
+      return z[0]*z[0] + z[1]*z[1] + z[2]*z[2];
     }
 };
 

@@ -16,6 +16,13 @@
 // internal headers
 #include "eph_spline.h"
 
+/* 
+ * Stripped down version of beta(rho) class
+ * 
+ */
+
+// TODO: consider storing data as alpha instead of beta to reduce the number of sqrt
+
 #if 1
 template<typename Container = std::vector<double>>
 class EPH_Beta {

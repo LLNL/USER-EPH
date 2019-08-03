@@ -15,6 +15,9 @@
  * 
  * 
  */
+
+// TODO consider swiching splines to x**2 formalism
+
 #if 1
 template<typename Container = std::vector<double>>
 class EPH_Spline {
