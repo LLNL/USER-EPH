@@ -63,7 +63,9 @@ using Allocator = std::allocator<_F>;
 template<typename _F = Float, typename _A = Allocator<_F>>
 using Container = std::vector<_F, _A>;
 
-using Beta = EPH_Beta<Container<Float, Allocator<Float>>>;
+//using Beta = EPH_Beta<Container<Float, Allocator<Float>>>;
+using Beta = EPH_Beta<Float, Allocator, Container>;
+
 
 int main() {
   Container<uint8_t> a = {'1', '2', '3'};
