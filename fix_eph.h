@@ -111,7 +111,7 @@ class FixEPH : public Fix {
     int8_t eph_model; // model selection
     
     uint8_t types; // number of different types
-    uint8_t* type_map; // type map // change this to vector
+    uint8_t* type_map; // TODO: type map // change this to vector
     //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
     
     Beta beta; // instance for beta(rho) parametrisation

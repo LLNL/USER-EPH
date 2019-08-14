@@ -77,7 +77,7 @@ class EPH_FDM {
 
       assert(dx > 0);
       assert(dy > 0);
-      assert(dz < 0);
+      assert(dz > 0);
     }
     
     // set system properties
