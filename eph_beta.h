@@ -26,6 +26,7 @@ template<typename Float = double, template<typename> class Allocator = std::allo
 class EPH_Beta {
   using Spline = EPH_Spline<Float, Allocator, Container>;
   using Container_Float = Container<Float, Allocator<Float>>;
+  
   public:
     EPH_Beta() : 
       n_elements {0},
@@ -74,6 +75,7 @@ class EPH_Beta {
       size_t n_points_beta;
       
       Float dr;
+      Float dr_sq;
       Float drho;
       
       fd >> n_points_rho;
@@ -81,7 +83,10 @@ class EPH_Beta {
       fd >> n_points_beta;
       fd >> drho;
       fd >> r_cutoff;
+      r_cutoff_sq = r_cutoff * r_cutoff;
       rho_cutoff = drho * (n_points_beta-1);
+      
+      dr_sq = r_cutoff_sq / (n_points_rho - 1);
       
       // read spline knots for rho and beta for each element
       for(size_t i = 0; i < n_elements; ++i) {
@@ -92,6 +97,12 @@ class EPH_Beta {
           fd >> l_rho[j];
         
         rho[i] = Spline(dr, l_rho);
+        
+        // create square version
+        for(size_t j = 0; j != n_points_rho; ++j)
+          l_rho[j] = rho[i](sqrt(j * dr_sq));
+        
+        rho_r_sq[i] = Spline(dr_sq, l_rho);
         
         Container_Float l_beta(n_points_beta);
         for(size_t j = 0; j != n_points_beta; ++j)
@@ -115,6 +126,10 @@ class EPH_Beta {
     
     Float get_r_cutoff() const {
       return r_cutoff;
+    }
+    
+    Float get_r_cutoff_sq() const {
+      return r_cutoff_sq;
     }
     
     Float get_rho_cutoff() const {
@@ -141,7 +156,7 @@ class EPH_Beta {
     
     Float get_rho_r_sq(size_t index, Float r_sq) const {
       assert(index < n_elements);
-      assert(r_sq < r_cutoff * r_cutoff);
+      assert(r_sq < r_cutoff_sq);
       
       return rho_r_sq[index](r_sq);
     }
@@ -164,6 +179,7 @@ class EPH_Beta {
     static constexpr unsigned int max_line_length = 1024; // this is for parsing
     
     Float r_cutoff; // cutoff for locality
+    Float r_cutoff_sq; // cutoff sq for locality mostly unused
     Float rho_cutoff; // cutoff for largest site density
     size_t n_elements; // number of elements
     

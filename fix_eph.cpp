@@ -173,7 +173,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR, "Fix eph: no elements found in input file");
   
   r_cutoff = beta.get_r_cutoff();
-  r_cutoff_sq = r_cutoff * r_cutoff;
+  r_cutoff_sq = beta.get_r_cutoff_sq();
   rho_cutoff = beta.get_rho_cutoff();
   
   // do element mapping
@@ -409,7 +409,8 @@ void FixEPH::end_of_step() {
   }
 }
 
-void FixEPH::calculate_environment() {
+void FixEPH::calculate_environment() 
+{
   double **x = atom->x;
   int *type = atom->type;
   int *mask = atom->mask;
@@ -419,9 +420,11 @@ void FixEPH::calculate_environment() {
   int **firstneigh = list->firstneigh;
   
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(size_t i = 0; i != nlocal; ++i) {
+  for(size_t i = 0; i != nlocal; ++i) 
+  {
     // check if current atom belongs to fix group and if an atom is local
-    if(mask[i] & groupbit) {
+    if(mask[i] & groupbit) 
+    {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
@@ -434,7 +437,7 @@ void FixEPH::calculate_environment() {
         double r_sq = get_distance_sq(x[jj], x[i]);
         
         if(r_sq < r_cutoff_sq)
-          rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
+          rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
       }
       
       // is this necessary ?
@@ -442,10 +445,10 @@ void FixEPH::calculate_environment() {
     }
   }
    
-  state = FixState::RHO;
+  state = FixState::RHO; // TODO remove these
   comm->forward_comm_fix(this);
   
-  state = FixState::BETA;
+  state = FixState::BETA; // TODO: remove these
   comm->forward_comm_fix(this);
 }
 
@@ -671,7 +674,8 @@ void FixEPH::force_prlcm() {
   }
 }
   
-void FixEPH::force_prl() {
+void FixEPH::force_prl() 
+{
   double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
@@ -697,7 +701,7 @@ void FixEPH::force_prl() {
           jj &= NEIGHMASK;
           int jtype = type[jj];
           
-          // calculate the e_ij vector
+          // calculate the e_ij vector TODO: change these
           double e_ij_x = x[jj][0] - x[i][0];
           double e_ij_y = x[jj][1] - x[i][1];
           double e_ij_z = x[jj][2] - x[i][2];
@@ -706,13 +710,13 @@ void FixEPH::force_prl() {
           
           // first sum
           if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
-            double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
+            double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
             
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
                           e_ij_z * v[i][2];
             
-            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_sq;
+            double var = alpha_i * v_rho_ji * e_v_v / (rho_i[i] * e_r_sq);
             
             w_i[i][0] += var * e_ij_x;
             w_i[i][1] += var * e_ij_y;
@@ -722,7 +726,7 @@ void FixEPH::force_prl() {
                     e_ij_y * v[jj][1] + 
                     e_ij_z * v[jj][2];
             
-            var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_sq;
+            var = alpha_i * v_rho_ji * e_v_v / (rho_i[i] * e_r_sq);
             
             w_i[i][0] -= var * e_ij_x;
             w_i[i][1] -= var * e_ij_y;
@@ -1173,3 +1177,4 @@ double FixEPH::memory_usage() {
 void FixEPH::post_run() {
   if(myID == 0) fdm.saveState(T_state);
 }
+

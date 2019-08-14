@@ -16,8 +16,6 @@
  * 
  */
 
-// TODO consider swiching splines to x**2 formalism
-
 template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
 class EPH_Spline {
   public:
