@@ -5,7 +5,14 @@
 
 // external headers
 #include <iostream>
+#include <cstring> // TODO: remove
+#include <string>
+#include <cstdlib>
+#include <limits>
+#include <algorithm>
+#include <cassert>
 
+// lammps headers
 #include "error.h"
 #include "domain.h"
 #include "neighbor.h"
@@ -17,13 +24,6 @@
 #include "force.h"
 #include "update.h"
 #include "comm.h"
-
-#include <cstring> // TODO: remove
-#include <string>
-#include <cstdlib>
-#include <limits>
-#include <algorithm>
-#include <cassert>
 
 // internal headers
 #include "fix_eph.h"
@@ -419,43 +419,26 @@ void FixEPH::calculate_environment() {
   int **firstneigh = list->firstneigh;
   
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(size_t i = 0; i < nlocal; ++i) {
+  for(size_t i = 0; i != nlocal; ++i) {
     // check if current atom belongs to fix group and if an atom is local
     if(mask[i] & groupbit) {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
       
-      for(size_t j = 0; j < jnum; ++j) {
+      for(size_t j = 0; j != jnum; ++j) {
         int jj = jlist[j];
         jj &= NEIGHMASK;
         
         int jtype = type[jj];
-        
-        /*
-        double delx = x[jj][0] - x[i][0];
-        double dely = x[jj][1] - x[i][1];
-        double delz = x[jj][2] - x[i][2];
-        
-        double r_sq = delx*delx + dely*dely + delz*delz;
-        */
         double r_sq = get_distance_sq(x[jj], x[i]);
         
-        if(r_sq < r_cutoff_sq) {
-          //double r = sqrt(r_sq);          
-          //double v_rho_ji = beta->getRho(typeMap[jtype-1], r);
-          //double v_rho_ij = beta->getRho(typeMap[itype-1], r);
-          
-          //rho_ij[i][j] = v_rho_ij;
-          //rho_ji[i][j] = v_rho_ji;
-          
-          //rho_i[i] += v_rho_ji;
-          
+        if(r_sq < r_cutoff_sq)
           rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
-        }
       }
       
-      beta_i[i] = beta.get_beta(type_map[itype-1], rho_i[i]);
+      // is this necessary ?
+      beta_i[i] = beta.get_beta(type_map[itype-1], rho_i[i]); // TODO: calculate beta on the fly
     }
   }
    
@@ -701,7 +684,7 @@ void FixEPH::force_prl() {
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
     // w_i = W_ij^T v_j
-    for(size_t i = 0; i < nlocal; ++i) {
+    for(size_t i = 0; i != nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -709,7 +692,7 @@ void FixEPH::force_prl() {
         
         double alpha_i = sqrt(beta_i[i]);
         
-        for(size_t j = 0; j < jnum; ++j) {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
@@ -758,7 +741,7 @@ void FixEPH::force_prl() {
     
     // now calculate the forces
     // f_i = W_ij w_j
-    for(size_t i = 0; i < nlocal; ++i) {
+    for(size_t i = 0; i != nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -766,7 +749,7 @@ void FixEPH::force_prl() {
         
         double alpha_i = sqrt(beta_i[i]);
         
-        for(size_t j = 0; j < jnum; ++j) {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
@@ -815,7 +798,7 @@ void FixEPH::force_prl() {
   
   // create random forces
   if(eph_flag & Flag::RANDOM) {
-    for(size_t i = 0; i < nlocal; i++) {
+    for(size_t i = 0; i != nlocal; i++) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -823,7 +806,7 @@ void FixEPH::force_prl() {
         
         double alpha_i = sqrt(beta_i[i]);
         
-        for(size_t j = 0; j < jnum; ++j) {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
