@@ -115,7 +115,7 @@ class FixEPH : public Fix {
     //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
     
     Beta beta; // instance for beta(rho) parametrisation
-    EPH_FDM* fdm; // electronic FDM grid
+    EPH_FDM fdm; // electronic FDM grid
     
     /** integrator functionality **/
     double dtv;
