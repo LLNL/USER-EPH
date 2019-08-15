@@ -76,6 +76,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   peratom_flag = 1; // fix provides per atom values
   size_peratom_cols = 8; // per atom has 8 dimensions
   peratom_freq = 1; // per atom values are provided every step
+  //ghostneigh = 1; // neighbours of neighbours
   
   comm_forward = 1; // forward communication is needed
   comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
@@ -261,10 +262,13 @@ void FixEPH::init() {
   /* copy paste from vcsgc */
   /** we are a fix and we need full neighbour list **/
   int irequest = neighbor->request((void*)this, this->instance_me);
-  neighbor->requests[irequest]->pair=0;
-  neighbor->requests[irequest]->fix=1;
-  neighbor->requests[irequest]->half=0;
-  neighbor->requests[irequest]->full=1;
+  neighbor->requests[irequest]->pair = 0;
+  neighbor->requests[irequest]->fix = 1;
+  neighbor->requests[irequest]->half = 0;
+  neighbor->requests[irequest]->full = 1;
+  neighbor->requests[irequest]->ghost = 1;
+  
+  neighbor->requests[irequest]->cutoff = r_cutoff;
   
   reset_dt();
 }
@@ -436,8 +440,11 @@ void FixEPH::calculate_environment()
         int jtype = type[jj];
         double r_sq = get_distance_sq(x[jj], x[i]);
         
+        //if(r_sq < r_cutoff_sq)
+        //  rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
+        
         if(r_sq < r_cutoff_sq)
-          rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
+          rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
       }
       
       // is this necessary ?
@@ -452,11 +459,11 @@ void FixEPH::calculate_environment()
   comm->forward_comm_fix(this);
 }
 
-void FixEPH::force_ttm() {
+void FixEPH::force_ttm() 
+{
   double **x = atom->x;
   double **v = atom->v;
   int *mask = atom->mask;
-  int *tag = atom->tag;
   int nlocal = atom->nlocal;
   
   // create friction forces
@@ -485,12 +492,12 @@ void FixEPH::force_ttm() {
   }  
 }
 
-void FixEPH::force_prb() {
+void FixEPH::force_prb() 
+{
   double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
   int *mask = atom->mask;
-  int *tag = atom->tag;
   int nlocal = atom->nlocal;
   
   int *numneigh = list->numneigh;
@@ -553,7 +560,6 @@ void FixEPH::force_prlcm() {
   double **v = atom->v;
   int *type = atom->type;
   int *mask = atom->mask;
-  int *tag = atom->tag;
   int nlocal = atom->nlocal;
   
   int *numneigh = list->numneigh;
@@ -710,7 +716,8 @@ void FixEPH::force_prl()
           
           // first sum
           if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
-            double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
+            //double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
+            double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
             
             double e_v_v = e_ij_x * v[i][0] + 
                           e_ij_y * v[i][1] + 
@@ -864,7 +871,6 @@ void FixEPH::force_testing() {};
 void FixEPH::post_force(int vflag) {
   double **f = atom->f;
   int *mask = atom->mask;
-  int *tag = atom->tag;
   int nlocal = atom->nlocal;
   int *numneigh = list->numneigh;
   
@@ -945,6 +951,10 @@ void FixEPH::reset_dt() {
 }
 
 void FixEPH::grow_arrays(int ngrow) {
+  //std::cout << "NGROW NLOCAL NGHOST NMAX\n";
+  //std::cout << ngrow << ' ' << 
+  //  atom->nlocal << ' ' << atom->nghost << ' ' << atom->nmax << '\n';
+  
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
   

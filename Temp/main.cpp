@@ -25,7 +25,7 @@ int main() {
 }
 #endif
 
-#if 0
+#if 1
 int main() {
   EPH_Beta<> beta;
   beta = EPH_Beta<>("Beta_Rho.beta");
@@ -53,7 +53,7 @@ int main() {
 
 #endif
 
-#if 1
+#if 0
 
 using Float = double;
 
