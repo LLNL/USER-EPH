@@ -92,7 +92,10 @@ class EPH_Beta {
       
       // read spline knots for rho and beta for each element
       for(size_t i = 0; i < n_elements; ++i) {
-        fd >> element_number[i];
+        // workaround to read an uint8_t
+        unsigned short val; // TODO: change this;
+        fd >> val;
+        element_number[i] = val;
         
         Container_Float l_rho(n_points_rho);
         for(size_t j = 0; j != n_points_rho; ++j)
@@ -138,7 +141,7 @@ class EPH_Beta {
       return rho_cutoff;
     }
     
-    size_t get_element_number(size_t index) const {
+    uint8_t get_element_number(size_t index) const {
       assert(index < n_elements);
       return element_number[index];
     }
