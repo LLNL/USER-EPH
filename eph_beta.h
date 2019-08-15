@@ -58,6 +58,7 @@ class EPH_Beta {
       rho.resize(n_elements);
       alpha.resize(n_elements);
       beta.resize(n_elements);
+      rho_r_sq.resize(n_elements);
       
       // read the number of elements and their names
       fd.getline(line, max_line_length);
@@ -83,6 +84,7 @@ class EPH_Beta {
       fd >> n_points_beta;
       fd >> drho;
       fd >> r_cutoff;
+      
       r_cutoff_sq = r_cutoff * r_cutoff;
       rho_cutoff = drho * (n_points_beta-1);
       
