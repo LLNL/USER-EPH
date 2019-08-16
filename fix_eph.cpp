@@ -448,15 +448,15 @@ void FixEPH::calculate_environment()
       }
       
       // is this necessary ?
-      beta_i[i] = beta.get_beta(type_map[itype-1], rho_i[i]); // TODO: calculate beta on the fly
+      //beta_i[i] = beta.get_beta(type_map[itype-1], rho_i[i]); // TODO: calculate beta on the fly
     }
   }
    
   state = FixState::RHO; // TODO remove these
   comm->forward_comm_fix(this);
   
-  state = FixState::BETA; // TODO: remove these
-  comm->forward_comm_fix(this);
+  //state = FixState::BETA; // TODO: remove these
+  //comm->forward_comm_fix(this);
 }
 
 void FixEPH::force_ttm() 
@@ -700,7 +700,7 @@ void FixEPH::force_prl()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double alpha_i = sqrt(beta_i[i]);
+        double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
         for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
@@ -714,8 +714,6 @@ void FixEPH::force_prl()
           // first sum
           if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
-            //double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
-            
             double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
             
             double e_v_v1 = get_scalar(e_ij, v[i]);
@@ -748,7 +746,7 @@ void FixEPH::force_prl()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double alpha_i = sqrt(beta_i[i]);
+        double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
         for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
@@ -760,7 +758,7 @@ void FixEPH::force_prl()
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
-            double alpha_j = sqrt(beta_i[jj]);
+            double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
             
             double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
             double e_v_v1 = get_scalar(e_ij, w_i[i]);
@@ -793,7 +791,7 @@ void FixEPH::force_prl()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double alpha_i = sqrt(beta_i[i]);
+        double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
         for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
@@ -805,7 +803,7 @@ void FixEPH::force_prl()
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
-            double alpha_j = sqrt(beta_i[jj]);
+            double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
             
             double v_rho_ji = beta.get_rho_r_sq(jtype - 1, e_r_sq);
             double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
