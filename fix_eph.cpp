@@ -440,11 +440,11 @@ void FixEPH::calculate_environment()
         int jtype = type[jj];
         double r_sq = get_distance_sq(x[jj], x[i]);
         
-        //if(r_sq < r_cutoff_sq)
-        //  rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
-        
         if(r_sq < r_cutoff_sq)
-          rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
+          rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
+        
+        //if(r_sq < r_cutoff_sq)
+        //  rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
       }
       
       // is this necessary ?
@@ -708,36 +708,26 @@ void FixEPH::force_prl()
           int jtype = type[jj];
           
           // calculate the e_ij vector TODO: change these
-          double e_ij_x = x[jj][0] - x[i][0];
-          double e_ij_y = x[jj][1] - x[i][1];
-          double e_ij_z = x[jj][2] - x[i][2];
-          
-          double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
+          double e_ij[3];
+          double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           // first sum
           if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
-            //double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
-            double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
+            double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
+            //double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
             
-            double e_v_v = e_ij_x * v[i][0] + 
-                          e_ij_y * v[i][1] + 
-                          e_ij_z * v[i][2];
+            double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
             
-            double var = alpha_i * v_rho_ji * e_v_v / (rho_i[i] * e_r_sq);
+            double e_v_v1 = get_scalar(e_ij, v[i]);
+            double var1 = prescaler * e_v_v1;
             
-            w_i[i][0] += var * e_ij_x;
-            w_i[i][1] += var * e_ij_y;
-            w_i[i][2] += var * e_ij_z;
+            double e_v_v2 = get_scalar(e_ij, v[jj]);
+            double var2 = prescaler * e_v_v2;
             
-            e_v_v = e_ij_x * v[jj][0] + 
-                    e_ij_y * v[jj][1] + 
-                    e_ij_z * v[jj][2];
-            
-            var = alpha_i * v_rho_ji * e_v_v / (rho_i[i] * e_r_sq);
-            
-            w_i[i][0] -= var * e_ij_x;
-            w_i[i][1] -= var * e_ij_y;
-            w_i[i][2] -= var * e_ij_z;
+            double dvar = var1 - var2;
+            w_i[i][0] += dvar * e_ij[0];
+            w_i[i][1] += dvar * e_ij[1];
+            w_i[i][2] += dvar * e_ij[2];
           }
         }
       }
@@ -766,36 +756,24 @@ void FixEPH::force_prl()
           int jtype = type[jj];
           
           // calculate the e_ij vector
-          double e_ij_x = x[jj][0] - x[i][0];
-          double e_ij_y = x[jj][1] - x[i][1];
-          double e_ij_z = x[jj][2] - x[i][2];
-          
-          double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
+          double e_ij[3];
+          double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double alpha_j = sqrt(beta_i[jj]);
-            double v_rho_ji = beta.get_rho(type_map[jtype - 1], sqrt(e_r_sq));
             
-            double e_v_v = e_ij_x * w_i[i][0] + 
-                          e_ij_y * w_i[i][1] + 
-                          e_ij_z * w_i[i][2];
+            double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
+            double e_v_v1 = get_scalar(e_ij, w_i[i]);
+            double var1 = alpha_i * v_rho_ji * e_v_v1 / (rho_i[i] * e_r_sq);
             
-            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_v / e_r_sq;
+            double v_rho_ij = beta.get_rho_r_sq(type_map[itype - 1], e_r_sq);
+            double e_v_v2 = get_scalar(e_ij, w_i[jj]);
+            double var2 = alpha_j * v_rho_ij * e_v_v2 / (rho_i[jj] * e_r_sq);
             
-            f_EPH[i][0] += var * e_ij_x;
-            f_EPH[i][1] += var * e_ij_y;
-            f_EPH[i][2] += var * e_ij_z;
-          
-            double v_rho_ij = beta.get_rho(type_map[itype - 1], sqrt(e_r_sq));
-            e_v_v = e_ij_x * w_i[jj][0] + 
-                    e_ij_y * w_i[jj][1] + 
-                    e_ij_z * w_i[jj][2];
-            
-            var = alpha_j * v_rho_ij / rho_i[jj] * e_v_v / e_r_sq;
-            
-            f_EPH[i][0] -= var * e_ij_x;
-            f_EPH[i][1] -= var * e_ij_y;
-            f_EPH[i][2] -= var * e_ij_z;
+            double dvar = var1 - var2;
+            f_EPH[i][0] += dvar * e_ij[0];
+            f_EPH[i][1] += dvar * e_ij[1];
+            f_EPH[i][2] += dvar * e_ij[2];
           }
         }
         
@@ -823,36 +801,24 @@ void FixEPH::force_prl()
           int jtype = type[jj];
           
           // calculate the e_ij vector
-          double e_ij_x = x[jj][0] - x[i][0];
-          double e_ij_y = x[jj][1] - x[i][1];
-          double e_ij_z = x[jj][2] - x[i][2];
-          
-          double e_r_sq = e_ij_x * e_ij_x + e_ij_y * e_ij_y + e_ij_z * e_ij_z;
+          double e_ij[3];
+          double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           if(e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
             double alpha_j = sqrt(beta_i[jj]);
             
-            double v_rho_ji = beta.get_rho(jtype - 1, sqrt(e_r_sq));
-            double e_v_xi = e_ij_x * xi_i[i][0] + 
-                            e_ij_y * xi_i[i][1] + 
-                            e_ij_z * xi_i[i][2];
+            double v_rho_ji = beta.get_rho_r_sq(jtype - 1, e_r_sq);
+            double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
+            double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
             
-            double var = alpha_i * v_rho_ji / rho_i[i] * e_v_xi / e_r_sq;
+            double v_rho_ij = beta.get_rho_r_sq(itype - 1, e_r_sq);
+            double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
+            double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
             
-            f_RNG[i][0] += var * e_ij_x;
-            f_RNG[i][1] += var * e_ij_y;
-            f_RNG[i][2] += var * e_ij_z;
-          
-            double v_rho_ij = beta.get_rho(itype - 1, sqrt(e_r_sq));
-            e_v_xi = e_ij_x * xi_i[jj][0] + 
-                     e_ij_y * xi_i[jj][1] + 
-                     e_ij_z * xi_i[jj][2];
-            
-            var = alpha_j * v_rho_ij / rho_i[jj] * e_v_xi / e_r_sq;
-            
-            f_RNG[i][0] -= var * e_ij_x;
-            f_RNG[i][1] -= var * e_ij_y;
-            f_RNG[i][2] -= var * e_ij_z;
+            double dvar = var1 - var2;
+            f_RNG[i][0] += dvar * e_ij[0];
+            f_RNG[i][1] += dvar * e_ij[1];
+            f_RNG[i][2] += dvar * e_ij[2];
           }
         }
         

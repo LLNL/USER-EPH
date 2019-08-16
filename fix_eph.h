@@ -174,20 +174,28 @@ class FixEPH : public Fix {
     void force_prl(); // PRL model with full functionality
     void force_testing(); // reserved for testing purposes
     
-    static double get_distance_sq(const double* x, const double* y) {
-      double dx = x[0] - y[0];
-      double dy = x[1] - y[1];
-      double dz = x[2] - y[2]; 
-      
-      return dx*dx + dy*dy + dz*dz;
+    static Float get_scalar(const Float* x, const Float* y) 
+    {
+      return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
     }
     
-    static double get_difference_sq(const double* x, const double* y, double* z) {
+    static Float get_distance_sq(const Float* x, const Float* y) 
+    {
+      Float dxy[3];
+      dxy[0] = x[0] - y[0];
+      dxy[1] = x[1] - y[1];
+      dxy[2] = x[2] - y[2]; 
+      
+      return get_scalar(dxy, dxy);
+    }
+    
+    static Float get_difference_sq(const Float* x, const Float* y, Float* z) 
+    {
       z[0] = x[0] - y[0];
       z[1] = x[1] - y[1];
       z[2] = x[2] - y[2];
       
-      return z[0]*z[0] + z[1]*z[1] + z[2]*z[2];
+      return get_scalar(z, z);
     }
 };
 
