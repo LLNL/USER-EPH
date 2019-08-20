@@ -129,7 +129,6 @@ class FixEPH : public Fix {
     char T_out[max_file_length]; // this will print temperature heatmap
     char T_state[max_file_length]; // this will store the final state into file
     
-    double beta_factor; // this is for the conversion from energy/ps -> force
     double eta_factor; // this is for the conversion from energy/ps -> force
     
     int seed; // seed for random number generator
@@ -146,11 +145,7 @@ class FixEPH : public Fix {
     
     // random force
     double **f_RNG; // size = [nlocal][3] // TODO: try switching to vector
-    
-    // stopping power for each atom
-    // double* alpha_i; // size = [nlocal] // TODO: try switching to vector
-    double* beta_i; // size = [nlocal] // TODO: try switching to vector
-    
+
     // Electronic density at each atom
     double* rho_i; // size = [nlocal] // TODO: try switching to vector
     

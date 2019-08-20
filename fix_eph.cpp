@@ -189,7 +189,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   }
   
   // set force prefactors
-  beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
   
   /** integrator functionality **/
@@ -201,8 +200,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   f_RNG = nullptr;
   
   w_i = nullptr;
-
-  beta_i = nullptr;
+  
   rho_i = nullptr;
   array = nullptr;
   
@@ -217,7 +215,6 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   // zero arrays, so they would not contain garbage
   size_t nlocal = atom->nlocal;
   std::fill_n(&(rho_i[0]), nlocal, 0.0);
-  std::fill_n(&(beta_i[0]), nlocal, 0.0);
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
@@ -239,7 +236,6 @@ FixEPH::~FixEPH() {
   
   atom->delete_callback(id, 0);
   
-  memory->destroy(beta_i);
   memory->destroy(rho_i);
   
   memory->destroy(array);
@@ -337,6 +333,7 @@ void FixEPH::final_integrate() {
 void FixEPH::end_of_step() {
   double **x = atom->x;
   double **v = atom->v;
+  int *type = atom->type;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   
@@ -391,8 +388,9 @@ void FixEPH::end_of_step() {
 
   for(size_t i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
+      int itype = type[i];
       array[i][ 0] = rho_i[i];
-      array[i][ 1] = beta_i[i];
+      array[i][ 1] = beta.get_beta(type_map[itype - 1], rho_i[i]);
       array[i][ 2] = f_EPH[i][0];
       array[i][ 3] = f_EPH[i][1];
       array[i][ 4] = f_EPH[i][2];
@@ -442,21 +440,12 @@ void FixEPH::calculate_environment()
         
         if(r_sq < r_cutoff_sq)
           rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
-        
-        //if(r_sq < r_cutoff_sq)
-        //  rho_i[i] += beta.get_rho(type_map[jtype-1], sqrt(r_sq));
       }
-      
-      // is this necessary ?
-      //beta_i[i] = beta.get_beta(type_map[itype-1], rho_i[i]); // TODO: calculate beta on the fly
     }
   }
    
   state = FixState::RHO; // TODO remove these
   comm->forward_comm_fix(this);
-  
-  //state = FixState::BETA; // TODO: remove these
-  //comm->forward_comm_fix(this);
 }
 
 void FixEPH::force_ttm() 
@@ -464,13 +453,16 @@ void FixEPH::force_ttm()
   double **x = atom->x;
   double **v = atom->v;
   int *mask = atom->mask;
+  int *type = atom->type;
   int nlocal = atom->nlocal;
   
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
-        double var = -beta_factor * beta_i[i];
+        int itype = type[i];
+        double var = -beta.get_beta(type_map[itype - 1], rho_i[i]);
+        
         f_EPH[i][0] = var * v[i][0];
         f_EPH[i][1] = var * v[i][1];
         f_EPH[i][2] = var * v[i][2];
@@ -482,8 +474,9 @@ void FixEPH::force_ttm()
   if(eph_flag & Flag::RANDOM) {
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
+        int itype = type[i];
         double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
-        double var = eta_factor * sqrt(v_Te * beta_i[i]);
+        double var = eta_factor * beta.get_alpha(type_map[itype - 1], rho_i[i]) * sqrt(v_Te);
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
         f_RNG[i][2] = var * xi_i[i][2];
@@ -511,10 +504,11 @@ void FixEPH::force_prb()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double var = beta_i[i];
-        f_EPH[i][0] = var * v[i][0];
-        f_EPH[i][1] = var * v[i][1];
-        f_EPH[i][2] = var * v[i][2];
+        if(!(rho_i[i] > 0)) continue;
+        
+        f_EPH[i][0] = v[i][0];
+        f_EPH[i][1] = v[i][1];
+        f_EPH[i][2] = v[i][2];
         
         for(size_t j = 0; j < jnum; ++j) {
           int jj = jlist[j];
@@ -523,8 +517,8 @@ void FixEPH::force_prb()
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
-          if(r_sq < r_cutoff_sq && rho_i[i] > 0.0) {
-            double var = beta_i[i] * beta.get_rho(jtype - 1, sqrt(r_sq)) / rho_i[i];
+          if(r_sq < r_cutoff_sq) {
+            double var = beta.get_rho(jtype - 1, sqrt(r_sq)) / rho_i[i];
             
             f_EPH[i][0] -= var * v[jj][0];
             f_EPH[i][1] -= var * v[jj][1];
@@ -532,10 +526,10 @@ void FixEPH::force_prb()
           }
         }
         
-        // unit prefactor
-        f_EPH[i][0] *= -beta_factor;
-        f_EPH[i][1] *= -beta_factor;
-        f_EPH[i][2] *= -beta_factor;
+        double var = beta.get_beta(type_map[itype - 1], rho_i[i]);
+        f_EPH[i][0] *= var;
+        f_EPH[i][1] *= var;
+        f_EPH[i][2] *= var;
       }
     }
   }
@@ -544,8 +538,9 @@ void FixEPH::force_prb()
   if(eph_flag & Flag::RANDOM) {
     for(size_t i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
+        int itype = type[i];
         double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
-        double var = eta_factor * sqrt(v_Te * beta_i[i]);
+        double var = eta_factor * beta.get_alpha(type_map[itype - 1], rho_i[i]) * sqrt(v_Te);
         
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
@@ -573,7 +568,7 @@ void FixEPH::force_prlcm() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double alpha_i = sqrt(beta_i[i]);
+        double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         w_i[i][0] = alpha_i * v[i][0];
         w_i[i][1] = alpha_i * v[i][1];
         w_i[i][2] = alpha_i * v[i][2];
@@ -610,7 +605,7 @@ void FixEPH::force_prlcm() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double alpha_i = sqrt(beta_i[i]);
+        double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         f_EPH[i][0] = alpha_i * w_i[i][0];
         f_EPH[i][1] = alpha_i * w_i[i][1];
         f_EPH[i][2] = alpha_i * w_i[i][2];
@@ -623,7 +618,7 @@ void FixEPH::force_prlcm() {
           double r_sq = get_distance_sq(x[jj], x[i]);
           
           if(r_sq < r_cutoff_sq && rho_i[jj] > 0.0) {
-            double alpha_j = sqrt(beta_i[jj]); // switch formalism to alpha everywhere to avoid unnecessary sqrt
+            double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]); // switch formalism to alpha everywhere to avoid unnecessary sqrt
             double var = alpha_j * beta.get_rho(itype - 1, sqrt(r_sq)) / rho_i[jj];
             
             f_EPH[i][0] -= var * w_i[jj][0];
@@ -631,11 +626,6 @@ void FixEPH::force_prlcm() {
             f_EPH[i][2] -= var * w_i[jj][2];
           }
         }
-        
-        // unit prefactor
-        f_EPH[i][0] *= -beta_factor;
-        f_EPH[i][1] *= -beta_factor;
-        f_EPH[i][2] *= -beta_factor;
       }
     }
   }
@@ -648,7 +638,7 @@ void FixEPH::force_prlcm() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
-        double var = sqrt(beta_i[i]);
+        double var = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
@@ -657,11 +647,12 @@ void FixEPH::force_prlcm() {
         for(size_t j = 0; j < jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
+          int jtype = type[jj];
           
           double r_sq = get_distance_sq(x[jj], x[i]);
           
           if(r_sq < r_cutoff_sq && rho_i[jj] > 0) {
-            var = sqrt(beta_i[jj]);
+            double var = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
             var *= beta.get_rho(itype - 1, sqrt(r_sq)) / rho_i[jj];
             
             f_RNG[i][0] -= var * xi_i[jj][0];
@@ -774,11 +765,6 @@ void FixEPH::force_prl()
             f_EPH[i][2] += dvar * e_ij[2];
           }
         }
-        
-        // unit prefactor
-        f_EPH[i][0] *= -beta_factor;
-        f_EPH[i][1] *= -beta_factor;
-        f_EPH[i][2] *= -beta_factor;
       }
     }
   }
@@ -840,7 +826,6 @@ void FixEPH::post_force(int vflag) {
   
   //zero all arrays
   std::fill_n(&(rho_i[0]), nlocal, 0.0);
-  std::fill_n(&(beta_i[0]), nlocal, 0.0);
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
@@ -904,8 +889,6 @@ void FixEPH::post_force(int vflag) {
 }
 
 void FixEPH::reset_dt() {
-  // this should be correct if beta is in eV ps / Ang^2
-  beta_factor = 1.0;
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
   
   dtv = update->dt;
@@ -922,7 +905,6 @@ void FixEPH::grow_arrays(int ngrow) {
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
   
-  memory->grow(beta_i, ngrow, "eph:beta_i");
   memory->grow(rho_i, ngrow, "eph:rho_i");
   
   memory->grow(w_i, ngrow, 3, "eph:w_i");
@@ -952,11 +934,6 @@ int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int 
     case FixState::RHO:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = rho_i[list[i]];
-      }
-      break;
-    case FixState::BETA:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = beta_i[list[i]];
       }
       break;
     case FixState::XIX:
@@ -993,56 +970,6 @@ int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int 
       break;
   }
   
-  /*
-  if(state == FixState::RHO) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = rho_i[j];
-    }
-  }
-  else if(state == FixState::BETA) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = beta_i[j];
-    }
-  }
-  else if(state == FixState::XIX) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = xi_i[j][0];
-    }
-  }
-  else if(state == FixState::XIY) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = xi_i[j][1];
-    }
-  }
-  else if(state == FixState::XIZ) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = xi_i[j][2];
-    }
-  }
-  else if(state == FixState::WX) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = w_i[j][0];
-    }
-  }
-  else if(state == FixState::WY) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = w_i[j][1];
-    }
-  }
-  else if(state == FixState::WZ) {
-    for(int i = 0; i < n; ++i) {
-      j = list[i];
-      data[m++] = w_i[j][2];
-    }
-  }
-  */
   return m;
 }
 
@@ -1055,11 +982,6 @@ void FixEPH::unpack_forward_comm(int n, int first, double *data) {
     case FixState::RHO:
       for(size_t i = first; i < last; ++i) {
         rho_i[i] = data[m++];
-      }
-      break;
-    case FixState::BETA:
-      for(size_t i = first; i < last; ++i) {
-        beta_i[i] = data[m++];
       }
       break;
     case FixState::XIX:
@@ -1095,49 +1017,6 @@ void FixEPH::unpack_forward_comm(int n, int first, double *data) {
     default:
       break;
   }
-  
-  /*
-  if(state == FixState::RHO) {
-    for(int i = first; i < last; ++i) {
-      rho_i[i] = data[m++];
-    }
-  }
-  else if(state == FixState::BETA) {
-    for(int i = first; i < last; ++i) {
-      beta_i[i] = data[m++];
-    }
-  }
-  else if(state == FixState::XIX) {
-    for(int i = first; i < last; ++i) {
-      xi_i[i][0] = data[m++];
-    }
-  }
-  else if(state == FixState::XIY) {
-    for(int i = first; i < last; ++i) {
-      xi_i[i][1] = data[m++];
-    }
-  }
-  else if(state == FixState::XIZ) {
-    for(int i = first; i < last; ++i) {
-      xi_i[i][2] = data[m++];
-    }
-  }
-  else if(state == FixState::WX) {
-    for(int i = first; i < last; ++i) {
-      w_i[i][0] = data[m++];
-    }
-  }
-  else if(state == FixState::WY) {
-    for(int i = first; i < last; ++i) {
-      w_i[i][1] = data[m++];
-    }
-  }
-  else if(state == FixState::WZ) {
-    for(int i = first; i < last; ++i) {
-      w_i[i][2] = data[m++];
-    }
-  }
-  */
 }
 
 /** TODO **/
