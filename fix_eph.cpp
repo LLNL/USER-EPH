@@ -801,22 +801,22 @@ void FixEPH::force_prl()
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
-          if(e_r_sq < r_cutoff_sq && rho_i[jj] > 0) {
-            double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
-            
-            double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
-            double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
-            double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
-            
-            double v_rho_ij = beta.get_rho_r_sq(type_map[itype - 1], e_r_sq);
-            double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
-            double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
-            
-            double dvar = var1 - var2;
-            f_RNG[i][0] += dvar * e_ij[0];
-            f_RNG[i][1] += dvar * e_ij[1];
-            f_RNG[i][2] += dvar * e_ij[2];
-          }
+          if((e_r_sq >= r_cutoff_sq) || !(rho_i[jj] > 0)) continue;
+          
+          double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
+          
+          double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
+          double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
+          double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
+          
+          double v_rho_ij = beta.get_rho_r_sq(type_map[itype - 1], e_r_sq);
+          double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
+          double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
+          
+          double dvar = var1 - var2;
+          f_RNG[i][0] += dvar * e_ij[0];
+          f_RNG[i][1] += dvar * e_ij[1];
+          f_RNG[i][2] += dvar * e_ij[2];
         }
         
         double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
