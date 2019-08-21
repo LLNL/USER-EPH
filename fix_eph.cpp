@@ -768,9 +768,10 @@ void FixEPH::force_prl()
             double var2 = alpha_j * v_rho_ij * e_v_v2 / (rho_i[jj] * e_r_sq);
             
             double dvar = var1 - var2;
-            f_EPH[i][0] += dvar * e_ij[0];
-            f_EPH[i][1] += dvar * e_ij[1];
-            f_EPH[i][2] += dvar * e_ij[2];
+            // friction is negative!
+            f_EPH[i][0] -= dvar * e_ij[0];
+            f_EPH[i][1] -= dvar * e_ij[1];
+            f_EPH[i][2] -= dvar * e_ij[2];
           }
         }
       }
