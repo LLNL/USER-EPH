@@ -168,9 +168,15 @@ class FixEPH : public Fix {
     void force_prl(); // PRL model with full functionality
     void force_testing(); // reserved for testing purposes
     
+    // TODO: remove
     static Float get_scalar(const Float* x, const Float* y) 
     {
       return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
+    }
+    
+    static Float get_norm(const Float* x) 
+    {
+      return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
     }
     
     static Float get_distance_sq(const Float* x, const Float* y) 
@@ -180,16 +186,17 @@ class FixEPH : public Fix {
       dxy[1] = x[1] - y[1];
       dxy[2] = x[2] - y[2]; 
       
-      return get_scalar(dxy, dxy);
+      return get_norm(dxy);
     }
     
-    static Float get_difference_sq(const Float* x, const Float* y, Float* z) 
+    // TODO: add restrict
+    static Float get_difference_sq(const Float* x, const Float* y, Float* __restrict z) 
     {
       z[0] = x[0] - y[0];
       z[1] = x[1] - y[1];
       z[2] = x[2] - y[2];
       
-      return get_scalar(z, z);
+      return get_norm(z);
     }
 };
 
