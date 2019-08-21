@@ -683,17 +683,22 @@ void FixEPH::force_prl()
   int **firstneigh = list->firstneigh;
   
   // create friction forces
-  if(eph_flag & Flag::FRICTION) {
+  if(eph_flag & Flag::FRICTION) 
+  {
     // w_i = W_ij^T v_j
-    for(size_t i = 0; i != nlocal; ++i) {
+    for(size_t i = 0; i != nlocal; ++i) 
+    {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
         
+        if(!(rho_i[i] > 0)) continue;
+        
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
-        for(size_t j = 0; j != jnum; ++j) {
+        for(size_t j = 0; j != jnum; ++j) 
+        {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
@@ -703,7 +708,8 @@ void FixEPH::force_prl()
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
           // first sum
-          if (e_r_sq < r_cutoff_sq && rho_i[i] > 0) {
+          if (e_r_sq < r_cutoff_sq) 
+          {
             double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
             double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
             
@@ -736,6 +742,8 @@ void FixEPH::force_prl()
         int itype = type[i];
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
+
+        if(!(rho_i[i] > 0)) continue;
         
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
@@ -776,6 +784,8 @@ void FixEPH::force_prl()
         int itype = type[i];
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
+        
+        if(!(rho_i[i] > 0)) continue;
         
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
@@ -826,8 +836,8 @@ void FixEPH::post_force(int vflag) {
   
   //zero all arrays
   std::fill_n(&(rho_i[0]), nlocal, 0.0);
-  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
   

@@ -50,7 +50,6 @@ class FixEPH : public Fix {
       XIY,
       XIZ,
       RHO,
-      BETA,
       WX,
       WY,
       WZ

@@ -41,10 +41,22 @@ int main() {
     std::cout << "# " << beta.get_element_name(i) << ' ' << beta.get_element_number(i) << '\n';
   }
   
+  /*
   for(size_t i = 0; i < N; ++i) {
     double r = i * dr;
     
-    std::cout << r << " " << beta.get_rho(0, r) << '\n';
+    std::cout << r << " " << beta.get_rho(0, r) << ' ' << beta.get_rho_r_sq(0, r * r) << '\n';
+  }
+  */
+  
+  double rho_cutoff = beta.get_rho_cutoff();
+  double drho = 0.01;
+  size_t M = rho_cutoff / drho;
+  
+  for(size_t i = 0; i < M; ++i) {
+    double rho = i * drho;
+    
+    std::cout << rho << ' ' << beta.get_beta(0, rho) << ' ' << beta.get_alpha(0, rho) << '\n';
   }
   
   return 0;
