@@ -744,7 +744,7 @@ void FixEPH::force_prl()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
 
-        if(!(rho_i[i] > 0)) continue;
+        if( not(rho_i[i] > 0) ) continue;
         
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
         
@@ -758,7 +758,7 @@ void FixEPH::force_prl()
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
           
-          if(e_r_sq >= r_cutoff_sq || !(rho_i[jj] > 0)) continue;
+          if(e_r_sq >= r_cutoff_sq or not(rho_i[jj] > 0)) continue;
           
           double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
           
