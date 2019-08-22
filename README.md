@@ -61,26 +61,24 @@ Where:
   * `3` -> enable friction and random force (fixed e-temperature) 
   * `4` -> heat equation (by FDM finite difference method) (decoupled from ions)
   * `5` -> enable friction and heat equation (no feedback from e-)
-  * `7` -> enable friction, random force, and heat equation (coupled e-ions)
+  * **`7`** -> enable friction, random force, and heat equation (coupled e-ions)
 * `model`: select model for friction and random force [integer]
   * `1` -> standard Langevin (for vanilla TTM with beta(rho))
   * `2` -> simple e-ph model (https://link.aps.org/doi/10.1103/PhysRevB.94.024305) (not recommended)
   * `3` -> e-ph with spatial correlations, with CM-correction only (https://arxiv.org/abs/1801.06610)
-  * `4` -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
+  * **`4`** -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
 * `rho_e` -> scaling parameter for the FDM grid [float, recommended `1.0`] [unitless]
 * `C_e` -> electronic heat capacity per volume [float, e.g. `2.5e-6`] [in eV/K/Ang^3]
 * `kappa_e` -> electronic thermal conductivity [float,  ignored for single grid point] [in eV/K/Ang/ps]
-* `T_e` -> electronic temperature [float, e.g. `300`] [in K]
-* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point]
-* `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL]
+* `T_e` -> (initial) electronic temperature [float, e.g. `300`] [in K]
+* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point (uniform e-temperature)]
+* `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL (uses `T_e`)]
 * `freq` -> heat map output (`T_output`) frequency, `0` to disable [integer, e.g. `10`]
 * `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
 * `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
 * `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
 
-For example the following line in LAMMPS input script, 
-will run the MD including the coupling to electrons, 
-within the spatially correlated Langevin bath.
+For example the following line in LAMMPS input script, will run the MD including the coupling to electrons,  within the spatially correlated Langevin bath.
 The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a range of electronic temperatures from 500 to 1500K. 
 Initial electron temperature is set to 300K (and not from a file).
 We use uniform tempetures (one grid element), therefore the heat conductivity is not relevant in this case.
