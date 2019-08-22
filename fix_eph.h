@@ -16,6 +16,9 @@ FixStyle(eph,FixEPH)
 #define LMP_FIX_EPH_H
 
 // external headers
+#include <vector>
+
+// lammps headers
 #include "fix.h"
 
 // internal headers
@@ -24,21 +27,36 @@ FixStyle(eph,FixEPH)
 
 namespace LAMMPS_NS {
 
+// START GLOBAL THINGS 
+
+using Float = double;
+
+template<typename _F = Float>
+using Allocator = std::allocator<_F>;
+
+template<typename _F = Float, typename _A = Allocator<_F>>
+using Container = std::vector<_F, _A>;
+
+using Beta = EPH_Beta<Float, Allocator, Container>;
+
+// END GLOBAL THINGS
+
 class FixEPH : public Fix {
  public:
+    // enumeration for tracking fix state, this is used in comm forward
     enum class FixState : unsigned int {
       NONE,
       XIX,
       XIY,
       XIZ,
       RHO,
-      BETA,
       WX,
       WY,
       WZ
     };
     
-    enum Flag : unsigned int {
+    // enumeration for selecting fix functionality
+    enum Flag : uint8_t {
       FRICTION = 0x01,
       RANDOM = 0x02,
       FDM = 0x04,
@@ -47,70 +65,69 @@ class FixEPH : public Fix {
       NORANDOM = 0x20 // disable effect of random force
     };
     
-    enum Model : int {
+    // enumeration for selecting the model for friction
+    enum Model : int8_t {
       TESTING = -1, // special for testing purposes
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
       PRB = 2, // model in PRB 94, 024305 (2016)
-      PRBMOD = 3, // random force idea
-      ETA = 4, // random force idea with angular momentum
-      GAP = 5, 
-      GAPB = 6
+      PRLCM = 3, // CM model in PRL 120, 185501 (2018)
+      PRL = 4 // full model in PRL 120, 185501 (2018)
     };
     
     FixEPH(class LAMMPS *, int, char **); // constructor
     ~FixEPH(); // destructor
     
-    void init() override;
-    void init_list(int id, NeighList *ptr) override;
-    int setmask() override;
-    void post_force(int) override;
-    void end_of_step() override;
-    void reset_dt() override;
-    void grow_arrays(int) override;
-    double compute_vector(int) override;
-    double memory_usage() override;
-    void post_run() override;
+    void init() override; // called by lammps after constructor
+    void init_list(int id, NeighList *ptr) override; // called by lammps after constructor
+    int setmask() override; // called by lammps
+    void post_force(int) override; // called by lammps after pair_potential
+    void end_of_step() override; // called by lammps before next step
+    void reset_dt() override; // called by lammps if dt changes
+    void grow_arrays(int) override; // called by lammps if number of atoms changes for some task
+    double compute_vector(int) override; // called by lammps if a value is requested
+    double memory_usage() override; // prints the memory usage // TODO
+    void post_run() override; // called by lammps after run ends
     
-    /** integrator functionality **/
-    void initial_integrate(int) override;
-    void final_integrate() override;
+    /* integrator functionality */
+    void initial_integrate(int) override; // called in the beginning of a step
+    void final_integrate() override; // called in the end of the step
     
     // forward communication copies information of owned local atoms to ghost
     // atoms, reverse communication does the opposite
     int pack_forward_comm(int, int *, double *, int, int *) override;
     void unpack_forward_comm(int, int, double *) override;
-    //int pack_reverse_comm(int, int, double *);
-    //void unpack_reverse_comm(int, int *, double *);
   
   private:
-    static constexpr unsigned int fileLength = 256; // max filename length
+    static constexpr size_t max_file_length = 256; // max filename length
   
     int myID; // mpi rank for current instance
     int nrPS; // number of processes
     
-    FixState state;
+    FixState state; // tracks the state of the fix
     
-    unsigned int eph_flag; // term flags
-    int eph_model; // model selection
+    uint8_t eph_flag; // term flags
+    int8_t eph_model; // model selection
     
-    unsigned int types; // number of different types
-    unsigned int* typeMap; // type map
-    EPH_Beta* beta; // instance for beta(rho) parametrisation
-    EPH_FDM* fdm; // electronic FDM grid
+    uint8_t types; // number of different types
+    uint8_t* type_map; // TODO: type map // change this to vector
+    //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
+    
+    Beta beta; // instance for beta(rho) parametrisation
+    EPH_FDM fdm; // electronic FDM grid
     
     /** integrator functionality **/
     double dtv;
     double dtf;
     
-    double rcutoff; // cutoff for beta
+    double r_cutoff; // cutoff for rho(r)
+    double r_cutoff_sq;
+    double rho_cutoff; // cutoff for beta(rho)
     
-    // TODO: fix this; confusing names
-    int Tfreq;
-    char Tout[fileLength]; // this will print temperature heatmap
-    char Tstate[fileLength]; // this will store the final state into file
+    int T_freq; // frequency for printing electronic temperatures to files 
+    char T_out[max_file_length]; // this will print temperature heatmap
+    char T_state[max_file_length]; // this will store the final state into file
     
-    double beta_factor; // this is for the conversion from energy/ps -> force
     double eta_factor; // this is for the conversion from energy/ps -> force
     
     int seed; // seed for random number generator
@@ -123,50 +140,64 @@ class FixEPH : public Fix {
     double Ee;
     
     // friction force
-    double **f_EPH; // size = [nlocal][3]
+    double **f_EPH; // size = [nlocal][3] // TODO: try switching to vector
     
     // random force
-    double **f_RNG; // size = [nlocal][3]
-    
-    // stopping power for each atom
-    double* beta_i; // size = [nlocal]
-    
+    double **f_RNG; // size = [nlocal][3] // TODO: try switching to vector
+
     // Electronic density at each atom
-    double* rho_i; // size = [nlocal]
+    double* rho_i; // size = [nlocal] // TODO: try switching to vector
+    
+    // Inverse of electronic density in order to avoid 1./rho_i
+    double* inv_rho_i; // size = [nlocal] // TODO: try switching to vector
     
     // dissipation vector W_ij v_j
-    double** w_i; // size = [nlocal][3]
-    
-    // locally stored individual densities to lower the number of calls to interpolation
-    int rho_neigh; // 512 by default
-    double** rho_ij; // size = [nlocal][rho_neigh] contribution by atom i to site j
-    double** rho_ji; // size = [nlocal][rho_neigh] contribution by atom j to site i
-    
-    // gradient of the density
-    double** grad_rho_i; // size [nlocal][3]
+    double** w_i; // size = [nlocal][3] // TODO: try switching to vector
     
     // random numbers
-    double **xi_i; // size = [nlocal][3]
+    double **xi_i; // size = [nlocal][3] // TODO: try switching to vector
     
     // per atom array
-    double **array; // size = [nlocal][8]
-    
-    // these are temporary
-    double v_alpha;
-    double v_struc;
-    
+    double **array; // size = [nlocal][8] // TODO: try switching to vector
+        
     // private member functions
-    void calculate_environment();
-    void force_ttm();
-    void force_prb();
-    void force_prbmod();
-    void force_eta();
-    void force_gap();
-    void force_gapb();
-    void force_testing();
+    void calculate_environment(); // calculate the site density and coupling for every atom
+    void force_ttm(); // two temperature model with beta(rho)
+    void force_prb(); // older version with CM correction
+    void force_prlcm(); // PRL model with CM correction
+    void force_prl(); // PRL model with full functionality
+    void force_testing(); // reserved for testing purposes
     
-    // tmp
-    //int t_nlocal;
+    // TODO: remove
+    static Float get_scalar(const Float* x, const Float* y) 
+    {
+      return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
+    }
+    
+    static Float get_norm(const Float* x) 
+    {
+      return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
+    }
+    
+    static Float get_distance_sq(const Float* x, const Float* y) 
+    {
+      Float dxy[3];
+      dxy[0] = x[0] - y[0];
+      dxy[1] = x[1] - y[1];
+      dxy[2] = x[2] - y[2]; 
+      
+      return get_norm(dxy);
+    }
+    
+    // TODO: add restrict
+    static Float get_difference_sq(const Float* x, const Float* y, Float* __restrict z) 
+    {
+      z[0] = x[0] - y[0];
+      z[1] = x[1] - y[1];
+      z[2] = x[2] - y[2];
+      
+      return get_norm(z);
+    }
 };
 
 }

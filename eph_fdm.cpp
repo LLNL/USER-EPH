@@ -131,7 +131,7 @@ void EPH_FDM::solve() {
       //inner_dt = 0.5 * inner_dt / r; // get new timestep
       //new_steps = ((unsigned int)(dt / inner_dt)) + 1;
       //new_steps = std::floor(dt / inner_dt) + 1;
-      new_steps = static_cast<unsigned int> ((dt /inner_dt)+1.0);
+      new_steps = static_cast<unsigned int> ((dt / inner_dt)+1.0);
       inner_dt = dt / new_steps;
     }
     

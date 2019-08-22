@@ -46,7 +46,7 @@ class EPH_FDM {
      *  1 -> dynamic
      *  2 -> derivative 0
      **/
-    std::vector<signed short> flag; // point prorperty
+    std::vector<signed short> flag; // point property
     
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
@@ -56,7 +56,7 @@ class EPH_FDM {
     int nrPS;
     
   public:
-    EPH_FDM() = delete; // no default constructor
+    EPH_FDM() : nx {0}, ny {0}, nz {0}, ntotal {0} {}; // no default constructor
     EPH_FDM(const char* file); // initialise class from an input file
     EPH_FDM(unsigned int nx, unsigned int ny, unsigned int nz); // initialise class manually
     
@@ -75,9 +75,9 @@ class EPH_FDM {
       
       dV = dx*dy*dz;
 
-      if(dx < 0.0) throw;
-      if(dy < 0.0) throw;
-      if(dz < 0.0) throw;
+      assert(dx > 0);
+      assert(dy > 0);
+      assert(dz > 0);
     }
     
     // set system properties
@@ -122,7 +122,7 @@ class EPH_FDM {
     double getT(double x, double y, double z) const {
       unsigned int index = get_index(x, y, z);
       
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(index >= 0);
       assert(index < (nx*ny*nz));
       #endif
@@ -140,7 +140,7 @@ class EPH_FDM {
       double prescale = dV * dt;
       
       // convert energy into power per area
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(prescale >= 0.0);
       assert(index >= 0);
       assert(index < (nx*ny*nz));
@@ -155,7 +155,7 @@ class EPH_FDM {
       double prescale = dV * dt;
       
       // convert energy into power per area
-      #ifndef EPH_UNSAFE
+      #ifndef DNDEBUG
       assert(prescale >= 0.0);
       assert(index >= 0);
       assert(index < (nx*ny*nz));

@@ -1,5 +1,5 @@
 /*
- * Authors of the extension Artur Tamm, Alfredo Caro, Alfredo Correa, Mattias Klintenberg
+ * Authors of the extension Artur Tamm, Alfredo Correa
  * e-mail: artur.tamm.work@gmail.com
  */
 
@@ -7,144 +7,140 @@
 #define EPH_SPLINE
 
 #include <vector>
-#include <stdexcept>
+#include <cmath>
+#include <cassert>
 
+/* 
+ * Stripped down version of the EPH_Spline class
+ * 
+ * 
+ */
+
+template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
 class EPH_Spline {
-  private:
-    double x_First; // coordinate of the first element
-    double x_Last; // coordinate of the last element
-    double dx; // discretisation step
-    
-    std::vector<double> y; // y values
-    
-    // coeffiecients for splines
-    // splines are always in a + b*x + c*x**2 + d*x**3 form
-    std::vector<double> a;
-    std::vector<double> b;
-    std::vector<double> c;
-    std::vector<double> d;
-    
-    // coefficients for the derivative
-    // da + db * x + dc * x**2
-    std::vector<double> da;
-    std::vector<double> db;
-    std::vector<double> dc;
-    
-    // coefficients for the second derivative
-    std::vector<double> dda;
-    std::vector<double> ddb;
-    
-    // current version will brake if less there are less than 4 points
-    constexpr static int min_size = 4;
-    
   public:
-    EPH_Spline() : EPH_Spline(0.0, 0.0) {} // default constructor
-    
-    EPH_Spline(const double x0, const double dx) : // constructor for use with << operator
-      x_First {x0}, 
-      dx {dx}, 
-      x_Last {x0 - 0.1} 
-      { }
-      
-    EPH_Spline(const double x0, const double dx, const double *y, const unsigned int points); // constructor to initialise the spline fully
-    
-    EPH_Spline(const double x0, const double dx, std::vector<double>&& y) : // constructor to initialise the spline fully
-      x_First {x0}, 
-      dx {dx}, 
-      x_Last {x0 + y.size()*dx},
-      y {std::move(y)}
+    EPH_Spline() {}
+    EPH_Spline(Float dx, Container<> &y) :
+      inv_dx {1./dx},
+      c(y.size())
     {
-      if(y.size() > min_size) FindCoefficients();
-      else throw std::runtime_error("eph_spline: not enough points supplied");
-    }
-    
-    // special type of initialisation; useful when initialising from file
-    void SetDiscretisation(const double x0, const double dx) {
-      *this << false;
-      this->x_First = this->x_Last = x0;
-      this->dx = dx;
-    }
-    
-    // add a point to spline
-    EPH_Spline& operator<< (const double y);
-    // initialise the spline based or points or reset
-    EPH_Spline& operator<< (const bool init);
-    
-    // get the value of the function at x
-    double GetValue(const double x) const {
-      double result = 0.0;
-      unsigned int index = 0;
+      size_t points = y.size();
       
-      // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
-      if(x < this->x_First)
-        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
-      else if(x > this->x_Last)
-        throw std::runtime_error("eph_spline: argument larger than the upper bound");
-      #endif
-      
-      index = FindIndex(x);
-      
-      double x2 = x*x;
-      double x3 = x*x2;
+      assert(dx > 0); // dx has to be positive
+      assert(points > min_size); // EPH_Spline needs at least 4 points
   
-      result = a[index] + b[index] * x + c[index] * x2 + d[index] * x3;
+      // we use b, c, and d as temporary buffers
+      Float z0; // z_-2
+      Float z1; // z_-1
+      
+      Float z2; // z_k-1
+      Float z3; // z_k
+      
+      for(size_t i = 0; i < points-1; ++i) {
+        //b -> z
+        c[i].b = (y[i+1]-y[i]) / dx;
+      }
+    
+      z1 = 2.0*c[0].b - c[1].b;
+      z0 = 2.0*z1 - c[0].b;
+      
+      z2 = 2.0*c[points-2].b - c[points-1].b;
+      z3 = 2.0*z2 - c[points-1].b;
+      
+      c[points-1].b = z2;
+    
+      for(size_t i = 2; i < points-2; ++i) {
+        //c -> w_i-1 ; d -> w_i
+
+        c[i].c = fabs(c[i+1].b - c[i].b);
+        c[i].d = fabs(c[i-1].b - c[i-2].b);
+      }
+    
+      // special cases
+      c[0].c = fabs(c[1].b - c[0].b);
+      c[0].d = fabs(z1-z0);
+      
+      c[1].c = fabs(c[2].b - c[1].b);
+      c[1].d = fabs(c[0].b-z1);
+      
+      c[points-2].c = fabs(z2 - c[points-2].b);
+      c[points-2].d = fabs(c[points-3].b - c[points-4].b);
+      
+      c[points-1].c = fabs(z3 - z2);
+      c[points-1].d = fabs(c[points-2].b - c[points-3].b);
+      
+      //derivatives
+      for(size_t i = 0; i < points; ++i) {
+        Float w0, w1;
+        Float d_2, d_1, d0, d1;
+        
+        if(i == 0) {
+          d_2 = z0; d_1 = z1; d1 = c[i+1].b;
+        }
+        else if(i == 1) {
+          d_2 = z1; d_1 = c[i-1].b; d1 = c[i+1].b;
+        }
+        else {
+          d_2 = c[i-2].b; d_1 = c[i-1].b; d1 = c[i+1].b;
+        }
+        
+        d0 = c[i].b; w1 = c[i].c; w0 = c[i].d;
+        
+        // special cases
+        if(d_2 == d_1 && d0 != d1)
+          c[i].a = d_1;
+        else if(d0 == d1 && d_2 == d_1)
+          c[i].a = d0;
+        else if(d_1 == d0)
+          c[i].a = d0;
+        else if(d_2 == d_1 && d0 == d1 && d0 != d_1)
+          c[i].a = 0.5 * (d_1 + d0);
+        else
+          c[i].a = (d_1*w1 + d0*w0) / (w1+w0);
+      }
   
-      return result;
-    }
-    
-    // get a derivative of the function at x
-    double GetDValue(const double x) const { 
-      double result = 0.0;
-      unsigned int index = 0;
-      
-      // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
-      if(x < this->x_First)
-        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
-      else if(x > this->x_Last)
-        throw std::runtime_error("eph_spline: argument larger than the upper bound");
-      #endif
-      
-      index = FindIndex(x);
-      
-      double x2 = x*x;
-      double x3 = x*x2;
-      
-      result = da[index] + db[index] * x + dc[index] * x2;
-      
-      return result;
-    }
-    
-    // get the second derivative of the function at x (discontinuous!)
-    double GetDDValue(const double x) const { 
-      double result = 0.0;
-      unsigned int index = 0;
-      
-      // maybe this should be a debug option and asserted instead?
-      #ifndef EPH_UNSAFE
-      if(x < this->x_First)
-        throw std::runtime_error("eph_spline: argument smaller than the lower bound");
-      else if(x > this->x_Last)
-        throw std::runtime_error("eph_spline: argument larger than the upper bound");
-      #endif
-      
-      index = FindIndex(x);
-      
-      double x2 = x*x;
-      double x3 = x*x2;
-      
-      result = dda[index] + ddb[index] * x;
-      
-      return result;
-    }
+      // solve the equations
+      for(size_t i = 0; i < points-1; ++i) {
+        Float dx3 = dx*dx*dx;
+        
+        Float x0_1 = i * dx;
+        Float x0_2 = i * dx * x0_1;
+        Float x0_3 = i * dx * x0_2;
+        
+        Float x1_1 = (i+1) * dx;
+        Float x1_2 = (i+1) * dx * x1_1;
+        Float x1_3 = (i+1) * dx * x1_2;
+        
+        c[i].d = (-c[i].a*x0_1 - c[i+1].a*x0_1 + c[i].a*x1_1 + c[i+1].a*x1_1 + 2.0*y[i] - 2.0*y[i+1]) / dx3;
+        c[i].c = (-c[i].a + c[i+1].a + 3.0*c[i].d*x0_2 - 3.0*c[i].d*x1_2) / 2.0 / dx;
+        c[i].b = (c[i].c*x0_2 + c[i].d*x0_3 - c[i].c*x1_2 - c[i].d*x1_3 - y[i] + y[i+1]) / dx;
+        c[i].a = y[i] - c[i].b*x0_1 - c[i].c*x0_2 - c[i].d*x0_3;
+      }
   
-  private: // some private functions for spline initialisation and value calculation
-    unsigned int FindIndex(const double x) const {
-      return ((x-this->x_First)/dx);
+      c[points-1].a = y[points-1];
+      c[points-1].b = 0.0;
+      c[points-1].c = 0.0;
+      c[points-1].d = 0.0;
     }
     
-    void FindCoefficients();
+    Float operator() (Float x) const {
+      assert(x >= 0);
+      
+      size_t index = x * inv_dx; // use inv_dx = 1./dx instead
+      assert(index < c.size());
+      
+      return c[index].a + x * (c[index].b + x * (c[index].c + x * c[index].d));
+    }
+    
+  private:
+    constexpr static size_t min_size {3};
+    
+    struct Coefficients {
+      Float a, b, c, d;
+    };
+    
+    Float inv_dx;
+    Container<Coefficients, Allocator<Coefficients>> c;
 };
 
 #endif
