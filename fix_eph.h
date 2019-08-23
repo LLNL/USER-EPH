@@ -8,8 +8,6 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
-#ifdef FIX_EPH_GPU
-
 #ifdef FIX_CLASS
 FixStyle(eph,FixEPH)
 #else
@@ -205,4 +203,4 @@ class FixEPH : public Fix {
 }
 #endif
 #endif
-#endif
+

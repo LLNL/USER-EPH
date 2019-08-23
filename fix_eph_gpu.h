@@ -8,12 +8,14 @@
  * e-mail: artur.tamm.work@gmail.com
  */
 
+#ifdef FIX_EPH_GPU
+
 #ifdef FIX_CLASS
 FixStyle(eph/gpu,FixEPHGPU)
 #else
 
-#ifndef LMP_FIX_EPH_H
-#define LMP_FIX_EPH_H
+#ifndef LMP_FIX_EPH_GPU_H
+#define LMP_FIX_EPH_GPU_H
 
 // external headers
 
@@ -35,10 +37,11 @@ class FixEPHGPU : public FixEPH {
     ~FixEPHGPU(); // destructor
     
   private:
-    
+    int myID;
+    int nrPS;
 };
 
 }
 #endif
 #endif
-
+#endif
