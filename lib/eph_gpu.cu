@@ -13,6 +13,12 @@ void dummy_test(int myID, int nrPS)
   printf("GPU %d %d %d %d %d\n", myID, nrPS, thread_index, block_dimension, grid_dimension);
 }
 
+__global__
+void calculate_environment_gpu_cu()
+{
+  
+}
+
 
 void run_dummy_test_cu(int myID, int nrPS) 
 {

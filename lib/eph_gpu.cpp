@@ -14,4 +14,8 @@ void call_dummy(int myID, int nrPS)
   cudaFree(f);
 }
 
+void calculate_environment_gpu();
+
+
+
 

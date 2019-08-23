@@ -9,6 +9,7 @@
 #include <vector>
 #include <cmath>
 #include <cassert>
+#include <cstddef>
 
 /* 
  * Stripped down version of the EPH_Spline class
@@ -132,7 +133,7 @@ class EPH_Spline {
       return c[index].a + x * (c[index].b + x * (c[index].c + x * c[index].d));
     }
     
-  private:
+  protected:
     constexpr static size_t min_size {3};
     
     struct Coefficients {
