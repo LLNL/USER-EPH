@@ -7,11 +7,13 @@
 #define EPH_BETA
 
 // external headers 
+#include <memory>
 #include <vector>
 #include <string>
 #include <sstream>
 #include <cassert>
 #include <fstream>
+#include <cstddef>
 
 // internal headers
 #include "eph_spline.h"

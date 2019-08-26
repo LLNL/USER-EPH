@@ -6,6 +6,7 @@
 #ifndef EPH_SPLINE
 #define EPH_SPLINE
 
+#include <memory>
 #include <vector>
 #include <cmath>
 #include <cassert>
