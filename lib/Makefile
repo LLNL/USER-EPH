@@ -10,7 +10,7 @@ all: eph_gpu.cpp eph_gpu.cu eph_gpu.h main.cpp
 	$(NVCC) -c eph_gpu.cu  -o eph_gpu_cu.o $(INCFLAGS) $(NVCCFLAGS)
 	$(NVCC) -c eph_gpu.cpp -o eph_gpu_cpp.o $(INCFLAGS) $(NVCCFLAGS)
 	ar rcs libeph_gpu.a eph_gpu_cu.o eph_gpu_cpp.o
-	$(CXX) $(CXXFLAGS) main.cpp libeph_gpu.a -o main -lcuda -lcudart $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) main.cpp libeph_gpu.a -o main -lcuda -lcudart $(INCFLAGS) $(LDFLAGS)
 
 clean: 
 	rm -f libeph_gpu.a eph_gpu_cu.o eph_gpu_cpp.o main

@@ -182,7 +182,7 @@ class EPH_Beta {
       return alpha[index](rho_i);
     }
   
-  private:
+  protected:
     static constexpr unsigned int max_line_length = 1024; // this is for parsing
     
     Float r_cutoff; // cutoff for locality

@@ -3,7 +3,9 @@
 #include <cuda_runtime_api.h>
 #include <stdio.h>
 
-#include "eph_gpu.h"
+#define FIX_EPH_GPU
+
+#include "eph_gpu.cuh"
 
 __global__
 void dummy_test(int myID, int nrPS)
@@ -23,11 +25,11 @@ void run_dummy_test_cu(int myID, int nrPS)
 __global__ 
 void test_interpolator_cu(EPH_Spline_GPU spl, double *values, int n_values)
 {
-  int thread_index = threadIdx.x;
-  int block_dimension = blockDim.x;
-  int grid_dimension = gridDim.x;
+  //int thread_index = threadIdx.x;
+  //int block_dimension = blockDim.x;
+  //int grid_dimension = gridDim.x;
 
-  spl(5.0);
+  printf("GPU %f %f %f %f\n", spl(0.0), spl(1.0), spl(1.5), spl(2.0));
 }
 
 void test_interpolator_gpu(EPH_Spline_GPU spl, double *values, int n_values) {
