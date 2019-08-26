@@ -16,6 +16,7 @@ FixStyle(eph,FixEPH)
 #define LMP_FIX_EPH_H
 
 // external headers
+#include <memory>
 #include <vector>
 
 // lammps headers

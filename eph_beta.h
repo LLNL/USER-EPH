@@ -7,6 +7,7 @@
 #define EPH_BETA
 
 // external headers 
+#include <memory>
 #include <vector>
 #include <string>
 #include <sstream>
