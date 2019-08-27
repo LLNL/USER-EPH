@@ -5,6 +5,7 @@
 #define EPH_GPU_H
 
 // external headers
+#include <memory>
 #include <vector>
 
 #include <cuda.h>
@@ -14,8 +15,6 @@
 #include "../eph_spline.h"
 #include "../eph_beta.h"
 
-using Spline = EPH_Spline<double, std::allocator, std::vector>;
-
 // spline interpolator; defined and build elsewhere
 using Spline = EPH_Spline<double, std::allocator, std::vector>;
 
@@ -23,9 +22,15 @@ using Spline = EPH_Spline<double, std::allocator, std::vector>;
 class EPH_Spline_GPU : public Spline
 {
   public:
+    EPH_Spline_GPU();
     EPH_Spline_GPU(double dx, std::vector<double> &y);
-    EPH_Spline_GPU(Spline& spl);
+    EPH_Spline_GPU(const Spline& spl);
+    EPH_Spline_GPU(const EPH_Spline_GPU& spl);
+    EPH_Spline_GPU(EPH_Spline_GPU&& spl);
     ~EPH_Spline_GPU();
+    
+    EPH_Spline_GPU& operator=(const EPH_Spline_GPU& spl);
+    EPH_Spline_GPU& operator=(const EPH_Spline_GPU&& spl);
     
     __device__ double operator() (double x)
     {
@@ -38,51 +43,72 @@ class EPH_Spline_GPU : public Spline
     }
   
   private:
+    size_t n_points;
     Coefficients *c_gpu;
+    
+    void clean_memory();
+    void allocate_and_copy(size_t n);
+    void allocate_and_copy(size_t n, const Coefficients *c_device);
 };
 
 // beta_rho class
-/*
 using Beta = EPH_Beta<double, std::allocator, std::vector>;
 
 class EPH_Beta_GPU : public Beta {
   public:
-    EPH_Beta_GPU() {};
-    ~EPH_Beta_GPU() {};
-    size_t get_n_elements();
-    Float get_r_cutoff();
-    Float get_r_cutoff_sq();
-    Float get_rho_cutoff();
-    uint8_t get_element_number(size_t index)
-    std::string get_element_name(size_t index);
-    Float get_rho(size_t index, Float r);
-    Float get_rho_r_sq(size_t index, Float r_sq);
-    Float get_beta(size_t index, Float rho_i);
-    Float get_alpha(size_t index, Float rho_i);
+    EPH_Beta_GPU();
+    EPH_Beta_GPU(Beta& beta);
+    EPH_Beta_GPU(const EPH_Beta_GPU &beta);
+    ~EPH_Beta_GPU();
+    
+    EPH_Beta_GPU& operator=(const EPH_Beta_GPU& beta);
+    
+    __device__ double get_rho(size_t index, double r) 
+    {
+      return rho_gpu_device[index](r);
+    }
+    
+    __device__ double get_rho_r_sq(size_t index, double r_sq)
+    {
+      return rho_r_sq_gpu_device[index](r_sq);
+    }
+    
+    __device__ double get_beta(size_t index, double rho_i)
+    {
+      return beta_gpu_device[index](rho_i);
+    }
+    
+    __device__ double get_alpha(size_t index, double rho_i)
+    {
+      return alpha_gpu_device[index](rho_i);
+    }
   
   private:
-    static constexpr unsigned int max_line_length = 1024; // this is for parsing
+    EPH_Spline_GPU* rho_gpu; // gpu splines
+    EPH_Spline_GPU* rho_gpu_device; // pointer to spline array on gpu
     
-    Float r_cutoff; // cutoff for locality
-    Float r_cutoff_sq; // cutoff sq for locality mostly unused
-    Float rho_cutoff; // cutoff for largest site density
-    size_t n_elements; // number of elements
+    EPH_Spline_GPU* rho_r_sq_gpu;
+    EPH_Spline_GPU* rho_r_sq_gpu_device;
     
-    Container<uint8_t, Allocator<uint8_t>> element_number;
-    Container<std::string, Allocator<std::string>> element_name;
-    Container<Spline, Allocator<Spline>> rho;
-    Container<Spline, Allocator<Spline>> rho_r_sq;
-    Container<Spline, Allocator<Spline>> alpha;
-    Container<Spline, Allocator<Spline>> beta;
+    EPH_Spline_GPU* alpha_gpu;
+    EPH_Spline_GPU* alpha_gpu_device;
+    
+    EPH_Spline_GPU* beta_gpu;
+    EPH_Spline_GPU* beta_gpu_device;
+    
+    void clean_memory();
+    void allocate_and_copy();
+    void allocate_and_copy(
+      EPH_Spline_GPU** dst_device, EPH_Spline_GPU** dst,
+      const std::vector<Spline> &src);
+    void allocate_and_copy(
+      EPH_Spline_GPU** dst_device, EPH_Spline_GPU** dst, 
+      const EPH_Spline_GPU* src_device, const EPH_Spline_GPU* src);
 };
-*/
-
-
 
 // TODO: remove these
-void call_dummy(int, int);
-void test_interpolator_gpu(EPH_Spline_GPU spl, double *values, int n_values);
-
+void test_interpolator_gpu(EPH_Spline_GPU &spl);
+void test_beta_rho_gpu(EPH_Beta_GPU &beta);
 
 #endif
 #endif

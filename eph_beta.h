@@ -26,10 +26,10 @@
 // TODO: consider storing data as alpha instead of beta to reduce the number of sqrt
 template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
 class EPH_Beta {
-  using Spline = EPH_Spline<Float, Allocator, Container>;
-  using Container_Float = Container<Float, Allocator<Float>>;
-  
   public:
+    using Spline = EPH_Spline<Float, Allocator, Container>;
+    using Container_Float = Container<Float, Allocator<Float>>;
+  
     EPH_Beta() : 
       n_elements {0},
       r_cutoff {0},
