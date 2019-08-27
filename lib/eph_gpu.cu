@@ -5,7 +5,7 @@
 
 #define FIX_EPH_GPU
 
-#include "eph_gpu.cuh"
+#include "eph_gpu.h"
 
 __global__
 void dummy_test(int myID, int nrPS)
@@ -29,7 +29,7 @@ void test_interpolator_cu(EPH_Spline_GPU spl, double *values, int n_values)
   //int block_dimension = blockDim.x;
   //int grid_dimension = gridDim.x;
 
-  printf("GPU %f %f %f %f\n", spl(0.0), spl(1.0), spl(1.5), spl(2.0));
+  printf("GPU: %.2f %.2f %.2f %.2f\n", spl(0.0), spl(1.0), spl(1.5), spl(2.0));
 }
 
 void test_interpolator_gpu(EPH_Spline_GPU spl, double *values, int n_values) {

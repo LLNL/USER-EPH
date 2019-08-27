@@ -126,6 +126,11 @@ class EPH_Spline {
       c[points-1].d = 0.0;
     }
     
+    EPH_Spline(const EPH_Spline &spl) {
+      inv_dx = spl.inv_dx;
+      c = spl.c;
+    }
+    
     Float operator() (Float x) const {
       assert(x >= 0);
       

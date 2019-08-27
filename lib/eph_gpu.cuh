@@ -13,6 +13,8 @@
 #include "../eph_spline.h"
 #include "../eph_beta.h"
 
+// TODO: remove this file
+
 __device__ double EPH_Spline_GPU::operator() (double x)
 {
   int index = x * inv_dx;

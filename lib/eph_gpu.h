@@ -27,7 +27,15 @@ class EPH_Spline_GPU : public Spline
     EPH_Spline_GPU(Spline& spl);
     ~EPH_Spline_GPU();
     
-    __device__ double operator() (double x);
+    __device__ double operator() (double x)
+    {
+      #ifdef __CUDA_ARCH__
+      int index = x * inv_dx;
+      return c_gpu[index].a + x * (c_gpu[index].b + x * (c_gpu[index].c + x * c_gpu[index].d));
+      #else
+      return 0;
+      #endif
+    }
   
   private:
     Coefficients *c_gpu;
