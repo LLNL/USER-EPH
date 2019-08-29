@@ -100,7 +100,7 @@ class FixEPH : public Fix {
     int pack_forward_comm(int, int *, double *, int, int *) override;
     void unpack_forward_comm(int, int, double *) override;
   
-  private:
+  protected:
     static constexpr size_t max_file_length = 256; // max filename length
   
     int myID; // mpi rank for current instance

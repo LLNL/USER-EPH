@@ -36,9 +36,12 @@ class FixEPHGPU : public FixEPH {
     FixEPHGPU(class LAMMPS *, int, char **); // constructor
     ~FixEPHGPU(); // destructor
     
+    void grow_arrays(int) override; 
+    void post_force(int) override;
+    
   private:
-    int myID;
-    int nrPS;
+    void calculate_environment() override; 
+    //void force_prl() override;
 };
 
 }

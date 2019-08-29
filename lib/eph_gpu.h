@@ -4,111 +4,34 @@
 #ifndef EPH_GPU_H
 #define EPH_GPU_H
 
-// external headers
-#include <memory>
-#include <vector>
+typedef double double3d[3];
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-
-// internal headers
-#include "../eph_spline.h"
-#include "../eph_beta.h"
-
-// spline interpolator; defined and build elsewhere
-using Spline = EPH_Spline<double, std::allocator, std::vector>;
-
-// spline interpolator
-class EPH_Spline_GPU : public Spline
+// this thing will be passed to different kernels
+struct EPH_GPU
 {
-  public:
-    EPH_Spline_GPU();
-    EPH_Spline_GPU(double dx, std::vector<double> &y);
-    EPH_Spline_GPU(const Spline& spl);
-    EPH_Spline_GPU(const EPH_Spline_GPU& spl);
-    EPH_Spline_GPU(EPH_Spline_GPU&& spl);
-    ~EPH_Spline_GPU();
-    
-    EPH_Spline_GPU& operator=(const EPH_Spline_GPU& spl);
-    EPH_Spline_GPU& operator=(const EPH_Spline_GPU&& spl);
-    
-    __device__ double operator() (double x)
-    {
-      #ifdef __CUDA_ARCH__
-      int index = x * inv_dx;
-      return c_gpu[index].a + x * (c_gpu[index].b + x * (c_gpu[index].c + x * c_gpu[index].d));
-      #else
-      return 0;
-      #endif
-    }
+  void* beta_gpu; // pointer to eph_beta_gpu object in gpu space
+  // void* fdm_gpu; // pointer to the fdm thing in gpu space
   
-  private:
-    size_t n_points;
-    Coefficients *c_gpu;
-    
-    void clean_memory();
-    void allocate_and_copy(size_t n);
-    void allocate_and_copy(size_t n, const Coefficients *c_device);
+  double r_cutoff;
+  double r_cutoff_sq;
+  double rho_cutoff;
+  
+  size_t nlocal;
+  
+  double3d *x_gpu; // atom positions [nlocal + nghost][3]
+  double3d *v_gpu; // atom velocities [nlocal + nghost][3]
+  double3d *f_gpu; // atom forces [nlocal + nghost][3]
+  double3d *f_EPH_gpu; // friction force [nlocal][3]
+  double3d *f_RNG_gpu; // random force [nlocal][3]
+  
+  double3d *xi_i_gpu; // random numbers [nlocal][3]
+  double3d *w_i_gpu; // friction [nlocal][3]
+  
+  double *rho_i_gpu; // site density [nlocal]
 };
 
-// beta_rho class
-using Beta = EPH_Beta<double, std::allocator, std::vector>;
-
-class EPH_Beta_GPU : public Beta {
-  public:
-    EPH_Beta_GPU();
-    EPH_Beta_GPU(Beta& beta);
-    EPH_Beta_GPU(const EPH_Beta_GPU &beta);
-    ~EPH_Beta_GPU();
-    
-    EPH_Beta_GPU& operator=(const EPH_Beta_GPU& beta);
-    
-    __device__ double get_rho(size_t index, double r) 
-    {
-      return rho_gpu_device[index](r);
-    }
-    
-    __device__ double get_rho_r_sq(size_t index, double r_sq)
-    {
-      return rho_r_sq_gpu_device[index](r_sq);
-    }
-    
-    __device__ double get_beta(size_t index, double rho_i)
-    {
-      return beta_gpu_device[index](rho_i);
-    }
-    
-    __device__ double get_alpha(size_t index, double rho_i)
-    {
-      return alpha_gpu_device[index](rho_i);
-    }
-  
-  private:
-    EPH_Spline_GPU* rho_gpu; // gpu splines
-    EPH_Spline_GPU* rho_gpu_device; // pointer to spline array on gpu
-    
-    EPH_Spline_GPU* rho_r_sq_gpu;
-    EPH_Spline_GPU* rho_r_sq_gpu_device;
-    
-    EPH_Spline_GPU* alpha_gpu;
-    EPH_Spline_GPU* alpha_gpu_device;
-    
-    EPH_Spline_GPU* beta_gpu;
-    EPH_Spline_GPU* beta_gpu_device;
-    
-    void clean_memory();
-    void allocate_and_copy();
-    void allocate_and_copy(
-      EPH_Spline_GPU** dst_device, EPH_Spline_GPU** dst,
-      const std::vector<Spline> &src);
-    void allocate_and_copy(
-      EPH_Spline_GPU** dst_device, EPH_Spline_GPU** dst, 
-      const EPH_Spline_GPU* src_device, const EPH_Spline_GPU* src);
-};
-
-// TODO: remove these
-void test_interpolator_gpu(EPH_Spline_GPU &spl);
-void test_beta_rho_gpu(EPH_Beta_GPU &beta);
+EPH_GPU allocate_EPH_GPU(size_t n);
+void deallocate_EPH_GPU(EPH_GPU& eph_gpu);
 
 #endif
 #endif

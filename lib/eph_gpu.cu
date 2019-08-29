@@ -5,6 +5,8 @@
 
 #define FIX_EPH_GPU
 
+#include "eph_spline_gpu.h"
+#include "eph_beta_gpu.h"
 #include "eph_gpu.h"
 
 __global__ 
@@ -38,14 +40,14 @@ void test_beta_rho_gpu(EPH_Beta_GPU &beta)
 }
 
 __global__
-void calculate_environment_gpu_cu()
+void calculate_environment_cu(EPH_GPU eph_gpu)
 {
-  
+  printf("calculating environment\n");
 }
 
-void calculate_environment_gpu()
+void calculate_environment_gpu(EPH_GPU& eph_gpu)
 {
-  
+  calculate_environment_cu<<<1, 1>>>(eph_gpu);
 }
 
 

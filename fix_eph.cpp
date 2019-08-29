@@ -445,9 +445,6 @@ void FixEPH::calculate_environment()
       }
     }
   }
-   
-  state = FixState::RHO; // TODO remove these
-  comm->forward_comm_fix(this);
 }
 
 void FixEPH::force_ttm() 
@@ -864,6 +861,9 @@ void FixEPH::post_force(int vflag) {
   
   // calculate the site densities, gradients (future) and beta(rho)
   calculate_environment();
+  
+  state = FixState::RHO;
+  comm->forward_comm_fix(this);
   
   /* 
    * we have separated the model specific codes to make it more readable 
