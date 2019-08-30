@@ -40,7 +40,9 @@ class FixEPHGPU : public FixEPH {
     void post_force(int) override;
     
   private:
-    void calculate_environment() override; 
+    EPH_GPU eph_gpu;
+    
+    void calculate_environment(); 
     //void force_prl() override;
 };
 

@@ -166,7 +166,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   if(types > (narg - 17))
     error->all(FLERR, "Fix eph: number of types larger than provided in fix");
   
-  type_map = new uint8_t[types]; // TODO: switch to vector
+  type_map = new int[types]; // TODO: switch to vector
   
   beta = Beta(arg[16]);
   
@@ -179,7 +179,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // do element mapping
   for(size_t i = 0; i < types; ++i) {
-    type_map[i] = std::numeric_limits<uint8_t>::max();
+    type_map[i] = std::numeric_limits<int>::max();
     
     for(size_t j = 0; j < beta.get_n_elements(); ++j)
       if((beta.get_element_name(j)).compare(arg[17+i]) == 0) type_map[i] = j;
@@ -914,6 +914,7 @@ void FixEPH::grow_arrays(int ngrow) {
   //std::cout << "NGROW NLOCAL NGHOST NMAX\n";
   //std::cout << ngrow << ' ' << 
   //  atom->nlocal << ' ' << atom->nghost << ' ' << atom->nmax << '\n';
+  n = ngrow;
   
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");

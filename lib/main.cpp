@@ -1,7 +1,7 @@
 
 
-#include "../eph_spline.h"
-#include "../eph_beta.h"
+#include "eph_spline.h"
+#include "eph_beta.h"
 
 #include "eph_spline_gpu.h"
 #include "eph_beta_gpu.h"
@@ -16,10 +16,7 @@
 
 using namespace std;
 
-using Spline = EPH_Spline<double, allocator, vector>;
 using SplineGPU = EPH_Spline_GPU;
-
-using Beta = EPH_Beta<double, allocator, vector>;
 using BetaGPU = EPH_Beta_GPU;
 
 int main(int args, char **argv) 
@@ -51,6 +48,13 @@ int main(int args, char **argv)
     beta.get_alpha(0, 0.1), beta.get_beta(0, 0.1));
   test_beta_rho_gpu(betagpu);
   test_beta_rho_gpu(betagpu);
+  
+  std::cout << "### Testing EPH_GPU ###\n";
+  int types = 3;
+  int type_map[3] = {0, 1, 0};
+  
+  EPH_GPU eph_gpu = allocate_EPH_GPU(beta, types, type_map);
+  calculate_environment_gpu(eph_gpu);
   
   MPI_Finalize();
   return 0;

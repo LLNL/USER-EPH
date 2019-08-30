@@ -10,12 +10,8 @@
 #include <iostream>
 
 // internal headers
-#include "../eph_spline.h"
+#include "eph_spline.h"
 
-// spline interpolator; defined and build elsewhere
-using Spline = EPH_Spline<double, std::allocator, std::vector>;
-
-// spline interpolator
 class EPH_Spline_GPU : public Spline
 {
   public:

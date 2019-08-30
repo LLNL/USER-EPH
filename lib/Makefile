@@ -1,9 +1,9 @@
 NVCC=/usr/local/cuda/bin/nvcc
 CXX=mpicxx 
-CXXFLAGS= -O2 -std=c++11 -DFIX_EPH_GPU
-NVCCFLAGS= -ccbin=g++ -O2 --std=c++11 
+CXXFLAGS= -g -O2 -std=c++11 -DFIX_EPH_GPU
+NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 
 #                                            --compiler-bindir /usr/bin/gcc
-INCFLAGS= -I/usr/local/cuda/include
+INCFLAGS= -I/usr/local/cuda/include -I../
 LDFLAGS= -L/usr/local/cuda/lib64
 
 all: eph_gpu.cpp eph_gpu.cu eph_spline_gpu.h eph_beta_gpu.h eph_gpu.h main.cpp

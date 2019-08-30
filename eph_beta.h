@@ -198,4 +198,6 @@ class EPH_Beta {
     Container<Spline, Allocator<Spline>> beta;
 };
 
+using Beta = EPH_Beta<Float, Allocator, Container>;
+
 #endif

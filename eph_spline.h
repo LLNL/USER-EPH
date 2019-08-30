@@ -146,4 +146,14 @@ class EPH_Spline {
     Container<Coefficients, Allocator<Coefficients>> c;
 };
 
+using Float = double;
+
+template<typename _F = Float>
+using Allocator = std::allocator<_F>;
+
+template<typename _F = Float, typename _A = Allocator<_F>>
+using Container = std::vector<_F, _A>;
+
+using Spline = EPH_Spline<Float, Allocator, Container>;
+
 #endif

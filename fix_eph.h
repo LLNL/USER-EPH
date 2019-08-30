@@ -29,20 +29,6 @@ FixStyle(eph,FixEPH)
 
 namespace LAMMPS_NS {
 
-// START GLOBAL THINGS 
-
-using Float = double;
-
-template<typename _F = Float>
-using Allocator = std::allocator<_F>;
-
-template<typename _F = Float, typename _A = Allocator<_F>>
-using Container = std::vector<_F, _A>;
-
-using Beta = EPH_Beta<Float, Allocator, Container>;
-
-// END GLOBAL THINGS
-
 class FixEPH : public Fix {
  public:
     // enumeration for tracking fix state, this is used in comm forward
@@ -58,7 +44,7 @@ class FixEPH : public Fix {
     };
     
     // enumeration for selecting fix functionality
-    enum Flag : uint8_t {
+    enum Flag : int {
       FRICTION = 0x01,
       RANDOM = 0x02,
       FDM = 0x04,
@@ -68,7 +54,7 @@ class FixEPH : public Fix {
     };
     
     // enumeration for selecting the model for friction
-    enum Model : int8_t {
+    enum Model : int {
       TESTING = -1, // special for testing purposes
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
@@ -108,11 +94,11 @@ class FixEPH : public Fix {
     
     FixState state; // tracks the state of the fix
     
-    uint8_t eph_flag; // term flags
-    int8_t eph_model; // model selection
+    int eph_flag; // term flags
+    int eph_model; // model selection
     
-    uint8_t types; // number of different types
-    uint8_t* type_map; // TODO: type map // change this to vector
+    int types; // number of different types
+    int* type_map; // TODO: type map // change this to vector
     //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
     
     Beta beta; // instance for beta(rho) parametrisation
@@ -140,6 +126,8 @@ class FixEPH : public Fix {
     
     // energy of the electronic system
     double Ee;
+    
+    size_t n; // size of peratom arrays
     
     // friction force
     double **f_EPH; // size = [nlocal][3] // TODO: try switching to vector

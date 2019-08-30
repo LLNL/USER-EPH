@@ -7,10 +7,7 @@
 #include <iostream>
 
 #include "eph_spline_gpu.h"
-#include "../eph_beta.h"
-
-// beta_rho class
-using Beta = EPH_Beta<double, std::allocator, std::vector>;
+#include "eph_beta.h"
 
 class EPH_Beta_GPU : public Beta 
 {
