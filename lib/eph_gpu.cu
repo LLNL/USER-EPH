@@ -10,19 +10,19 @@
 #include "eph_gpu.h"
 
 __device__
-double get_scalar(const double3d x, const double3d y) 
+double get_scalar(double3d x, double3d y) 
 {
   return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
 }
 
 __device__
-double get_norm(const double3d x) 
+double get_norm(double3d x) 
 {
   return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
 }
 
 __device__
-double get_distance_sq(const double3d x, const double3d y) 
+double get_distance_sq(double3d x, double3d y) 
 {
   double3d dxy;
   dxy[0] = x[0] - y[0];
@@ -33,7 +33,7 @@ double get_distance_sq(const double3d x, const double3d y)
 }
 
 __device__
-double get_difference_sq(const double3d x, const double3d y, double3d z) 
+double get_difference_sq(const double3d& x, const double3d& y, double3d& z) 
 {
   z[0] = x[0] - y[0];
   z[1] = x[1] - y[1];
