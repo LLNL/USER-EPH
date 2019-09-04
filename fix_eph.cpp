@@ -424,6 +424,8 @@ void FixEPH::calculate_environment()
   // loop over atoms and their neighbours and calculate rho and beta(rho)
   for(size_t i = 0; i != nlocal; ++i) 
   {
+    rho_i[i] = 0;
+    
     // check if current atom belongs to fix group and if an atom is local
     if(mask[i] & groupbit) 
     {
@@ -835,7 +837,6 @@ void FixEPH::post_force(int vflag) {
   int *numneigh = list->numneigh;
   
   //zero all arrays
-  std::fill_n(&(rho_i[0]), nlocal, 0.0);
   std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);

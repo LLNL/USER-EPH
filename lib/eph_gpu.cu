@@ -76,10 +76,9 @@ __global__
 void calculate_environment_cu(EPH_GPU eph_gpu)
 {
   int thread_index = threadIdx.x;
+  int block_index = blockIdx.x;
   int block_dimension = blockDim.x;
   int grid_dimension = gridDim.x;
-  
-  //printf("DIMENSIONS: %d %d %d\n", thread_index, block_dimension, grid_dimension);
   
   EPH_Beta_GPU& beta = *((EPH_Beta_GPU*) eph_gpu.beta_gpu);
   
@@ -98,19 +97,24 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
   
   double r_cutoff_sq = eph_gpu.r_cutoff_sq;
   
-  for(size_t i = thread_index; i < nlocal; i += block_dimension)
+  int index = block_index * block_dimension + thread_index;
+  int stride = block_dimension * grid_dimension;
+  
+  for(size_t i = index; i < nlocal; i += stride)
   {
     if(!(mask[i] & groupbit)) continue;
     
     rho_i_gpu[i] = 0;
     
     // brute force scan
-    for(size_t j = 0; j < nlocal + nghost; ++j)
+    for(size_t j = 0; j < (nlocal + nghost); ++j)
     {
       if(i == j) continue;
       
       double r_sq = get_distance_sq(x[i], x[j]);
       
+      // TODO: remove the r_sq > 0.1 later
+      //if(r_sq < r_cutoff_sq && r_sq > 0.1)
       if(r_sq < r_cutoff_sq)
       {
         rho_i_gpu[i] += beta.get_rho_r_sq(type_map[type[j] - 1], r_sq);
@@ -121,7 +125,7 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
 
 void calculate_environment_gpu(EPH_GPU& eph_gpu)
 {
-  calculate_environment_cu<<<1, 256>>>(eph_gpu);
+  calculate_environment_cu<<<256, 256>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
 

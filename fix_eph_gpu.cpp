@@ -37,18 +37,24 @@ FixEPHGPU::FixEPHGPU(LAMMPS *lmp, int narg, char **arg) :
 {
   eph_gpu = allocate_EPH_GPU(beta, types, type_map);
   eph_gpu.groupbit = groupbit;
+  
+  x_mirror = nullptr;
 }
 
 // destructor
 FixEPHGPU::~FixEPHGPU() 
 {
   deallocate_EPH_GPU(eph_gpu);
+  delete[] x_mirror;
 }
 
 void FixEPHGPU::grow_arrays(int ngrow) 
 {
   FixEPH::grow_arrays(ngrow);
   eph_gpu.grow(ngrow);
+  
+  if(x_mirror != nullptr) delete[] x_mirror;
+  x_mirror = new double3d[ngrow];
 }
 
 void FixEPHGPU::post_force(int)
@@ -60,7 +66,14 @@ void FixEPHGPU::post_force(int)
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
-
+  
+  //zero all arrays
+  // TODO: remove these in the future
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
+  
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
     for(size_t i = 0; i < nlocal; ++i) {
@@ -86,7 +99,15 @@ void FixEPHGPU::post_force(int)
   
   int ntotal = nlocal + nghost;
   
-  cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x[0], ntotal*sizeof(double3d));
+  for(size_t i = 0; i < ntotal; ++i)
+  {
+    x_mirror[i][0] = x[i][0];
+    x_mirror[i][1] = x[i][1];
+    x_mirror[i][2] = x[i][2];
+  }
+  
+  //cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x_mirror, 3*ntotal*sizeof(double));
+  cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x[0], 3*ntotal*sizeof(double));
   cpu_to_device_EPH_GPU((void*) eph_gpu.type_gpu, (void*) type, ntotal*sizeof(int));
   cpu_to_device_EPH_GPU((void*) eph_gpu.mask_gpu, (void*) mask, ntotal*sizeof(int));
   
