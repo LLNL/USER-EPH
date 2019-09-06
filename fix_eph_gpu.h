@@ -45,7 +45,9 @@ class FixEPHGPU : public FixEPH {
     void calculate_environment(); 
     //void force_prl() override;
     
-    double3d* x_mirror;
+    void transfer_neighbour_list();
+    
+    int* index_neigh;
 };
 
 }

@@ -100,26 +100,43 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
   int index = block_index * block_dimension + thread_index;
   int stride = block_dimension * grid_dimension;
   
+  int* number_neigh = eph_gpu.number_neigh_gpu;
+  int* index_neigh = eph_gpu.index_neigh_gpu;
+  int* neighs = eph_gpu.neighs_gpu;
+  
   for(size_t i = index; i < nlocal; i += stride)
   {
     if(!(mask[i] & groupbit)) continue;
     
     rho_i_gpu[i] = 0;
     
+    // neighbour list version
+    for(int j = 0; j < number_neigh[i]; ++j)
+    {
+      int jj = neighs[index_neigh[i] + j];
+      
+      double r_sq = get_distance_sq(x[i], x[jj]);
+      
+      if(r_sq < r_cutoff_sq)
+      {
+        rho_i_gpu[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+      }
+    }
+    
     // brute force scan
+    /*
     for(size_t j = 0; j < (nlocal + nghost); ++j)
     {
       if(i == j) continue;
       
       double r_sq = get_distance_sq(x[i], x[j]);
       
-      // TODO: remove the r_sq > 0.1 later
-      //if(r_sq < r_cutoff_sq && r_sq > 0.1)
       if(r_sq < r_cutoff_sq)
       {
         rho_i_gpu[i] += beta.get_rho_r_sq(type_map[type[j] - 1], r_sq);
       }
     }
+    */
   }
 }
 

@@ -31,6 +31,9 @@ void EPH_GPU::grow(size_t ngrow)
     cudaFree(w_i_gpu);
     
     cudaFree(rho_i_gpu);
+    
+    cudaFree(number_neigh_gpu);
+    cudaFree(index_neigh_gpu);
   }
   
   n = ngrow;
@@ -49,6 +52,23 @@ void EPH_GPU::grow(size_t ngrow)
   cudaMalloc((void**) &w_i_gpu, n * sizeof(double3d));
   
   cudaMalloc((void**) &rho_i_gpu, n * sizeof(double));
+  
+  cudaMalloc((void**) &number_neigh_gpu, n * sizeof(double));
+  cudaMalloc((void**) &index_neigh_gpu, n * sizeof(double));
+}
+
+void EPH_GPU::grow_neigh(size_t ngrow)
+{
+  if(ngrow <= n_neigh) return;
+  
+  if(n_neigh)
+  {
+    cudaFree(neighs_gpu);
+  }
+  
+  n_neigh = ngrow;
+  std::cout << "GROWING NEIGHS: " << n_neigh << '\n';
+  cudaMalloc((void**) &neighs_gpu, n_neigh * sizeof(int));
 }
 
 void cpu_to_device_EPH_GPU(void* dst, void* src, size_t n);
@@ -77,7 +97,9 @@ EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
   
   eph_gpu.nlocal = 0;
   eph_gpu.nghost = 0;
+  
   eph_gpu.n = 0;
+  eph_gpu.n_neigh = 0;
   
   eph_gpu.type_gpu = nullptr;
   eph_gpu.mask_gpu = nullptr;
@@ -93,6 +115,10 @@ EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
   eph_gpu.w_i_gpu = nullptr;
   
   eph_gpu.rho_i_gpu = nullptr;
+  
+  eph_gpu.number_neigh_gpu = nullptr;
+  eph_gpu.index_neigh_gpu = nullptr;
+  eph_gpu.neighs_gpu = nullptr;
   
   return eph_gpu;
 }
@@ -121,6 +147,14 @@ void deallocate_EPH_GPU(EPH_GPU& eph_gpu)
     cudaFree(eph_gpu.w_i_gpu);
     
     cudaFree(eph_gpu.rho_i_gpu);
+    
+    cudaFree(eph_gpu.number_neigh_gpu);
+    cudaFree(eph_gpu.index_neigh_gpu);
+  }
+  
+  if(eph_gpu.neighs_gpu != nullptr)
+  {
+    cudaFree(eph_gpu.neighs_gpu);
   }
 }
 

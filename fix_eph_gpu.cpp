@@ -38,14 +38,14 @@ FixEPHGPU::FixEPHGPU(LAMMPS *lmp, int narg, char **arg) :
   eph_gpu = allocate_EPH_GPU(beta, types, type_map);
   eph_gpu.groupbit = groupbit;
   
-  x_mirror = nullptr;
+  index_neigh = nullptr;
 }
 
 // destructor
 FixEPHGPU::~FixEPHGPU() 
 {
   deallocate_EPH_GPU(eph_gpu);
-  delete[] x_mirror;
+  delete[] index_neigh;
 }
 
 void FixEPHGPU::grow_arrays(int ngrow) 
@@ -53,8 +53,8 @@ void FixEPHGPU::grow_arrays(int ngrow)
   FixEPH::grow_arrays(ngrow);
   eph_gpu.grow(ngrow);
   
-  if(x_mirror != nullptr) delete[] x_mirror;
-  x_mirror = new double3d[ngrow];
+  if(index_neigh != nullptr) delete[] index_neigh;
+  index_neigh = new int[ngrow];
 }
 
 void FixEPHGPU::post_force(int)
@@ -66,6 +66,14 @@ void FixEPHGPU::post_force(int)
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
+  
+  // update numbers
+  eph_gpu.nlocal = nlocal;
+  eph_gpu.nghost = nghost;
+  
+  int ntotal = nlocal + nghost;
+  
+  transfer_neighbour_list(); // send neighbour list to gpu
   
   //zero all arrays
   // TODO: remove these in the future
@@ -94,19 +102,6 @@ void FixEPHGPU::post_force(int)
   
   // calculate the site densities, gradients (future) and beta(rho)
   // push coordinates to GPU this is ugly
-  eph_gpu.nlocal = nlocal;
-  eph_gpu.nghost = nghost;
-  
-  int ntotal = nlocal + nghost;
-  
-  for(size_t i = 0; i < ntotal; ++i)
-  {
-    x_mirror[i][0] = x[i][0];
-    x_mirror[i][1] = x[i][1];
-    x_mirror[i][2] = x[i][2];
-  }
-  
-  //cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x_mirror, 3*ntotal*sizeof(double));
   cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x[0], 3*ntotal*sizeof(double));
   cpu_to_device_EPH_GPU((void*) eph_gpu.type_gpu, (void*) type, ntotal*sizeof(int));
   cpu_to_device_EPH_GPU((void*) eph_gpu.mask_gpu, (void*) mask, ntotal*sizeof(int));
@@ -157,6 +152,26 @@ void FixEPHGPU::post_force(int)
 void FixEPHGPU::calculate_environment()
 {
   calculate_environment_gpu(eph_gpu);
+}
+
+void FixEPHGPU::transfer_neighbour_list()
+{  
+  int nlocal = atom->nlocal;
+  int *numneigh = list->numneigh;
+  int **firstneigh = list->firstneigh;
+  
+  size_t n_neighs = 0;
+  for(int i = 0; i < nlocal; ++i)
+  {
+    index_neigh[i] = n_neighs;
+    n_neighs += numneigh[i];
+  }
+  
+  eph_gpu.grow_neigh(n_neighs); // grow array if needed
+  
+  cpu_to_device_EPH_GPU(eph_gpu.number_neigh_gpu, numneigh, nlocal*sizeof(int));
+  cpu_to_device_EPH_GPU(eph_gpu.index_neigh_gpu, index_neigh, nlocal*sizeof(int));
+  cpu_to_device_EPH_GPU(eph_gpu.neighs_gpu, firstneigh[0], n_neighs*sizeof(int));
 }
 
 #endif

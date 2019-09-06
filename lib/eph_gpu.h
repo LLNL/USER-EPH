@@ -28,6 +28,11 @@ struct EPH_GPU
   int groupbit;
   
   int n; // array sizes
+  int n_neigh; // total number of elements in neighs_gpu
+  
+  int *number_neigh_gpu;
+  int *index_neigh_gpu;
+  int *neighs_gpu;
   
   int types;
   int* type_map_gpu;
@@ -51,6 +56,7 @@ struct EPH_GPU
   
   // member functions  
   void grow(size_t ngrow);
+  void grow_neigh(size_t ngrow);
 };
 
 // this is done on purpose
