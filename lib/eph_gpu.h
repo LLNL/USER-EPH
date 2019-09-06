@@ -15,6 +15,10 @@ typedef double double3d[3];
 // this thing will be passed to different kernels
 struct EPH_GPU
 {
+  size_t neighmask;
+  
+  double eta_factor;
+  
   void* beta_gpu; // pointer to eph_beta_gpu object in gpu space
   // void* fdm_gpu; // pointer to the fdm thing in gpu space
   
@@ -41,13 +45,14 @@ struct EPH_GPU
   int *mask_gpu;
   double3d *x_gpu; // atom positions [n + nghost][3]
   double3d *v_gpu; // atom velocities [n + nghost][3]
-  double3d *f_gpu; // atom forces [n][3]
+  
   double3d *f_EPH_gpu; // friction force [n][3]
   double3d *f_RNG_gpu; // random force [n][3]
   
   double3d *xi_i_gpu; // random numbers [n][3]
   double3d *w_i_gpu; // friction [n][3]
   
+  double3d *T_e_i_gpu; // electronic temperatures at each atomic size [n]
   double *rho_i_gpu; // site density [n]
   
   // instances in cpu memory
@@ -65,10 +70,12 @@ void deallocate_EPH_GPU(EPH_GPU& eph_gpu);
 
 void cpu_to_device_EPH_GPU(void* dst, void* src, size_t n);
 void device_to_cpu_EPH_GPU(void* dst, void* src, size_t n);
-
-void synchronise_EPH_GPU();
-
+ 
 void calculate_environment_gpu(EPH_GPU& eph_gpu);
+
+void force_prl_stage1_gpu(EPH_GPU& eph_gpu);
+void force_prl_stage2_gpu(EPH_GPU& eph_gpu);
+void force_prl_stage3_gpu(EPH_GPU& eph_gpu);
 
 #endif
 #endif

@@ -19,14 +19,11 @@ class EPH_Spline_GPU : public Spline
       Spline(),
       n_points {0},
       c_gpu {nullptr} 
-    {
-      //std::cout << "Empty constructor\n";
-    }
+    { }
       
     EPH_Spline_GPU(const Spline& spl) :
       Spline(spl)
     {
-      //std::cout << "Main constructor\n";
       n_points = c.size();
       cudaMalloc((void**) &c_gpu, n_points * sizeof(Coefficients));
       cudaMemcpy(c_gpu, c.data(), n_points * sizeof(Coefficients), cudaMemcpyHostToDevice);
@@ -34,14 +31,11 @@ class EPH_Spline_GPU : public Spline
     
     EPH_Spline_GPU(const EPH_Spline_GPU& spl)
       : EPH_Spline_GPU((Spline) spl) 
-    {
-      //std::cout << "Copy constructor\n";
-    }
+    { }
     
     
     ~EPH_Spline_GPU()
     {
-      //std::cout << "Empty destructor\n";
       if(c_gpu != nullptr) cudaFree(c_gpu);
     }
     
@@ -77,9 +71,6 @@ class EPH_Spline_GPU : public Spline
       cudaMemcpy(c_gpu, c.data(), n_points * sizeof(Coefficients), cudaMemcpyHostToDevice);
     }
 };
-
-// TODO: remove these
-void test_interpolator_gpu(EPH_Spline_GPU &spl);
 
 #endif
 #endif

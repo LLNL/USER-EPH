@@ -206,6 +206,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   xi_i = nullptr;
   
+  T_e_i = nullptr;
+  
   list = nullptr;
   
   // NO ARRAYS BEFORE THIS
@@ -214,17 +216,18 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   // zero arrays, so they would not contain garbage
   size_t nlocal = atom->nlocal;
-  std::fill_n(&(rho_i[0]), nlocal, 0.0);
-  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
+  size_t ntotal = atom->nghost + nlocal;
   
-  for(size_t i = 0; i < nlocal; ++i) {
-    for(size_t j = 0; j < size_peratom_cols; ++j) {
-      array[i][j] = 0.0;
-    }
-  }
+  std::fill_n(&(rho_i[0]), ntotal, 0);
+  std::fill_n(&(xi_i[0][0]), 3 * ntotal, 0);
+  std::fill_n(&(w_i[0][0]), 3 * ntotal, 0);
+  
+  std::fill_n(&(T_e_i[0]), ntotal, 0);
+  
+  std::fill_n(&(f_EPH[0][0]), 3 * ntotal, 0);
+  std::fill_n(&(f_RNG[0][0]), 3 * ntotal, 0);
+  
+  std::fill_n(&(array[0][0]), size_peratom_cols * ntotal, 0);
   
   Ee = 0.0; // electronic energy is zero in the beginning
 }
@@ -245,6 +248,8 @@ FixEPH::~FixEPH() {
   
   memory->destroy(xi_i);
   memory->destroy(w_i);
+  
+  memory->destroy(T_e_i);
 }
 
 void FixEPH::init() {
@@ -837,10 +842,10 @@ void FixEPH::post_force(int vflag) {
   int *numneigh = list->numneigh;
   
   //zero all arrays
-  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0.0);
-  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0.0);
+  std::fill_n(&(w_i[0][0]), 3 * nlocal, 0);
+  std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0);
+  std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0);
+  std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0);
   
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
@@ -852,12 +857,17 @@ void FixEPH::post_force(int vflag) {
       }
     }
     
+    state = FixState::XI;
+    comm->forward_comm_fix(this);
+    
+    /*
     state = FixState::XIX;
     comm->forward_comm_fix(this);
     state = FixState::XIY;
     comm->forward_comm_fix(this);
     state = FixState::XIZ;
     comm->forward_comm_fix(this);
+    */
   }
   
   // calculate the site densities, gradients (future) and beta(rho)
@@ -925,6 +935,8 @@ void FixEPH::grow_arrays(int ngrow) {
   memory->grow(w_i, ngrow, 3, "eph:w_i");
   memory->grow(xi_i, ngrow, 3, "eph:xi_i");
   
+  memory->grow(T_e_i, ngrow, "eph:T_e_i");
+  
   // per atom values
   // we need only nlocal elements here
   memory->grow(array, ngrow, size_peratom_cols, "eph:array");
@@ -951,6 +963,13 @@ int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int 
         data[m++] = rho_i[list[i]];
       }
       break;
+    case FixState::XI:
+      for(size_t i = 0; i < n; ++i) {
+        data[m++] = xi_i[list[i]][0];
+        data[m++] = xi_i[list[i]][1];
+        data[m++] = xi_i[list[i]][2];
+      }
+      break;
     case FixState::XIX:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = xi_i[list[i]][0];
@@ -964,6 +983,13 @@ int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int 
     case FixState::XIZ:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = xi_i[list[i]][2];
+      }
+      break;
+    case FixState::WI:
+      for(size_t i = 0; i < n; ++i) {
+        data[m++] = w_i[list[i]][0];
+        data[m++] = w_i[list[i]][1];
+        data[m++] = w_i[list[i]][2];
       }
       break;
     case FixState::WX:
@@ -999,6 +1025,13 @@ void FixEPH::unpack_forward_comm(int n, int first, double *data) {
         rho_i[i] = data[m++];
       }
       break;
+    case FixState::XI:
+      for(size_t i = first; i < last; ++i) {
+        xi_i[i][0] = data[m++];
+        xi_i[i][1] = data[m++];
+        xi_i[i][2] = data[m++];
+      }
+      break;
     case FixState::XIX:
       for(size_t i = first; i < last; ++i) {
         xi_i[i][0] = data[m++];
@@ -1012,6 +1045,13 @@ void FixEPH::unpack_forward_comm(int n, int first, double *data) {
     case FixState::XIZ:
       for(size_t i = first; i < last; ++i) {
         xi_i[i][2] = data[m++];
+      }
+      break;
+    case FixState::WI:
+      for(size_t i = first; i < last; ++i) {
+        w_i[i][0] = data[m++];
+        w_i[i][1] = data[m++];
+        w_i[i][2] = data[m++];
       }
       break;
     case FixState::WX:

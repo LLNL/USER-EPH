@@ -43,11 +43,15 @@ class FixEPHGPU : public FixEPH {
     EPH_GPU eph_gpu;
     
     void calculate_environment(); 
-    //void force_prl() override;
+    void force_prl();
     
     void transfer_neighbour_list();
     
+    int* number_neigh;
     int* index_neigh;
+    
+    size_t n_neighs;
+    int* neighs;
 };
 
 }

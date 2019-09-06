@@ -40,7 +40,9 @@ class FixEPH : public Fix {
       RHO,
       WX,
       WY,
-      WZ
+      WZ,
+      XI,
+      WI
     };
     
     // enumeration for selecting fix functionality
@@ -147,9 +149,12 @@ class FixEPH : public Fix {
     // random numbers
     double **xi_i; // size = [nlocal][3] // TODO: try switching to vector
     
+    // electronic temperature per atom
+    double* T_e_i; // size = [nlocal + nghost]
+    
     // per atom array
     double **array; // size = [nlocal][8] // TODO: try switching to vector
-        
+    
     // private member functions
     void calculate_environment(); // calculate the site density and coupling for every atom
     void force_ttm(); // two temperature model with beta(rho)

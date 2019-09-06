@@ -153,8 +153,5 @@ class EPH_Beta_GPU : public Beta
     }
 };
 
-// TODO: remove later
-void test_beta_rho_gpu(EPH_Beta_GPU &beta);
-
 #endif
 #endif

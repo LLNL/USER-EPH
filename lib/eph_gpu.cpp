@@ -22,7 +22,6 @@ void EPH_GPU::grow(size_t ngrow)
     
     cudaFree(x_gpu);
     cudaFree(v_gpu);
-    cudaFree(f_gpu);
     
     cudaFree(f_EPH_gpu);
     cudaFree(f_RNG_gpu);
@@ -30,6 +29,7 @@ void EPH_GPU::grow(size_t ngrow)
     cudaFree(xi_i_gpu);
     cudaFree(w_i_gpu);
     
+    cudaFree(T_e_i_gpu);
     cudaFree(rho_i_gpu);
     
     cudaFree(number_neigh_gpu);
@@ -43,7 +43,6 @@ void EPH_GPU::grow(size_t ngrow)
   
   cudaMalloc((void**) &x_gpu, n * sizeof(double3d));
   cudaMalloc((void**) &v_gpu, n * sizeof(double3d));
-  cudaMalloc((void**) &f_gpu, n * sizeof(double3d));
   
   cudaMalloc((void**) &f_EPH_gpu, n * sizeof(double3d));
   cudaMalloc((void**) &f_RNG_gpu, n * sizeof(double3d));
@@ -51,6 +50,7 @@ void EPH_GPU::grow(size_t ngrow)
   cudaMalloc((void**) &xi_i_gpu, n * sizeof(double3d));
   cudaMalloc((void**) &w_i_gpu, n * sizeof(double3d));
   
+  cudaMalloc((void**) &T_e_i_gpu, n * sizeof(double));
   cudaMalloc((void**) &rho_i_gpu, n * sizeof(double));
   
   cudaMalloc((void**) &number_neigh_gpu, n * sizeof(double));
@@ -74,9 +74,6 @@ void EPH_GPU::grow_neigh(size_t ngrow)
 void cpu_to_device_EPH_GPU(void* dst, void* src, size_t n);
 void device_to_cpu_EPH_GPU(void* dst, void* src, size_t n);
 
-void synchronise_EPH_GPU();
-
-
 EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
 {
   EPH_GPU eph_gpu;
@@ -95,6 +92,8 @@ EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
   eph_gpu.r_cutoff_sq = beta_in.get_r_cutoff_sq();
   eph_gpu.rho_cutoff = beta_in.get_rho_cutoff();
   
+  eph_gpu.neighmask = (0-1);
+  
   eph_gpu.nlocal = 0;
   eph_gpu.nghost = 0;
   
@@ -106,7 +105,6 @@ EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
   
   eph_gpu.x_gpu = nullptr;
   eph_gpu.v_gpu = nullptr;
-  eph_gpu.f_gpu = nullptr;
   
   eph_gpu.f_EPH_gpu = nullptr;
   eph_gpu.f_RNG_gpu = nullptr;
@@ -114,6 +112,7 @@ EPH_GPU allocate_EPH_GPU(Beta& beta_in, int types, int* type_map)
   eph_gpu.xi_i_gpu = nullptr;
   eph_gpu.w_i_gpu = nullptr;
   
+  eph_gpu.T_e_i_gpu = nullptr;
   eph_gpu.rho_i_gpu = nullptr;
   
   eph_gpu.number_neigh_gpu = nullptr;
@@ -138,7 +137,6 @@ void deallocate_EPH_GPU(EPH_GPU& eph_gpu)
     
     cudaFree(eph_gpu.x_gpu);
     cudaFree(eph_gpu.v_gpu);
-    cudaFree(eph_gpu.f_gpu);
     
     cudaFree(eph_gpu.f_EPH_gpu);
     cudaFree(eph_gpu.f_RNG_gpu);
@@ -146,6 +144,7 @@ void deallocate_EPH_GPU(EPH_GPU& eph_gpu)
     cudaFree(eph_gpu.xi_i_gpu);
     cudaFree(eph_gpu.w_i_gpu);
     
+    cudaFree(eph_gpu.T_e_i_gpu);
     cudaFree(eph_gpu.rho_i_gpu);
     
     cudaFree(eph_gpu.number_neigh_gpu);
