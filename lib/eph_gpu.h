@@ -26,6 +26,9 @@ struct EPH_GPU
   double r_cutoff_sq;
   double rho_cutoff;
   
+  int threads;
+  int blocks;
+
   int nlocal;
   int nghost;
   

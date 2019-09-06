@@ -96,12 +96,6 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
   }
 }
 
-void calculate_environment_gpu(EPH_GPU& eph_gpu)
-{
-  calculate_environment_cu<<<256, 256>>>(eph_gpu);
-  cudaDeviceSynchronize();
-}
-
 __global__
 void force_prl_stage1_cu(EPH_GPU eph_gpu)
 {
@@ -299,24 +293,38 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
   }
 }
 
+void calculate_environment_gpu(EPH_GPU& eph_gpu)
+{
+  int threads = 1024;
+  int blocks = eph_gpu.nlocal / threads + 1;
+  calculate_environment_cu<<<blocks, threads>>>(eph_gpu);
+  cudaDeviceSynchronize();
+}
+
 // W * v
 void force_prl_stage1_gpu(EPH_GPU& eph_gpu)
 {
-  force_prl_stage1_cu<<<256, 256>>>(eph_gpu);
+  int threads = 1024;
+  int blocks = eph_gpu.nlocal / threads + 1;
+  force_prl_stage1_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
 
 // W * wi
 void force_prl_stage2_gpu(EPH_GPU& eph_gpu)
 {
-  force_prl_stage2_cu<<<256, 256>>>(eph_gpu);
+  int threads = 1024;
+  int blocks = eph_gpu.nlocal / threads + 1;
+  force_prl_stage2_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
 
 // W * xi
 void force_prl_stage3_gpu(EPH_GPU& eph_gpu)
 {
-  force_prl_stage3_cu<<<256, 256>>>(eph_gpu);
+  int threads = 1024;
+  int blocks = eph_gpu.nlocal / threads + 1;
+  force_prl_stage3_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
 
