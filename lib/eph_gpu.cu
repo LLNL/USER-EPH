@@ -90,12 +90,17 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
       
       if(r_sq < r_cutoff_sq)
       {
-        rho_i[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+        //rho_i[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+        
+        // use atomic add instead
+        atomicAdd(&(rho_i[i]), beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
       }
     }
   }
 }
 
+// TODO: parallelise over x,y,z coordinates
+// TODO: use atomicAdd_block() instead of +=
 __global__
 void force_prl_stage1_cu(EPH_GPU eph_gpu)
 {
@@ -264,6 +269,8 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
   
   double3d* f_RNG = eph_gpu.f_RNG_gpu;
   
+  double* T_e_i = eph_gpu.T_e_i_gpu;
+  
   int* type = eph_gpu.type_gpu;
   int* mask = eph_gpu.mask_gpu;
   int groupbit = eph_gpu.groupbit;
@@ -290,6 +297,41 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
     f_RNG[i][2] = 0;
     
     if(not(rho_i[i] > 0)) continue;
+    
+    double alpha_i = beta.get_alpha(type_map[type[i] - 1], rho_i[i]);
+    
+    for(size_t j = 0; j != number_neigh[i]; ++j) 
+    {
+      int jj = neighs[index_neigh[i] + j];
+      jj &= eph_gpu.neighmask;
+      
+      // calculate the e_ij vector
+      double3d e_ij;
+      double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
+      
+      if((e_r_sq > r_cutoff_sq) or not(rho_i[jj] > 0)) continue;
+      
+      double alpha_j = beta.get_alpha(type_map[type[jj] - 1], rho_i[jj]);
+      
+      double v_rho_ji = beta.get_rho_r_sq(type_map[type[jj] - 1], e_r_sq);
+      double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
+      double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
+      
+      double v_rho_ij = beta.get_rho_r_sq(type_map[type[i] - 1], e_r_sq);
+      double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
+      double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
+      
+      double dvar = var1 - var2;
+      f_RNG[i][0] += dvar * e_ij[0];
+      f_RNG[i][1] += dvar * e_ij[1];
+      f_RNG[i][2] += dvar * e_ij[2];
+    }
+    
+    double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
+    double var = eta_factor * sqrt(T_e_i[i]);
+    f_RNG[i][0] *= var;
+    f_RNG[i][1] *= var;
+    f_RNG[i][2] *= var;
   }
 }
 
