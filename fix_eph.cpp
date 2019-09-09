@@ -857,17 +857,15 @@ void FixEPH::post_force(int vflag) {
       }
     }
     
-    state = FixState::XI;
-    comm->forward_comm_fix(this);
+    //state = FixState::XI;
+    //comm->forward_comm_fix(this);
     
-    /*
     state = FixState::XIX;
     comm->forward_comm_fix(this);
     state = FixState::XIY;
     comm->forward_comm_fix(this);
     state = FixState::XIZ;
     comm->forward_comm_fix(this);
-    */
   }
   
   // calculate the site densities, gradients (future) and beta(rho)

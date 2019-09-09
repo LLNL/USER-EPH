@@ -69,6 +69,13 @@ void FixEPHGPU::grow_arrays(int ngrow)
   index_neigh = new int[ngrow];
 }
 
+void FixEPHGPU::reset_dt()
+{
+  FixEPH::reset_dt();
+  
+  eph_gpu.eta_factor = eta_factor;
+}
+
 void FixEPHGPU::post_force(int)
 {
   double **x = atom->x;
@@ -105,7 +112,16 @@ void FixEPHGPU::post_force(int)
       }
     }
     
+    /* this segfaults
     state = FixState::XI;
+    comm->forward_comm_fix(this);
+    */
+    
+    state = FixState::XIX;
+    comm->forward_comm_fix(this);
+    state = FixState::XIY;
+    comm->forward_comm_fix(this);
+    state = FixState::XIZ;
     comm->forward_comm_fix(this);
   }
   

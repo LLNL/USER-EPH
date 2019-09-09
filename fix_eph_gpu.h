@@ -38,6 +38,7 @@ class FixEPHGPU : public FixEPH {
     
     void grow_arrays(int) override; 
     void post_force(int) override;
+    void reset_dt() override;
     
   private:
     EPH_GPU eph_gpu;

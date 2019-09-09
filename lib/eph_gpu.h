@@ -55,7 +55,7 @@ struct EPH_GPU
   double3d *xi_i_gpu; // random numbers [n][3]
   double3d *w_i_gpu; // friction [n][3]
   
-  double3d *T_e_i_gpu; // electronic temperatures at each atomic size [n]
+  double *T_e_i_gpu; // electronic temperatures at each atomic size [n]
   double *rho_i_gpu; // site density [n]
   
   // instances in cpu memory

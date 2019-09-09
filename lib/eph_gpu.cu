@@ -90,10 +90,10 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
       
       if(r_sq < r_cutoff_sq)
       {
-        //rho_i[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+        rho_i[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
         
         // use atomic add instead
-        atomicAdd(&(rho_i[i]), beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+        //atomicAdd(&(rho_i[i]), beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
       }
     }
   }
@@ -327,8 +327,7 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
       f_RNG[i][2] += dvar * e_ij[2];
     }
     
-    double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
-    double var = eta_factor * sqrt(T_e_i[i]);
+    double var = eph_gpu.eta_factor * sqrt(T_e_i[i]);
     f_RNG[i][0] *= var;
     f_RNG[i][1] *= var;
     f_RNG[i][2] *= var;
@@ -337,8 +336,8 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
 
 void calculate_environment_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1024;
-  int blocks = eph_gpu.nlocal / threads + 1;
+  int threads = 1;
+  int blocks = eph_gpu.nlocal;
   calculate_environment_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -346,8 +345,8 @@ void calculate_environment_gpu(EPH_GPU& eph_gpu)
 // W * v
 void force_prl_stage1_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1024;
-  int blocks = eph_gpu.nlocal / threads + 1;
+  int threads = 1;
+  int blocks = eph_gpu.nlocal;
   force_prl_stage1_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -355,8 +354,8 @@ void force_prl_stage1_gpu(EPH_GPU& eph_gpu)
 // W * wi
 void force_prl_stage2_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1024;
-  int blocks = eph_gpu.nlocal / threads + 1;
+  int threads = 1;
+  int blocks = eph_gpu.nlocal;
   force_prl_stage2_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -364,8 +363,8 @@ void force_prl_stage2_gpu(EPH_GPU& eph_gpu)
 // W * xi
 void force_prl_stage3_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1024;
-  int blocks = eph_gpu.nlocal / threads + 1;
+  int threads = 1;
+  int blocks = eph_gpu.nlocal;
   force_prl_stage3_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
