@@ -73,7 +73,10 @@ void deallocate_EPH_GPU(EPH_GPU& eph_gpu);
 
 void cpu_to_device_EPH_GPU(void* dst, void* src, size_t n);
 void device_to_cpu_EPH_GPU(void* dst, void* src, size_t n);
- 
+
+// gpu only part
+void zero_data_gpu(EPH_GPU& eph_gpu);
+
 void calculate_environment_gpu(EPH_GPU& eph_gpu);
 
 void force_prl_stage1_gpu(EPH_GPU& eph_gpu);

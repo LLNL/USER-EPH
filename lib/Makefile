@@ -1,7 +1,7 @@
 NVCC=/usr/local/cuda/bin/nvcc
 CXX=mpicxx 
 CXXFLAGS= -g -O2 -std=c++11 -DFIX_EPH_GPU
-NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 
+NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 -arch compute_70 -code sm_70 
 #                                            --compiler-bindir /usr/bin/gcc
 INCFLAGS= -I/usr/local/cuda/include -I../
 LDFLAGS= -L/usr/local/cuda/lib64

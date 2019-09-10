@@ -102,6 +102,8 @@ void FixEPHGPU::post_force(int)
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0);
   
+  zero_data_gpu(eph_gpu);
+  
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
     for(size_t i = 0; i < nlocal; ++i) {
@@ -140,7 +142,7 @@ void FixEPHGPU::post_force(int)
   state = FixState::RHO;
   comm->forward_comm_fix(this);
   
-  // transfer only necessary parts
+  // TODO: transfer only necessary parts
   cpu_to_device_EPH_GPU((void*) eph_gpu.rho_i_gpu, (void*) rho_i, ntotal*sizeof(double));
   
   /* 
@@ -221,6 +223,7 @@ void FixEPHGPU::force_prl()
   state = FixState::WZ;
   comm->forward_comm_fix(this);
   
+  // TODO: copy only ghost values
   cpu_to_device_EPH_GPU((void*) eph_gpu.w_i_gpu, (void*) w_i[0], 3*ntotal*sizeof(double));
   
   force_prl_stage2_gpu(eph_gpu);

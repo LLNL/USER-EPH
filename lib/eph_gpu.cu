@@ -43,6 +43,45 @@ double get_difference_sq(const double3d& x, const double3d& y, double3d& z)
 }
 
 __global__
+void zero_data_cu(EPH_GPU eph_gpu)
+{
+  int thread_index = threadIdx.x;
+  int block_index = blockIdx.x;
+  int block_dimension = blockDim.x;
+  int grid_dimension = gridDim.x;
+  
+  EPH_Beta_GPU& beta = *((EPH_Beta_GPU*) eph_gpu.beta_gpu);
+  
+  double3d *f_EPH = eph_gpu.f_EPH_gpu;
+  double3d *f_RNG = eph_gpu.f_RNG_gpu;
+  
+  double3d *xi_i = eph_gpu.xi_i_gpu;
+  double3d *w_i = eph_gpu.w_i_gpu;
+  
+  double *rho_i = eph_gpu.rho_i_gpu;
+  double *T_e_i = eph_gpu.T_e_i_gpu;
+  
+  int index = block_index * block_dimension + thread_index;
+  int stride = block_dimension * grid_dimension;
+  
+  int nlocal = eph_gpu.nlocal;
+  int nghost = eph_gpu.nghost;
+  int ntotal = nlocal + nghost;
+  
+  for(size_t i = index; i < ntotal; i += stride)
+  {
+    f_EPH[i][0] = 0; f_EPH[i][1] = 0; f_EPH[i][2] = 0;
+    f_RNG[i][0] = 0; f_RNG[i][1] = 0; f_RNG[i][2] = 0;
+    
+    xi_i[i][0] = 0; xi_i[i][1] = 0;  xi_i[i][2] = 0;
+    w_i[i][0] = 0; w_i[i][1] = 0; w_i[i][2] = 0;
+    
+    rho_i[i] = 0;
+    T_e_i[i] = 0;
+  }
+}
+
+__global__
 void calculate_environment_cu(EPH_GPU eph_gpu)
 {
   int thread_index = threadIdx.x;
@@ -78,10 +117,10 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
   {
     if(not(mask[i] & groupbit)) continue;
     
-    rho_i[i] = 0;
+    //rho_i[i] = 0;
     
     // neighbour list version
-    for(int j = 0; j != number_neigh[i]; ++j)
+    for(int j = 0; j < number_neigh[i]; ++j)
     {
       int jj = neighs[index_neigh[i] + j];
       jj &= eph_gpu.neighmask;
@@ -93,7 +132,7 @@ void calculate_environment_cu(EPH_GPU eph_gpu)
         rho_i[i] += beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
         
         // use atomic add instead
-        //atomicAdd(&(rho_i[i]), beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq);
+        //atomicAdd(&(rho_i[i]), beta.get_rho_r_sq(type_map[type[jj] - 1], r_sq));
       }
     }
   }
@@ -139,9 +178,9 @@ void force_prl_stage1_cu(EPH_GPU eph_gpu)
   {
     if(!(mask[i] & groupbit)) continue;
     
-    w_i[i][0] = 0;
-    w_i[i][1] = 0;
-    w_i[i][2] = 0;
+    //w_i[i][0] = 0;
+    //w_i[i][1] = 0;
+    //w_i[i][2] = 0;
     
     if(not(rho_i[i] > 0)) continue;
     
@@ -214,9 +253,9 @@ void force_prl_stage2_cu(EPH_GPU eph_gpu)
   {
     if(!(mask[i] & groupbit)) continue;
     
-    f_EPH[i][0] = 0;
-    f_EPH[i][1] = 0;
-    f_EPH[i][2] = 0;
+    //f_EPH[i][0] = 0;
+    //f_EPH[i][1] = 0;
+    //f_EPH[i][2] = 0;
     
     if(not(rho_i[i] > 0)) continue;
     
@@ -292,9 +331,9 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
   {
     if(!(mask[i] & groupbit)) continue;
     
-    f_RNG[i][0] = 0;
-    f_RNG[i][1] = 0;
-    f_RNG[i][2] = 0;
+    //f_RNG[i][0] = 0;
+    //f_RNG[i][1] = 0;
+    //f_RNG[i][2] = 0;
     
     if(not(rho_i[i] > 0)) continue;
     
@@ -334,10 +373,26 @@ void force_prl_stage3_cu(EPH_GPU eph_gpu)
   }
 }
 
+void zero_data_gpu(EPH_GPU& eph_gpu)
+{
+  //int threads = 1024;
+  //int blocks = (eph_gpu.nlocal + eph_gpu.nghost + threads - 1) / threads;
+  
+  int threads = (eph_gpu.nlocal + eph_gpu.nghost);
+  int blocks = 1;
+  
+  zero_data_cu<<<blocks, threads>>>(eph_gpu);
+  cudaDeviceSynchronize();
+}
+
 void calculate_environment_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1;
-  int blocks = eph_gpu.nlocal;
+  //int threads = 256;
+  //int blocks = eph_gpu.nlocal;
+  
+  int threads = (eph_gpu.nlocal + eph_gpu.nghost);
+  int blocks = 1;
+  
   calculate_environment_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -345,8 +400,12 @@ void calculate_environment_gpu(EPH_GPU& eph_gpu)
 // W * v
 void force_prl_stage1_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1;
-  int blocks = eph_gpu.nlocal;
+  //int threads = 1;
+  //int blocks = eph_gpu.nlocal;
+  
+  int threads = (eph_gpu.nlocal);
+  int blocks = 1;
+  
   force_prl_stage1_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -354,8 +413,12 @@ void force_prl_stage1_gpu(EPH_GPU& eph_gpu)
 // W * wi
 void force_prl_stage2_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1;
-  int blocks = eph_gpu.nlocal;
+  //int threads = 1;
+  //int blocks = eph_gpu.nlocal;
+  
+  int threads = (eph_gpu.nlocal);
+  int blocks = 1;
+  
   force_prl_stage2_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
@@ -363,8 +426,12 @@ void force_prl_stage2_gpu(EPH_GPU& eph_gpu)
 // W * xi
 void force_prl_stage3_gpu(EPH_GPU& eph_gpu)
 {
-  int threads = 1;
-  int blocks = eph_gpu.nlocal;
+  //int threads = 1;
+  //int blocks = eph_gpu.nlocal;
+  
+  int threads = (eph_gpu.nlocal);
+  int blocks = 1;
+  
   force_prl_stage3_cu<<<blocks, threads>>>(eph_gpu);
   cudaDeviceSynchronize();
 }
