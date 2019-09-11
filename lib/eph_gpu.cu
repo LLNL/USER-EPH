@@ -43,6 +43,7 @@ double get_difference_sq(const double3d& x, const double3d& y, double3d& z)
 }
 
 /** ZERO DATA ON DEVICE **/
+
 __global__
 void zero_data_cu(EPH_GPU eph_gpu)
 {
