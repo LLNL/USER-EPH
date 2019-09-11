@@ -92,7 +92,6 @@ void zero_data_gpu(EPH_GPU& eph_gpu)
 
 /** END ZERO DATA ON DEVICE **/
 
-
 /** CALCULATE ENVIRONMENT **/
 
 __global__
@@ -158,7 +157,6 @@ void calculate_environment_gpu(EPH_GPU& eph_gpu)
 /** END CALCULATE ENVIRONMENT **/
 
 // TODO: parallelise over x,y,z coordinates
-// TODO: use atomicAdd_block() instead of +=
 
 /** FORCE PRL STAGE1 **/
 
