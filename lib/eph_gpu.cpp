@@ -14,7 +14,7 @@ void calculate_environment_gpu(EPH_GPU& eph_gpu);
 
 void EPH_GPU::grow(size_t ngrow)
 {
-  std::cout << "GROWING\n";
+  //std::cout << "GROWING\n";
   if(n)
   {
     cudaFree(type_gpu);
@@ -67,7 +67,7 @@ void EPH_GPU::grow_neigh(size_t ngrow)
   }
   
   n_neigh = ngrow;
-  std::cout << "GROWING NEIGHS: " << n_neigh << '\n';
+  //std::cout << "GROWING NEIGHS: " << n_neigh << '\n';
   cudaMalloc((void**) &neighs_gpu, n_neigh * sizeof(int));
 }
 
