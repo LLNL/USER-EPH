@@ -92,16 +92,52 @@ void zero_data_gpu(EPH_GPU& eph_gpu)
 
 /** END ZERO DATA ON DEVICE **/
 
+// TODO: remove this
 /** CREATE NEIGHBOUR LIST **/
 __global__
 void create_neighbour_list_cu(EPH_GPU eph_gpu)
 {
+  int thread_index = threadIdx.x;
+  int block_index = blockIdx.x;
+  int block_dimension = blockDim.x;
   
+  int nlocal = eph_gpu.nlocal;
+  int nghost = eph_gpu.nghost;
+  
+  double3d* x = eph_gpu.x_gpu;
+  
+  int i = block_index;
+  
+  __shared__ int n_neighs;
+  n_neighs = 0;
+  __syncthreads();
+  
+  //int index[512];
+  int n_index = 0;
+  
+  for(int j = thread_index; j < (nlocal+nghost); j += block_dimension)
+  {
+    if(i == j) continue;
+    
+    double r_sq = get_distance_sq(x[i], x[j]);
+    
+    if(r_sq > eph_gpu.r_cutoff_sq) continue;
+    
+    //index[n_index] = j;
+    ++n_index;
+  }
+  
+  atomicAdd(&n_neighs, n_index);
+  __syncthreads();
 }
 
 void create_neighbour_list_gpu(EPH_GPU& eph_gpu)
 {
+  int threads = 256;
+  int blocks = eph_gpu.nlocal;
   
+  create_neighbour_list_cu<<<blocks, threads>>>(eph_gpu);
+  cudaDeviceSynchronize();
 }
 
 /** END CREATE NEIGHBOUR LIST **/

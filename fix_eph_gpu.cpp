@@ -94,6 +94,13 @@ void FixEPHGPU::post_force(int)
   
   int ntotal = nlocal + nghost;
   
+  eph_gpu.eta_factor = eta_factor;
+  
+  // push coordinates to GPU this is ugly
+  cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x[0], 3*ntotal*sizeof(double));
+  cpu_to_device_EPH_GPU((void*) eph_gpu.type_gpu, (void*) type, ntotal*sizeof(int));
+  cpu_to_device_EPH_GPU((void*) eph_gpu.mask_gpu, (void*) mask, ntotal*sizeof(int));
+  
   transfer_neighbour_list(); // send neighbour list to gpu
   
   //zero all arrays
@@ -107,6 +114,7 @@ void FixEPHGPU::post_force(int)
   zero_data_gpu(eph_gpu);
   
   // generate random forces and distribute them
+  // push this into gpu
   if(eph_flag & Flag::RANDOM) {
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
@@ -115,11 +123,6 @@ void FixEPHGPU::post_force(int)
         xi_i[i][2] = random->gaussian();
       }
     }
-    
-    /* this segfaults
-    state = FixState::XI;
-    comm->forward_comm_fix(this);
-    */
     
     state = FixState::XIX;
     comm->forward_comm_fix(this);
@@ -131,12 +134,7 @@ void FixEPHGPU::post_force(int)
   
   cpu_to_device_EPH_GPU((void*) eph_gpu.xi_i_gpu, (void*) xi_i[0], 3*ntotal*sizeof(double));
   
-  // calculate the site densities, gradients (future) and beta(rho)
-  // push coordinates to GPU this is ugly
-  cpu_to_device_EPH_GPU((void*) eph_gpu.x_gpu, (void*) x[0], 3*ntotal*sizeof(double));
-  cpu_to_device_EPH_GPU((void*) eph_gpu.type_gpu, (void*) type, ntotal*sizeof(int));
-  cpu_to_device_EPH_GPU((void*) eph_gpu.mask_gpu, (void*) mask, ntotal*sizeof(int));
-  
+  // calculate site densities
   calculate_environment();
   
   device_to_cpu_EPH_GPU((void*) rho_i, (void*) eph_gpu.rho_i_gpu, nlocal*sizeof(double));
@@ -145,23 +143,21 @@ void FixEPHGPU::post_force(int)
   comm->forward_comm_fix(this);
   
   // TODO: transfer only necessary parts
-  cpu_to_device_EPH_GPU((void*) eph_gpu.rho_i_gpu, (void*) rho_i, ntotal*sizeof(double));
+  cpu_to_device_EPH_GPU((void*) (eph_gpu.rho_i_gpu+nlocal), (void*) (rho_i+nlocal), nghost*sizeof(double));
   
   /* 
    * we have separated the model specific codes to make it more readable 
    * at the expense of code duplication 
    */
   
-  eph_gpu.eta_factor = eta_factor;
-  
-  // get temperatures
+  // get temperatures this will be pushed to gpu
   for(int i = 0; i != ntotal; ++i)
   {
     T_e_i[i] = fdm.getT(x[i][0], x[i][1], x[i][2]);
   }
   
   cpu_to_device_EPH_GPU((void*) eph_gpu.v_gpu, (void*) v[0], 3*ntotal*sizeof(double));
-  cpu_to_device_EPH_GPU((void*) eph_gpu.T_e_i_gpu, (void*) T_e_i, ntotal*sizeof(double));
+  cpu_to_device_EPH_GPU((void*) eph_gpu.T_e_i_gpu, (void*) T_e_i, nlocal*sizeof(double));
   
   switch(eph_model) {
     case Model::TTM: force_ttm();
@@ -177,8 +173,8 @@ void FixEPHGPU::post_force(int)
     default: throw;
   }
   
-  device_to_cpu_EPH_GPU((void*) f_EPH[0], (void*) eph_gpu.f_EPH_gpu, 3*ntotal*sizeof(double));
-  device_to_cpu_EPH_GPU((void*) f_RNG[0], (void*) eph_gpu.f_RNG_gpu, 3*ntotal*sizeof(double));
+  device_to_cpu_EPH_GPU((void*) f_EPH[0], (void*) eph_gpu.f_EPH_gpu, 3*nlocal*sizeof(double));
+  device_to_cpu_EPH_GPU((void*) f_RNG[0], (void*) eph_gpu.f_RNG_gpu, 3*nlocal*sizeof(double));
   
   // second loop over atoms if needed
   if((eph_flag & Flag::FRICTION) && !(eph_flag & Flag::NOFRICTION)) {
@@ -234,7 +230,7 @@ void FixEPHGPU::force_prl()
 
 void FixEPHGPU::transfer_neighbour_list()
 {
-  double t01 = MPI_Wtime();
+  //double t01 = MPI_Wtime();
   int nlocal = atom->nlocal;
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
@@ -246,7 +242,7 @@ void FixEPHGPU::transfer_neighbour_list()
     index_neigh[i] = n;
     n += numneigh[i];
   }
-  double t02 = MPI_Wtime();
+  //double t02 = MPI_Wtime();
   
   if(n > n_neighs)
   {
@@ -255,7 +251,7 @@ void FixEPHGPU::transfer_neighbour_list()
     neighs = new int[n];
   }
   
-  double t03 = MPI_Wtime();
+  //double t03 = MPI_Wtime();
   
   // maybe this could be avoided
   for(int i = 0; i < nlocal; ++i)
@@ -264,15 +260,18 @@ void FixEPHGPU::transfer_neighbour_list()
     //memcpy(neighs + index_neigh[i], firstneigh[i], sizeof(*neighs) * numneigh[i]);
   }
   
-  double t04 = MPI_Wtime();
+  //double t04 = MPI_Wtime();
   eph_gpu.grow_neigh(n); // grow array if needed
-  double t05 = MPI_Wtime();
+  //double t05 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.number_neigh_gpu, number_neigh, nlocal*sizeof(int));
-  double t06 = MPI_Wtime();
+  //double t06 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.index_neigh_gpu, index_neigh, nlocal*sizeof(int));
-  double t07 = MPI_Wtime();
+  //double t07 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.neighs_gpu, neighs, n_neighs*sizeof(int));
-  double t08 = MPI_Wtime();
+  //double t08 = MPI_Wtime();
+  
+  //create_neighbour_list_gpu(eph_gpu);
+  //double t09 = MPI_Wtime();
   
   /*
   std::cout << "TIMING: " << std::fixed << t08 - t01 << '\n';
@@ -283,6 +282,7 @@ void FixEPHGPU::transfer_neighbour_list()
   std::cout << "TIMING  5: " << std::fixed << t06 - t05 << '\n';
   std::cout << "TIMING  6: " << std::fixed << t07 - t06 << '\n';
   std::cout << "TIMING  7: " << std::fixed << t08 - t07 << '\n';
+  std::cout << "TIMING  8: " << std::fixed << t09 - t08 << '\n';
   */
   
   /*

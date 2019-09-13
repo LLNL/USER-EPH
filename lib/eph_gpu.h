@@ -36,6 +36,7 @@ struct EPH_GPU
   
   int n; // array sizes
   int n_neigh; // total number of elements in neighs_gpu
+  int n_max_neighs; // maximum number of neighbours
   
   int *number_neigh_gpu;
   int *index_neigh_gpu;
