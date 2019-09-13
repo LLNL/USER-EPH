@@ -3,13 +3,13 @@ ifndef CUDA_HOME
 	CUDA_HOME=/usr/local/cuda
 endif
 
-CUDA_ARCH=compute_70
-CUDA_CODE=sm_70
+CUDA_ARCH=compute_60
+CUDA_CODE=sm_60
 
 NVCC=$(CUDA_HOME)/bin/nvcc
 CXX=mpicxx 
-CXXFLAGS= -g -O2 -std=c++11 -DFIX_EPH_GPU
-NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 -arch=$(CUDA_ARCH) -code $(CUDA_CODE) 
+CXXFLAGS= -g -O3 -std=c++11 -DFIX_EPH_GPU
+NVCCFLAGS= -g -O3 --std=c++11 -arch=$(CUDA_ARCH) -code $(CUDA_CODE) 
 
 INCFLAGS= -I$(CUDA_HOME)/include -I../
 LDFLAGS= -L$(CUDA_HOME)/lib64
