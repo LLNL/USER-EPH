@@ -1,10 +1,18 @@
-NVCC=/usr/local/cuda/bin/nvcc
+#NVCC=/usr/local/cuda/bin/nvcc
+ifndef CUDA_HOME
+	CUDA_HOME=/usr/local/cuda
+endif
+
+CUDA_ARCH=compute_70
+CUDA_CODE=sm_70
+
+NVCC=$(CUDA_HOME)/bin/nvcc
 CXX=mpicxx 
 CXXFLAGS= -g -O2 -std=c++11 -DFIX_EPH_GPU
-NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 -arch compute_70 -code sm_70 
-#                                            --compiler-bindir /usr/bin/gcc
-INCFLAGS= -I/usr/local/cuda/include -I../
-LDFLAGS= -L/usr/local/cuda/lib64
+NVCCFLAGS= -ccbin=g++ -g -O2 --std=c++11 -arch=$(CUDA_ARCH) -code $(CUDA_CODE) 
+
+INCFLAGS= -I$(CUDA_HOME)/include -I../
+LDFLAGS= -L$(CUDA_HOME)/lib64
 
 all: eph_gpu.cpp eph_gpu.cu eph_spline_gpu.h eph_beta_gpu.h eph_gpu.h main.cpp
 	$(NVCC) -c eph_gpu.cu  -o eph_gpu_cu.o $(INCFLAGS) $(NVCCFLAGS)
