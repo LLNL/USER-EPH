@@ -16,6 +16,7 @@ The theory is developed in the papers "Langevin dynamics with spatial correlatio
 
 Get LAMMPS (source code)
 ```
+$ mkdir mywork
 $ cd mywork
 $ git clone https://github.com/lammps/lammps.git
 ```
@@ -26,7 +27,14 @@ $ cd lammps/src
 $ git clone https://github.com/LLNL/USER-EPH.git
 ```
 
-Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 66).
+Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 68), for example:
+
+```Makefile
+PACKUSER = user-adios user-atc user-awpmd user-bocs user-cgdna user-cgsdk user-colvars \
+    ... 
+    user-sdpd user-sph user-tally user-uef user-vtk user-yaff \
+    user-eph
+```
 
 Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` to read `CCFLAGS = -g -O3 -std=c++11` (near line 10).
 
