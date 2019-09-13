@@ -92,6 +92,20 @@ void zero_data_gpu(EPH_GPU& eph_gpu)
 
 /** END ZERO DATA ON DEVICE **/
 
+/** CREATE NEIGHBOUR LIST **/
+__global__
+void create_neighbour_list_cu(EPH_GPU eph_gpu)
+{
+  
+}
+
+void create_neighbour_list_gpu(EPH_GPU& eph_gpu)
+{
+  
+}
+
+/** END CREATE NEIGHBOUR LIST **/
+
 /** CALCULATE ENVIRONMENT **/
 
 __global__

@@ -76,6 +76,7 @@ void device_to_cpu_EPH_GPU(void* dst, void* src, size_t n);
 
 // gpu only part
 void zero_data_gpu(EPH_GPU& eph_gpu);
+void create_neighbour_list_gpu(EPH_GPU& eph_gpu);
 
 void calculate_environment_gpu(EPH_GPU& eph_gpu);
 

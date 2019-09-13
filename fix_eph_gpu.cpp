@@ -9,6 +9,8 @@
 #include <mpi.h>
 #include <iostream>
 #include <cstdio>
+#include <algorithm>
+#include <cstring>
 
 // lammps headers
 #include "error.h"
@@ -231,7 +233,8 @@ void FixEPHGPU::force_prl()
 }
 
 void FixEPHGPU::transfer_neighbour_list()
-{  
+{
+  double t01 = MPI_Wtime();
   int nlocal = atom->nlocal;
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
@@ -243,6 +246,7 @@ void FixEPHGPU::transfer_neighbour_list()
     index_neigh[i] = n;
     n += numneigh[i];
   }
+  double t02 = MPI_Wtime();
   
   if(n > n_neighs)
   {
@@ -251,20 +255,35 @@ void FixEPHGPU::transfer_neighbour_list()
     neighs = new int[n];
   }
   
+  double t03 = MPI_Wtime();
+  
   // maybe this could be avoided
   for(int i = 0; i < nlocal; ++i)
   {
-    for(int j = 0; j < numneigh[i]; ++j)
-    {
-      neighs[index_neigh[i]+j] = firstneigh[i][j];
-    }
+    std::copy_n(firstneigh[i], numneigh[i], neighs + index_neigh[i]);
+    //memcpy(neighs + index_neigh[i], firstneigh[i], sizeof(*neighs) * numneigh[i]);
   }
   
+  double t04 = MPI_Wtime();
   eph_gpu.grow_neigh(n); // grow array if needed
-  
+  double t05 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.number_neigh_gpu, number_neigh, nlocal*sizeof(int));
+  double t06 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.index_neigh_gpu, index_neigh, nlocal*sizeof(int));
+  double t07 = MPI_Wtime();
   cpu_to_device_EPH_GPU(eph_gpu.neighs_gpu, neighs, n_neighs*sizeof(int));
+  double t08 = MPI_Wtime();
+  
+  /*
+  std::cout << "TIMING: " << std::fixed << t08 - t01 << '\n';
+  std::cout << "TIMING  1: " << std::fixed << t02 - t01 << '\n';
+  std::cout << "TIMING  2: " << std::fixed << t03 - t02 << '\n';
+  std::cout << "TIMING  3: " << std::fixed << t04 - t03 << '\n';
+  std::cout << "TIMING  4: " << std::fixed << t05 - t04 << '\n';
+  std::cout << "TIMING  5: " << std::fixed << t06 - t05 << '\n';
+  std::cout << "TIMING  6: " << std::fixed << t07 - t06 << '\n';
+  std::cout << "TIMING  7: " << std::fixed << t08 - t07 << '\n';
+  */
   
   /*
   cpu_to_device_EPH_GPU(eph_gpu.number_neigh_gpu, numneigh, nlocal*sizeof(int));
