@@ -27,7 +27,7 @@ $ cd lammps/src
 $ git clone https://github.com/LLNL/USER-EPH.git
 ```
 
-Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 68), for example:
+Edit `Makefile` add the string ` user-eph ` to the `PACKUSER` variable (near line 68), for example:
 
 ```Makefile
 PACKUSER = user-adios user-atc user-awpmd user-bocs user-cgdna user-cgsdk user-colvars \
