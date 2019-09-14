@@ -126,6 +126,37 @@ $ make -j mpi_gpu
 
 The executable will be in `lmp_mpi_gpu`.
 
+The use the gpu accelerated potentials you enable gpu package when running LAMMPS
+either by supplying it on the command line or through run scripts.
+
+```bash
+$ lmp_mpi_gpu -pk gpu 1 -sf gpu -i run.lmp
+```
+
+or
+
+```run.lmp
+package gpu 1
+...
+pair eam/alloy/gpu 
+...
+fix friction all eph/gpu
+...
+```
+The `-pk gpu 1` and `-sf gpu` flags allow the use of a single lammps run script where
+the last will try to substitute all fixes and pairs supporting gpu extension.
+
+See also example 5 for a possible input script using the gpu version. 
+
+#### Note
+
+The current version of eph/gpu is not multi-device aware, so in order to utilise all gpus on a node 
+multiple tasks have to be used. Thus, mpirun has to be aware of gpus in order to assign correct gpus 
+to each task. As a workaround gpus can be set into a special mode to block multiple tasks running on one gpu card.
+
+Also, current implementation is unable to utilise a gpu fully, thus, better performance can be achieved by runnning 
+multiple tasks on one gpu simultaneously.
+
 ## Usage
 
 * Take your MD input file
@@ -280,6 +311,9 @@ During the simulation the ionic system will heat while electron temperature will
 After a few MD-TTM steps the electronic temperature field will look like this:
 
 ![Alt text](Examples/Example_4/Tfieldout.png?raw=true "Temperature Example 4")
+
+## Example 5
+`Examples/Example_5/`:
 
 # Release
 
