@@ -1,0 +1,15 @@
+This example creates a 8x8x8 Ni supercell and a 1x1x1 FDM grid (electronic system).
+The ionic system is at 0K initially and will be heated by electrons at 300K constant temperature (because FDM flag is not activated). 
+At the end of the simulation both electronic and ionic systems will be at 300K (more steps are needed than used in the script, this depends on the coupling strength)
+
+The electronic grid is initialised with provided parameters when defining fix (line 20). 
+
+The ionic temperature is written to out.data and can be plotted with gnuplot:
+plot "out.data" u 2:3 w lp lw 2
+
+Also, the net energy transfer between electronic and ionic system is available in out.data and can be plotted with:
+plot "out.data" u 2:4 w lp lw 2
+
+As electrons are at higher temperature than ions the net energy will be negative at the end of the simulation.
+
+This example uses the gpu implementations of pair eam/alloy and fix eph
