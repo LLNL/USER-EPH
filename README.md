@@ -36,20 +36,95 @@ PACKUSER = user-adios user-atc user-awpmd user-bocs user-cgdna user-cgsdk user-c
     user-eph
 ```
 
-Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` to read `CCFLAGS = -g -O3 -std=c++11` (near line 10).
+Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` and add `-std=c++11` to the `CCFLAGs` varialbe to read `CCFLAGS = -g -O3 -std=c++11` (near line 10).
 
 Execute:
-```
+```bash
 $ make yes-manybody yes-user-eph
 $ make -j 8 serial
 ```
 
+(You can also enable other packages as needed)
+
 Make sure your MPI enviroment is setup already (`mpicxx` compiler wrapper works), this may require for example running `$ module load mpi/mpich-x86_64`
+
 ```
 $ make -j 8 mpi
 ```
 
 The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial runs, testing), you can copy them elsewhere.
+
+### Compile for CUDA-enabled GPUs
+
+The code is ported to GPUs, a CUDA toolkit is required to compile this version and a CUDA card(s) supporting architecture at least 6.0 (`sm_60`, like
+[Pascal, Volta, Turing, etc](https://en.wikipedia.org/wiki/CUDA#GPUs_supported). 
+The command `nvidia-smi` will give you details.
+
+Set the CUDA environment variable (e.g. `/usr/local/cuda` or `/usr`)
+```
+$ export CUDA_HOME=/usr/local/cuda 
+```
+
+Go back to the LAMMPS GPU library directory (`cd ../../mywork/lammps/lib/gpu`) and modify the file `Makefile.linux.double` add and activate your CUDA architecture and if needed `CUDA_HOME` and `CUDA_INCLUDE`. For example (after line 10),
+
+```Makefile
+...
+#CUDA_HOME = /usr/local/cuda
+NVCC = nvcc -ccbin=cuda-c++ 
+
+# Kepler CUDA
+#CUDA_ARCH = -arch=sm_35
+# Tesla CUDA
+# CUDA_ARCH = -arch=sm_21
+# newer CUDA
+#CUDA_ARCH = -arch=sm_13
+# older CUDA
+#CUDA_ARCH = -arch=sm_10 -DCUDA_PRE_THREE
+# Pascal (your architecture)
+CUDA_ARCH = -arch=sm_60
+...
+```
+
+and compile the library and return to the USER-EPH
+
+```bash
+$ make -f Makefile.linux.double
+```
+
+Go to the USER-EPH directory
+```
+$ cd ../../../lammps/src/USER-EPH/lib
+```
+
+Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`) and buid
+
+```bash
+$ make
+```
+
+Go back to the source directory `lammps/src` and create a new file `MAKE/Makefile.mpi_gpu` 
+
+```bash
+$ cd ../..
+$ cp MAKE/Makefile.mpi MAKE/Makefile.mpi_gpu
+```
+
+Modify the `CCFLAGS` and `LIB` variables in the new `MAKE/Makefile.mpi_gpu` to read
+
+```Makefile
+...
+CCFLAGS =	-g -O3 -std=c++11 -DFIX_EPH_GPU
+...
+LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
+...
+```
+
+```
+$ make yes-gpu
+$ make -j mpi_gpu
+```
+
+The executable will be in `lmp_mpi_gpu`.
 
 ## Usage
 
