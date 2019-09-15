@@ -54,14 +54,14 @@ $ make -j 8 mpi
 
 The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial runs, testing), you can copy them elsewhere.
 
-### Compile for CUDA-enabled GPUs
+### Compile for CUDA-enabled GPUs (optional)
 
 The code is ported to GPUs, a CUDA toolkit is required to compile this version and a CUDA card(s) supporting architecture at least 6.0 (`sm_60`, like
 [Pascal, Volta, Turing, etc](https://en.wikipedia.org/wiki/CUDA#GPUs_supported). 
 The command `nvidia-smi` will give you details.
 
 Set the CUDA environment variable (e.g. `/usr/local/cuda` or `/usr`)
-```
+```bash
 $ export CUDA_HOME=/usr/local/cuda 
 ```
 
@@ -92,7 +92,7 @@ $ make -f Makefile.linux.double
 ```
 
 Go to the USER-EPH directory
-```
+```bash
 $ cd ../../../lammps/src/USER-EPH/lib
 ```
 
@@ -119,12 +119,12 @@ LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
 ...
 ```
 
-```
+```bash
 $ make yes-gpu
 $ make -j mpi_gpu
 ```
 
-The executable will be in `lmp_mpi_gpu`.
+The GPU executable will be in `lmp_mpi_gpu`.
 
 The use the gpu accelerated potentials you enable gpu package when running LAMMPS
 either by supplying it on the command line or through run scripts.
@@ -146,7 +146,7 @@ fix friction all eph/gpu
 The `-pk gpu 1` and `-sf gpu` flags allow the use of a single lammps run script where
 the last will try to substitute all fixes and pairs supporting gpu extension.
 
-See also example 5 for a possible input script using the gpu version. 
+See also Example-5 for a possible input script using the GPU version. 
 
 #### Note
 
