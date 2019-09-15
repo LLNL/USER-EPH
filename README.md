@@ -1,6 +1,6 @@
 # USER-EPH
 
- LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction.  LLNL-CODE-750832
+LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction and electronic stopping. LLNL-CODE-750832
 
 Artur Tamm and Alfredo A. Correa (LLNL)
 
@@ -320,10 +320,11 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 ## History
 
 - 2018/05/10 Initial Release
+- 2019/08    GPU port Release
 
 ## TODO
 
-- Implement CUBE format output
+- Implement CUBE format output for temperature field
 
 ## License and Copying
 
