@@ -4,12 +4,13 @@ IN=~/Work/01_Electronic_Stopping/Software/USER-EPH
 cd $IN
 git pull
 
-OUT=~/Build/lammps_LLNL/src/USER-EPH
+OUT=~/Work/01_Electronic_Stopping/Software/USER-EPH_LLNL
 cd $OUT
 git pull
 
 echo "Syncing files in private repo with public repo"
-SRC=("README.md" "LICENSE" "eph_spline.h" "eph_spline.cpp" "eph_beta.h" "eph_beta.cpp" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp")
+SRC=("README.md" "LICENSE" "eph_spline.h" "eph_beta.h" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp" "fix_eph_gpu.h" "fix_eph_gpu.cpp")
+SRC=(${SRC[*]} "lib/Beta_Rho.beta" "lib/eph_beta_gpu.h" "lib/eph_gpu.cpp" "lib/eph_gpu.cu" "lib/eph_gpu.h" "lib/eph_spline_gpu.h" "lib/main.cpp" "lib/Makefile")
 SRC=(${SRC[*]} "Doc/Beta/input.beta" "Doc/FDM/T_input.fdm")
 
 # documentation on input files
@@ -22,6 +23,8 @@ SRC=(${SRC[*]} "Examples/Example_2/Ni.eam" "Examples/Example_2/Ni_model_4.beta" 
 SRC=(${SRC[*]} "Examples/Example_3/Ni.eam" "Examples/Example_3/Ni_model_4.beta" "Examples/Example_3/run.lmp" "Examples/Example_3/README" "Examples/Example_3/Tout.pdf" "Examples/Example_3/Tout.png")
 # Example 4
 SRC=(${SRC[*]} "Examples/Example_4/Ni.eam" "Examples/Example_4/Ni_model_4.beta" "Examples/Example_4/run.lmp" "Examples/Example_4/T.in" "Examples/Example_4/README" "Examples/Example_4/Tfieldout.pdf" "Examples/Example_4/Tfieldout.png")
+# Example 5
+SRC=(${SRC[*]} "Examples/Example_5/Ni.eam" "Examples/Example_5/Ni_model_4.beta" "Examples/Example_5/run.lmp" "Examples/Example_5/README" "Examples/Example_5/Tout.pdf" "Examples/Example_5/Tout.png")
 
 N=${#SRC[*]}
 echo $N
