@@ -18,6 +18,7 @@ FixStyle(eph,FixEPH)
 // external headers
 #include <memory>
 #include <vector>
+#include <cstddef>
 
 // lammps headers
 #include "fix.h"
@@ -27,20 +28,6 @@ FixStyle(eph,FixEPH)
 #include "eph_fdm.h"
 
 namespace LAMMPS_NS {
-
-// START GLOBAL THINGS 
-
-using Float = double;
-
-template<typename _F = Float>
-using Allocator = std::allocator<_F>;
-
-template<typename _F = Float, typename _A = Allocator<_F>>
-using Container = std::vector<_F, _A>;
-
-using Beta = EPH_Beta<Float, Allocator, Container>;
-
-// END GLOBAL THINGS
 
 class FixEPH : public Fix {
  public:
@@ -53,11 +40,13 @@ class FixEPH : public Fix {
       RHO,
       WX,
       WY,
-      WZ
+      WZ,
+      XI,
+      WI
     };
     
     // enumeration for selecting fix functionality
-    enum Flag : uint8_t {
+    enum Flag : int {
       FRICTION = 0x01,
       RANDOM = 0x02,
       FDM = 0x04,
@@ -67,7 +56,7 @@ class FixEPH : public Fix {
     };
     
     // enumeration for selecting the model for friction
-    enum Model : int8_t {
+    enum Model : int {
       TESTING = -1, // special for testing purposes
       NONE = 0, // no friction at all (just calculates densities, gradients)
       TTM = 1, // two-temperature like model
@@ -99,7 +88,7 @@ class FixEPH : public Fix {
     int pack_forward_comm(int, int *, double *, int, int *) override;
     void unpack_forward_comm(int, int, double *) override;
   
-  private:
+  protected:
     static constexpr size_t max_file_length = 256; // max filename length
   
     int myID; // mpi rank for current instance
@@ -107,11 +96,11 @@ class FixEPH : public Fix {
     
     FixState state; // tracks the state of the fix
     
-    uint8_t eph_flag; // term flags
-    int8_t eph_model; // model selection
+    int eph_flag; // term flags
+    int eph_model; // model selection
     
-    uint8_t types; // number of different types
-    uint8_t* type_map; // TODO: type map // change this to vector
+    int types; // number of different types
+    int* type_map; // TODO: type map // change this to vector
     //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
     
     Beta beta; // instance for beta(rho) parametrisation
@@ -140,6 +129,8 @@ class FixEPH : public Fix {
     // energy of the electronic system
     double Ee;
     
+    size_t n; // size of peratom arrays
+    
     // friction force
     double **f_EPH; // size = [nlocal][3] // TODO: try switching to vector
     
@@ -158,9 +149,12 @@ class FixEPH : public Fix {
     // random numbers
     double **xi_i; // size = [nlocal][3] // TODO: try switching to vector
     
+    // electronic temperature per atom
+    double* T_e_i; // size = [nlocal + nghost]
+    
     // per atom array
     double **array; // size = [nlocal][8] // TODO: try switching to vector
-        
+    
     // private member functions
     void calculate_environment(); // calculate the site density and coupling for every atom
     void force_ttm(); // two temperature model with beta(rho)

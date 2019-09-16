@@ -10,6 +10,7 @@
 #include <vector>
 #include <cmath>
 #include <cassert>
+#include <cstddef>
 
 /* 
  * Stripped down version of the EPH_Spline class
@@ -17,6 +18,7 @@
  * 
  */
 
+// TODO: remove template template's
 template<typename Float = double, template<typename> class Allocator = std::allocator, template <typename _F = Float, typename _A = Allocator<Float>> class Container = std::vector>
 class EPH_Spline {
   public:
@@ -123,7 +125,7 @@ class EPH_Spline {
       c[points-1].c = 0.0;
       c[points-1].d = 0.0;
     }
-    
+
     Float operator() (Float x) const {
       assert(x >= 0);
       
@@ -133,7 +135,7 @@ class EPH_Spline {
       return c[index].a + x * (c[index].b + x * (c[index].c + x * c[index].d));
     }
     
-  private:
+  protected:
     constexpr static size_t min_size {3};
     
     struct Coefficients {
@@ -143,5 +145,15 @@ class EPH_Spline {
     Float inv_dx;
     Container<Coefficients, Allocator<Coefficients>> c;
 };
+
+using Float = double;
+
+template<typename _F = Float>
+using Allocator = std::allocator<_F>;
+
+template<typename _F = Float, typename _A = Allocator<_F>>
+using Container = std::vector<_F, _A>;
+
+using Spline = EPH_Spline<Float, Allocator, Container>;
 
 #endif

@@ -1,21 +1,22 @@
 # USER-EPH
 
- LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction.  LLNL-CODE-750832
+LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction and electronic stopping. LLNL-CODE-750832
 
 Artur Tamm and Alfredo A. Correa (LLNL)
 
 ## Introduction
 
-In LAMMPS, a "fix" is any operation that is applied to the system during
-timestepping or minimization.  
+In LAMMPS, a "fix" is a plugin or extension to the main code that performs a specific operation to the atomistic system during
+timestepping or minimization. 
 We use this extension mechanism to generalize the two-temperature model to include electron-phonon coupling.
-The extension is flexible enough to represent cascades, laser heating and equilibration and study energy transport with realistic electron-phonon coupling.
+The theory behind this extension is designed to represent cascades, laser heating and equilibration and study energy transport with realistic electronic stopping power and electron-phonon coupling.
 The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (https://dx.doi.org/10.1103/PhysRevLett.120.185501) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
 
 ## Installation Instructions
 
 Get LAMMPS (source code)
 ```
+$ mkdir mywork
 $ cd mywork
 $ git clone https://github.com/lammps/lammps.git
 ```
@@ -26,22 +27,135 @@ $ cd lammps/src
 $ git clone https://github.com/LLNL/USER-EPH.git
 ```
 
-Edit `Makefile` add string ` user-eph ` to the end of `PACKUSER` variable (near line 66).
+Edit `Makefile` add the string ` user-eph ` to the `PACKUSER` variable (near line 68), for example:
 
-Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` to read `CCFLAGS = -g -O3 -std=c++11` (near line 10).
+```Makefile
+PACKUSER = user-adios user-atc user-awpmd user-bocs user-cgdna user-cgsdk user-colvars \
+    ... 
+    user-sdpd user-sph user-tally user-uef user-vtk user-yaff \
+    user-eph
+```
+
+Edit `MAKE/Makefile.mpi` and `MAKE/Makefile.serial` and add `-std=c++11` to the `CCFLAGs` varialbe to read `CCFLAGS = -g -O3 -std=c++11` (near line 10).
 
 Execute:
-```
+```bash
 $ make yes-manybody yes-user-eph
 $ make -j 8 serial
 ```
 
+(You can also enable other packages as needed)
+
 Make sure your MPI enviroment is setup already (`mpicxx` compiler wrapper works), this may require for example running `$ module load mpi/mpich-x86_64`
+
 ```
 $ make -j 8 mpi
 ```
 
 The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial runs, testing), you can copy them elsewhere.
+
+### Compile for CUDA-enabled GPUs (optional)
+
+The code is ported to GPUs, a CUDA toolkit is required to compile this version and a CUDA card(s) supporting architecture at least 6.0 (`sm_60`, like
+[Pascal, Volta, Turing, etc](https://en.wikipedia.org/wiki/CUDA#GPUs_supported). 
+The command `nvidia-smi` will give you details.
+
+Set the CUDA environment variable (e.g. `/usr/local/cuda` or `/usr`)
+```bash
+$ export CUDA_HOME=/usr/local/cuda 
+```
+
+Go back to the LAMMPS GPU library directory (`cd ../../mywork/lammps/lib/gpu`) and modify the file `Makefile.linux.double` add and activate your CUDA architecture and if needed `CUDA_HOME` and `CUDA_INCLUDE`. For example (after line 10),
+
+```Makefile
+...
+#CUDA_HOME = /usr/local/cuda
+NVCC = nvcc -ccbin=cuda-c++ 
+
+# Kepler CUDA
+#CUDA_ARCH = -arch=sm_35
+# Tesla CUDA
+# CUDA_ARCH = -arch=sm_21
+# newer CUDA
+#CUDA_ARCH = -arch=sm_13
+# older CUDA
+#CUDA_ARCH = -arch=sm_10 -DCUDA_PRE_THREE
+# Pascal (your architecture)
+CUDA_ARCH = -arch=sm_60
+...
+```
+
+and compile the library and return to the USER-EPH
+
+```bash
+$ make -f Makefile.linux.double
+```
+
+Go to the USER-EPH directory
+```bash
+$ cd ../../../lammps/src/USER-EPH/lib
+```
+
+Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`) and buid
+
+```bash
+$ make
+```
+
+Go back to the source directory `lammps/src` and create a new file `MAKE/Makefile.mpi_gpu` 
+
+```bash
+$ cd ../..
+$ cp MAKE/Makefile.mpi MAKE/Makefile.mpi_gpu
+```
+
+Modify the `CCFLAGS` and `LIB` variables in the new `MAKE/Makefile.mpi_gpu` to read
+
+```Makefile
+...
+CCFLAGS =	-g -O3 -std=c++11 -DFIX_EPH_GPU
+...
+LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
+...
+```
+
+```bash
+$ make yes-gpu
+$ make -j mpi_gpu
+```
+
+The GPU executable will be in `lmp_mpi_gpu`.
+
+The use the gpu accelerated potentials you enable gpu package when running LAMMPS
+either by supplying it on the command line or through run scripts.
+
+```bash
+$ lmp_mpi_gpu -pk gpu 1 -sf gpu -i run.lmp
+```
+
+or
+
+```run.lmp
+package gpu 1
+...
+pair eam/alloy/gpu 
+...
+fix friction all eph/gpu
+...
+```
+The `-pk gpu 1` and `-sf gpu` flags allow the use of a single lammps run script where
+the last will try to substitute all fixes and pairs supporting gpu extension.
+
+See also Example-5 for a possible input script using the GPU version. 
+
+#### Note
+
+The current version of eph/gpu is not multi-device aware, so in order to utilise all gpus on a node 
+multiple tasks have to be used. Thus, mpirun has to be aware of gpus in order to assign correct gpus 
+to each task. As a workaround gpus can be set into a special mode to block multiple tasks running on one gpu card.
+
+Also, current implementation is unable to utilise a gpu fully, thus, better performance can be achieved by runnning 
+multiple tasks on one gpu simultaneously.
 
 ## Usage
 
@@ -61,24 +175,26 @@ Where:
   * `3` -> enable friction and random force (fixed e-temperature) 
   * `4` -> heat equation (by FDM finite difference method) (decoupled from ions)
   * `5` -> enable friction and heat equation (no feedback from e-)
-  * **`7`** -> enable friction, random force, and heat equation (coupled e-ions)
+  * `7` -> enable friction, random force, and heat equation (coupled e-ions)
 * `model`: select model for friction and random force [integer]
   * `1` -> standard Langevin (for vanilla TTM with beta(rho))
   * `2` -> simple e-ph model (https://link.aps.org/doi/10.1103/PhysRevB.94.024305) (not recommended)
   * `3` -> e-ph with spatial correlations, with CM-correction only (https://arxiv.org/abs/1801.06610)
-  * **`4`** -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
+  * `4` -> e-ph with spatial correlations, full model (https://arxiv.org/abs/1801.06610)
 * `rho_e` -> scaling parameter for the FDM grid [float, recommended `1.0`] [unitless]
 * `C_e` -> electronic heat capacity per volume [float, e.g. `2.5e-6`] [in eV/K/Ang^3]
 * `kappa_e` -> electronic thermal conductivity [float,  ignored for single grid point] [in eV/K/Ang/ps]
-* `T_e` -> (initial) electronic temperature [float, e.g. `300`] [in K]
-* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point (uniform e-temperature)]
-* `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL (uses `T_e`)]
+* `T_e` -> electronic temperature [float, e.g. `300`] [in K]
+* `NX`, `NY`, `NZ` -> grid size in x, y, and z direction [integer, e.g. `1` `1` `1` sets single grid point]
+* `T_infile` -> input filename for the FDM grid parameters and initial values [string or NULL]
 * `freq` -> heat map output (`T_output`) frequency, `0` to disable [integer, e.g. `10`]
 * `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
 * `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
 * `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
 
-For example the following line in LAMMPS input script, will run the MD including the coupling to electrons,  within the spatially correlated Langevin bath.
+For example the following line in LAMMPS input script, 
+will run the MD including the coupling to electrons, 
+within the spatially correlated Langevin bath.
 The electronic specific heat is assumed to be 2.5e-6 eV/K/Ang^3 (400000 J/m³/K) (see LinPRB772008) which is a good approximation for a range of electronic temperatures from 500 to 1500K. 
 Initial electron temperature is set to 300K (and not from a file).
 We use uniform tempetures (one grid element), therefore the heat conductivity is not relevant in this case.
@@ -196,25 +312,25 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 
 ![Alt text](Examples/Example_4/Tfieldout.png?raw=true "Temperature Example 4")
 
+## Example 5
+`Examples/Example_5/`:
+
 # Release
 
 ## History
 
 - 2018/05/10 Initial Release
+- 2019/08    GPU port Release
 
 ## TODO
 
-- Implement CUBE format output
-
-## Acknowledgements
-
-Development initially supported by the Energy Dissipation to Defect Evolution Center, an Energy Frontier Research Center funded by the U.S. Department of Energy (Award Number 2014ORNL1026).
+- Implement CUBE format output for temperature field
 
 ## License and Copying
 
 USER-EPH is licensed under the terms of the [GPL v3 License](/COPYING).
 
-USER-EPH is not an official part of the LAMMPS code https://github.com/lammps/lammps
+USER-EPH is not part of the LAMMPS code https://github.com/lammps/lammps
 
 If you have any questions contact Artur Tamm <tamm3@llnl.gov> or Alfredo Correa <correaa@llnl.gov>
 
