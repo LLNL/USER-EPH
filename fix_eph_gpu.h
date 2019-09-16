@@ -48,6 +48,7 @@ class FixEPHGPU : public FixEPH {
     
     void transfer_neighbour_list();
     
+    int nmax; // size of arrays
     int* number_neigh;
     int* index_neigh;
     
