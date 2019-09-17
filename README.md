@@ -189,7 +189,7 @@ Where:
 * `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
 * `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
 * `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
-
+~/Lassen/09_Techbase/TB_Bench/02_Bench/02_GPU/TB_12/02_2_nodes
 For example the following line in LAMMPS input script, 
 will run the MD including the coupling to electrons, 
 within the spatially correlated Langevin bath.
@@ -320,15 +320,11 @@ $ cd Examples/Example_5
 $ mpirun -n 2 mypath/lmp_mpi_gpu -i run.lmp
 ```
 
-On a specialized cluster like LLNL/lassen 
+On a specialized cluster like LLNL/lassen you need a submission script
 
-```bash
-$ jsrun -r4 -c1 -a1 -g1 mypath/lmp_mpi_gpu -i run.lmp
-```
-
-Or as a submission script
 ```bash
 #!/bin/bash
+## job.bsub
 #BSUB -nnodes 2    # nodes
 #BSUB -W 120       # walltime in min
 #BSUB -G Bank      # your bank
@@ -336,8 +332,18 @@ Or as a submission script
 #BSUB -q pbatch    # queue to use (or pdebug)
 
 # Run info and srun job launch
-jsrun -n8 -a1 -c1 -g1 -E OMP_NUM_THREADS=1 lmp_mpi_gpu -i run.lmp
+jsrun -r4 -a1 -c1 -g1 -E OMP_NUM_THREADS=1 lmp_mpi_gpu -i run.lmp
 ```
+```
+$ bsub < job.bsub
+```
+
+To run interactively:
+
+```bash
+$ bsub -Is jsrun -r4 -a1 -c1 -g1 lmp_mpi_gpu -i run.lmp
+```
+(the arguments are: `-r`:num_resources (cpus), `-a`:mpi_tasks_per_resource, `-c`:cpus_per_resources, `-g`:gpus_per_resource)
 
 # Benchmark, CPUs vs GPU
 
