@@ -14,13 +14,15 @@ The theory is developed in the papers "Langevin dynamics with spatial correlatio
 
 ## Installation Instructions
 
-Get LAMMPS (source code)
+First you need a version of LAMMPS (source code)
 ```
 $ mkdir mywork
 $ cd mywork
 $ git clone https://github.com/lammps/lammps.git
 ```
 
+### Compile the USER-EPH fix for CPUs
+ 
 Get USER-EPH (this plugin, you have to have access to the repository)
 ```
 $ cd lammps/src
