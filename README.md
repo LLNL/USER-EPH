@@ -96,7 +96,7 @@ Go to the USER-EPH directory
 $ cd ../../../lammps/src/USER-EPH/lib
 ```
 
-Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`) and buid
+Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`, `INCFLAGS`) and load necessary modules (e.g. `module load mpi/openmpi-x86_64`) buid
 
 ```bash
 $ make
@@ -120,7 +120,9 @@ LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
 ```
 
 ```bash
+$ make yes-user-eph
 $ make yes-gpu
+$ make yes-kokkos
 $ make -j mpi_gpu
 ```
 
