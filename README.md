@@ -124,7 +124,6 @@ LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
 ```bash
 $ make yes-user-eph
 $ make yes-gpu
-$ make yes-kokkos
 $ make -j mpi_gpu
 ```
 
@@ -345,7 +344,7 @@ $ bsub < job.bsub
 To run interactively:
 
 ```bash
-$ bsub -Is jsrun -r4 -a1 -c1 -g1 lmp_mpi_gpu -i run.lmp
+$ bsub -Is jsrun -r4 -a1 -c1 -g1 ~/mywork/lammps/src/lmp_mpi_gpu -i run.lmp
 ```
 (the arguments are: `-r`:num_resources (cpus), `-a`:mpi_tasks_per_resource, `-c`:cpus_per_resources, `-g`:gpus_per_resource)
 
