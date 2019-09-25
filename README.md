@@ -14,13 +14,15 @@ The theory is developed in the papers "Langevin dynamics with spatial correlatio
 
 ## Installation Instructions
 
-Get LAMMPS (source code)
+First you need a version of LAMMPS (source code)
 ```
 $ mkdir mywork
 $ cd mywork
 $ git clone https://github.com/lammps/lammps.git
 ```
 
+### Compile the USER-EPH fix for CPUs
+ 
 Get USER-EPH (this plugin, you have to have access to the repository)
 ```
 $ cd lammps/src
@@ -96,7 +98,7 @@ Go to the USER-EPH directory
 $ cd ../../../lammps/src/USER-EPH/lib
 ```
 
-Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`) and buid
+Modify `Makefile` if needed (`CUDA_ARCH`, `CUDA_CODE`, `NVCCFLAGS`, `INCFLAGS`) and load necessary modules (e.g. `module load mpi/openmpi-x86_64`) buid
 
 ```bash
 $ make
@@ -120,13 +122,14 @@ LIB = -L../USER-EPH/lib -leph_gpu -lcuda -lcudart
 ```
 
 ```bash
+$ make yes-user-eph
 $ make yes-gpu
 $ make -j mpi_gpu
 ```
 
 The GPU executable will be in `lmp_mpi_gpu`.
 
-The use the gpu accelerated potentials you enable gpu package when running LAMMPS
+The use the GPU accelerated potentials you enable the GPU package when running LAMMPS
 either by supplying it on the command line or through run scripts.
 
 ```bash
@@ -135,7 +138,8 @@ $ lmp_mpi_gpu -pk gpu 1 -sf gpu -i run.lmp
 
 or
 
-```run.lmp
+```
+# LAMMPS input file run.lmp
 package gpu 1
 ...
 pair eam/alloy/gpu 
@@ -150,12 +154,9 @@ See also Example-5 for a possible input script using the GPU version.
 
 #### Note
 
-The current version of eph/gpu is not multi-device aware, so in order to utilise all gpus on a node 
-multiple tasks have to be used. Thus, mpirun has to be aware of gpus in order to assign correct gpus 
-to each task. As a workaround gpus can be set into a special mode to block multiple tasks running on one gpu card.
-
-Also, current implementation is unable to utilise a gpu fully, thus, better performance can be achieved by runnning 
-multiple tasks on one gpu simultaneously.
+The current GPU version of the fix is not multi-device aware, so in order to utilise all GPUs on a node, 
+an equal number of tasks has to be used. Thus, `mpirun` has to be aware of gpus in order to assign correct GPUs 
+to each task. As a workaround, GPUs can be set into a special mode to block multiple tasks running on one GPU card.
 
 ## Usage
 
@@ -191,7 +192,7 @@ Where:
 * `Te_output` -> output heat map filename (CUBE format) [string, e.g. `Te_output.cub`]
 * `beta_infile` -> beta(rho) input filename [string, e.g. `NiFe.beta`]
 * `A`, `B`, `C...` -> element type mapping [1 or more strings, `Ni Ni Fe`]
-
+~/Lassen/09_Techbase/TB_Bench/02_Bench/02_GPU/TB_12/02_2_nodes
 For example the following line in LAMMPS input script, 
 will run the MD including the coupling to electrons, 
 within the spatially correlated Langevin bath.
@@ -258,7 +259,7 @@ In this example a crystal structure is created and the model is applied with bot
 The electrons are *kept* at constant temperature (300K). 
 This example illustrates the thermalisation process from 0K to the target temperature through electron-ion interaction only.
 
-```
+```bash
 $ cd Examples/Example_1
 $ mypath/lmp_serial -i run.lmp
 ```
@@ -315,12 +316,46 @@ After a few MD-TTM steps the electronic temperature field will look like this:
 ## Example 5
 `Examples/Example_5/`:
 
+This the same as Example 1, but with GPU-enabled acceleration.
+
+```bash
+$ cd Examples/Example_5
+$ mpirun -n 2 mypath/lmp_mpi_gpu -i run.lmp
+```
+
+On a specialized cluster like LLNL/lassen you need a submission script
+
+```bash
+#!/bin/bash
+## job.bsub
+#BSUB -nnodes 2    # nodes
+#BSUB -W 120       # walltime in min
+#BSUB -G Bank      # your bank
+#BSUB -J Jobname   # name of job
+#BSUB -q pbatch    # queue to use (or pdebug)
+
+# Run info and srun job launch
+jsrun -r4 -a1 -c1 -g1 -E OMP_NUM_THREADS=1 lmp_mpi_gpu -i run.lmp
+```
+```
+$ bsub < job.bsub
+```
+
+To run interactively:
+
+```bash
+$ bsub -Is jsrun -r4 -a1 -c1 -g1 ~/mywork/lammps/src/lmp_mpi_gpu -i run.lmp
+```
+(the arguments are: `-r`:num_resources (cpus), `-a`:mpi_tasks_per_resource, `-c`:cpus_per_resources, `-g`:gpus_per_resource)
+
+# Benchmark, CPUs vs GPU
+
 # Release
 
 ## History
 
 - 2018/05/10 Initial Release
-- 2019/08    GPU port Release
+- 2019/09/15 GPU port Release
 
 ## TODO
 
