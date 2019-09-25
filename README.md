@@ -29,7 +29,7 @@ $ cd lammps/src
 $ git clone https://github.com/LLNL/USER-EPH.git
 ```
 
-Edit `Makefile` add the string ` user-eph ` to the `PACKUSER` variable (near line 68), for example:
+Edit LAMMPS' `Makefile` add the string ` user-eph ` to the `PACKUSER` variable (near line 68), for example:
 
 ```Makefile
 PACKUSER = user-adios user-atc user-awpmd user-bocs user-cgdna user-cgsdk user-colvars \
@@ -58,21 +58,22 @@ The executables are `./lmp_mpi` (for parallel runs) `./lmp_serial` (for serial r
 
 ### Compile for CUDA-enabled GPUs (optional)
 
-The code is ported to GPUs, a CUDA toolkit is required to compile this version and a CUDA card(s) supporting architecture at least 6.0 (`sm_60`, like
+The code is ported to GPUs, a CUDA toolkit is required to compile this version and a CUDA card(s) supporting architecture *at least* 6.0 (`sm_60`, like
 [Pascal, Volta, Turing, etc](https://en.wikipedia.org/wiki/CUDA#GPUs_supported). 
 The command `nvidia-smi` will give you details.
 
-Set the CUDA environment variable (e.g. `/usr/local/cuda` or `/usr`)
+If not defined, set the CUDA environment variable (e.g. `/usr/local/cuda` or `/usr`)
 ```bash
+$ echo $CUDA_HOME
 $ export CUDA_HOME=/usr/local/cuda 
 ```
 
-Go back to the LAMMPS GPU library directory (`cd ../../mywork/lammps/lib/gpu`) and modify the file `Makefile.linux.double` add and activate your CUDA architecture and if needed `CUDA_HOME` and `CUDA_INCLUDE`. For example (after line 10),
+Go back to the LAMMPS GPU library directory (`cd ../../lammps/lib/gpu`) and modify the file `Makefile.linux.double` add and activate your CUDA architecture and if needed `CUDA_HOME` and `CUDA_INCLUDE`. For example (after line 10),
 
 ```Makefile
 ...
 #CUDA_HOME = /usr/local/cuda
-NVCC = nvcc -ccbin=cuda-c++ 
+NVCC = nvcc -ccbin=cuda-c++   ### or, for example -ccbin=mpicxx
 
 # Kepler CUDA
 #CUDA_ARCH = -arch=sm_35
@@ -133,6 +134,7 @@ The use the GPU accelerated potentials you enable the GPU package when running L
 either by supplying it on the command line or through run scripts.
 
 ```bash
+$ cd USER-EPH/Examples/Example_5
 $ lmp_mpi_gpu -pk gpu 1 -sf gpu -i run.lmp
 ```
 
