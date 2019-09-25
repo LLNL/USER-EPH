@@ -43,6 +43,10 @@ for i in $(seq 0 $[N-1]) ; do
   done
 
 cd $OUT
-git commit
-git push
+
+if [ "$1" == "Apply" ]
+  then
+  git commit
+  git push
+fi
 
