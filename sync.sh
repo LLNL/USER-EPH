@@ -4,13 +4,13 @@ IN=~/Work/01_Electronic_Stopping/Software/USER-EPH
 cd $IN
 git pull
 
-OUT=~/Build/lammps_LLNL/src/USER-EPH
+OUT=~/Work/01_Electronic_Stopping/Software/USER-EPH_LLNL
 cd $OUT
 git pull
 
 echo "Syncing files in private repo with public repo"
 SRC=("README.md" "LICENSE" "eph_spline.h" "eph_beta.h" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp" "fix_eph_gpu.h" "fix_eph_gpu.cpp")
-SRC=(${SRC[*]} "lib/eph_gpu.h" "lib/eph_spline_gpu.h" "lib/eph_beta_gpu.h" "lib/eph_gpu.cu" "lib/eph_gpu.cpp" "lib/Makefile" "lib/Beta_Rho.beta" "lib/main.cpp")
+SRC=(${SRC[*]} "lib/Beta_Rho.beta" "lib/eph_beta_gpu.h" "lib/eph_gpu.cpp" "lib/eph_gpu.cu" "lib/eph_gpu.h" "lib/eph_spline_gpu.h" "lib/main.cpp" "lib/Makefile")
 SRC=(${SRC[*]} "Doc/Beta/input.beta" "Doc/FDM/T_input.fdm")
 
 # documentation on input files
@@ -43,6 +43,10 @@ for i in $(seq 0 $[N-1]) ; do
   done
 
 cd $OUT
-#git commit
-#git push
+
+if [ "$1" == "Apply" ]
+  then
+  git commit
+  git push
+fi
 
