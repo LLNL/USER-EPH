@@ -14,6 +14,118 @@
 
 #include <mpi.h>
 
+class EPH_FDM
+{
+  public:
+    EPH_FDM() : EPH_FDM(1, 1, 1) {}
+    
+    EPH_FDM(size_t in_nx, size_t in_ny, size_t in_nz) :
+      nx {in_nx},
+      ny {in_ny},
+      nz {in_nz}
+    {
+      resize_vectors();
+      set_box_dimensions(0, 1, 0, 1, 0, 1);
+      set_constants(0, 1, 1, 1);
+      set_dt(1);
+    }
+    
+    EPH_FDM(const char *fn) {}
+  
+    void set_box_dimensions(
+      double in_x0, double in_x1, 
+      double in_y0, double in_y1,
+      double in_z0, double in_z1)
+    {
+      
+      
+    }
+    
+    void set_constants(
+      double in_T_e, double in_C_e, double in_rho_e, double in_kappa_e)
+    {
+      
+    }
+    
+    void set_dt(double in_dt) 
+    {
+      dt = in_dt;
+    }
+    
+    void set_steps(size_t in_steps)
+    {
+      steps = in_steps;
+    }
+    
+    void set_comm(MPI_Comm in_comm, int in_myID, int in_nrPS) {
+      world = in_comm;
+      myID = in_myID;
+      nrPS = in_nrPS;
+    } 
+    
+  private:
+    size_t nx, ny, nz; // number of nodes in x,y,z
+    size_t ntotal; // total number of nodes
+    
+    double x0, x1; // box dimensions in x
+    double y0, y1; // box dimensions in y
+    double z0, z1; // box dimensions in z
+    
+    double dx, dy, dz;
+    double dV; // volume of the element
+    
+    std::vector<double> T_e;
+    std::vector<double> dT_e;
+    std::vector<double> ddT_e;
+    
+    // temperature dependence will be added later
+    std::vector<double> C_e; // specific heat at each point
+    std::vector<double> rho_e; // electronic density at each point
+    std::vector<double> kappa_e; // electronic heat conduction
+    
+    std::vector<double> S_e; // sink and source term
+    
+    /*
+     * -1 -> uninitialised
+     *  0 -> constant
+     *  1 -> dynamic
+     *  2 -> derivative 0
+     **/
+    std::vector<signed short> flag; // node property
+    
+    size_t steps; // number of steps 
+    double dt; // value of global timestep
+    
+    MPI_Comm world; // communicator
+    int myID;
+    int nrPS;
+    
+    
+    void resize_vectors()
+    {
+      ntotal = nx * ny * nz;
+      
+    }
+    
+    void sync_before() // this is for MPI sync before solve is called
+    {
+      if(nrPS > 0)
+        MPI_Allreduce(MPI_IN_PLACE, dT_e.data(), ntotal, MPI_DOUBLE, MPI_SUM, world);
+    }
+    
+    void sync_after() // this is for MPI sync after solve is called
+    {
+      // zero arrays
+      std::fill(dT_e.begin(), dT_e.end(), 0.0);
+  
+      // synchronize electronic temperature
+      if(nrPS > 0)
+        MPI_Bcast(T_e.data(), ntotal, MPI_DOUBLE, 0, world);
+    }
+};
+
+
+#if 0
 class EPH_FDM {
   private:
     unsigned int nx; // number of nodes in x
@@ -24,7 +136,6 @@ class EPH_FDM {
     double x0, x1; // box dimensions in x
     double y0, y1; // box dimensions in y
     double z0, z1; // box dimensions in z
-    //double lx, ly, lz; // box size ; possible source of errors
     
     double dx, dy, dz; // element size
     double dV; // volume of the element
@@ -61,7 +172,7 @@ class EPH_FDM {
     EPH_FDM(unsigned int nx, unsigned int ny, unsigned int nz); // initialise class manually
     
     // set box size
-    void setBox(double x0, double x1, double y0, double y1, double z0, double z1) {
+    void set_box(double x0, double x1, double y0, double y1, double z0, double z1) {
       this->x0 = x0;
       this->x1 = x1;
       this->y0 = y0;
@@ -81,7 +192,7 @@ class EPH_FDM {
     }
     
     // set system properties
-    void setConstants(double T_e, double C_e, double rho_e, double kappa_e) {
+    void set_constants(double T_e, double C_e, double rho_e, double kappa_e) {
       for(int i = 0; i < ntotal; i++) {
         this->T_e[i] = T_e;
         
@@ -109,17 +220,17 @@ class EPH_FDM {
     }
     
     // define number of minimum steps for integration
-    void setSteps(unsigned int steps) {
+    void set_steps(unsigned int steps) {
       this->steps = steps;
     }
     
     // define timestep
-    void setDt(double dt) {
-      this->dt = dt;
+    void set_dt(double in_dt) {
+      dt = in_dt;
     }
     
     // get temperature of a cell
-    double getT(double x, double y, double z) const {
+    double get_T(double x, double y, double z) const {
       unsigned int index = get_index(x, y, z);
       
       #ifndef DNDEBUG
@@ -130,7 +241,7 @@ class EPH_FDM {
     }
     
     // this has not been checked thoroughly
-    double getT(unsigned int x, unsigned int y, unsigned int z) const {
+    double get_T(unsigned int x, unsigned int y, unsigned int z) const {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       return T_e[index];
     }
@@ -150,7 +261,7 @@ class EPH_FDM {
       return true;
     }
     
-    bool insertEnergy(unsigned int x, unsigned y, unsigned z, double E) {
+    bool insert_Energy(unsigned int x, unsigned y, unsigned z, double E) {
       unsigned int index = x + y*nx + z*nx*ny;
       double prescale = dV * dt;
       
@@ -165,37 +276,37 @@ class EPH_FDM {
       return true;
     }
     
-    void setT(double x, double y, double z, double T) {
+    void set_T(double x, double y, double z, double T) {
       unsigned int index = get_index(x, y, z);
       T_e[index] = T;
     }
     
-    void setT(const unsigned int x, const unsigned int y, const unsigned int z, const double T) {
+    void set_T(const unsigned int x, const unsigned int y, const unsigned int z, const double T) {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       T_e[index] = T;
     }
     
-    void setS(double x, double y, double z, double S) {
+    void set_S(double x, double y, double z, double S) {
       unsigned int index = get_index(x, y, z);
       S_e[index] = S;
     }
     
-    void setS(unsigned int x, unsigned int y, unsigned int z, double S) {
+    void set_S(unsigned int x, unsigned int y, unsigned int z, double S) {
       unsigned int index = (x%nx) + (y%ny) * nx + (z%nz) * nx * ny;
       S_e[index] = S;
     }
     
-    void setFlag(double x, double y, double z, signed char f) {
+    void set_Flag(double x, double y, double z, signed char f) {
       unsigned int index = get_index(x, y, z);
       flag[index] = f;
     }
     
-    void setFlag(unsigned int x, unsigned int y, unsigned int z, signed char f) {
+    void set_Flag(unsigned int x, unsigned int y, unsigned int z, signed char f) {
       unsigned int index = x + y * nx + z * nx * ny;
       flag[index] = f;
     }
     
-    void setComm(MPI_Comm comm, int myID, int nrPS) {
+    void set_Comm(MPI_Comm comm, int myID, int nrPS) {
       world = comm;
       this->myID = myID;
       this->nrPS = nrPS;
@@ -204,12 +315,12 @@ class EPH_FDM {
     void solve(); // evolve electronic system
     
     // save final state of electronic structure for continuation
-    void saveState(const char* file);
+    void save_State(const char* file);
     
     // save current temperature map
-    void saveTemperature(const char* file, int n);
+    void save_Temperature(const char* file, int n);
     
-    double calcTtotal() const {
+    double calc_Ttotal() const {
       double result {0.0};
   
       for(int i = 0; i < ntotal; i++) {
@@ -241,8 +352,8 @@ class EPH_FDM {
     }
 
     void resize_vectors();
-    void syncBefore(); // this is for MPI sync before solve is called
-    void syncAfter(); // this is for MPI sync after solve is called
+    void sync_before(); // this is for MPI sync before solve is called
+    void sync_after(); // this is for MPI sync after solve is called
 };
-
+#endif
 #endif

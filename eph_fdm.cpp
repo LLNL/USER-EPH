@@ -2,7 +2,7 @@
  * Authors of the extension Artur Tamm, Alfredo Caro, Alfredo Correa, Mattias Klintenberg
  * e-mail: artur.tamm.work@gmail.com
  */
-
+#if 0
 // external headers
 #include <fstream>
 #include <string>
@@ -302,3 +302,4 @@ void EPH_FDM::syncAfter() {
   if(nrPS > 0)
     MPI_Bcast(T_e.data(), ntotal, MPI_DOUBLE, 0, world);
 }
+#endif
