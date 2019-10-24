@@ -140,8 +140,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     double y1 = domain->boxhi[1];
     double z0 = domain->boxlo[2];
     double z1 = domain->boxhi[2];
-    fdm.setBox(x0, x1, y0, y1, z0, z1);
-    fdm.setConstants(v_Te, v_Ce, v_rho, v_kappa);
+    fdm.set_box_dimensions(x0, x1, y0, y1, z0, z1);
+    fdm.set_constants(v_Te, v_Ce, v_rho, v_kappa);
     
     // now the FDM should be defined
     strcpy(T_state, "T.restart");
@@ -157,8 +157,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     sprintf(T_out, "%s", arg[15]);
   
   // set the communicator
-  fdm.setComm(world, myID, nrPS);
-  fdm.setDt(update->dt);
+  fdm.set_comm(world, myID, nrPS);
+  fdm.set_dt(update->dt);
   
   // initialise beta(rho)
   types = atom->ntypes;
@@ -383,7 +383,7 @@ void FixEPH::end_of_step() {
   
   // save heatmap
   if(myID == 0 && T_freq > 0 && (update->ntimestep % T_freq) == 0) { // TODO: implement a counter instead
-    fdm.saveTemperature(T_out, update->ntimestep / T_freq);
+    fdm.save_temperature(T_out, update->ntimestep / T_freq);
   }
   
   // this is for checking energy conservation
@@ -916,7 +916,7 @@ void FixEPH::reset_dt() {
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
   
-  fdm.setDt(update->dt);
+  fdm.set_dt(update->dt);
 }
 
 void FixEPH::grow_arrays(int ngrow) {

@@ -17,6 +17,7 @@
 class EPH_FDM
 {
   public:
+    // default constructor to create a grid with one point
     EPH_FDM() : EPH_FDM(1, 1, 1) {}
     
     EPH_FDM(size_t in_nx, size_t in_ny, size_t in_nz) :
@@ -30,21 +31,43 @@ class EPH_FDM
       set_dt(1);
     }
     
-    EPH_FDM(const char *fn) {}
-  
-    void set_box_dimensions(
-      double in_x0, double in_x1, 
-      double in_y0, double in_y1,
-      double in_z0, double in_z1)
+    EPH_FDM(const char *fn) 
     {
       
       
     }
     
+    // set box dimensions in Ang
+    void set_box_dimensions(
+      double in_x0, double in_x1, 
+      double in_y0, double in_y1,
+      double in_z0, double in_z1)
+    {
+      x0 = in_x0; x1 = in_x1;
+      y0 = in_y0; y1 = in_y1;
+      z0 = in_z0; z1 = in_z1;
+      
+      assert(x0 < x1);
+      assert(y0 < y1);
+      assert(z0 < z1);
+      
+      dx = (in_x1 - in_x0)/nx;
+      dy = (in_y1 - in_y0)/ny;
+      dz = (in_z1 - in_z0)/nz;
+      
+      dV = dx*dy*dz;
+    }
+    
+    // set constant values for as grid parameters
     void set_constants(
       double in_T_e, double in_C_e, double in_rho_e, double in_kappa_e)
     {
-      
+      std::fill(T_e.begin(), T_e.end(), in_T_e);
+      std::fill(rho_e.begin(), rho_e.end(), in_rho_e);
+      std::fill(C_e.begin(), C_e.end(), in_C_e);
+      std::fill(kappa_e.begin(), kappa_e.end(), in_kappa_e);
+      std::fill(flag.begin(), flag.end(), 1);
+      std::fill(T_flag.begin(), T_flag.end(), false);
     }
     
     void set_dt(double in_dt) 
@@ -62,6 +85,33 @@ class EPH_FDM
       myID = in_myID;
       nrPS = in_nrPS;
     } 
+    
+    void save_temperature(const char* file, int n) {
+      char fn[512];
+      sprintf(fn, "%s_%06d", file, n);
+      FILE *fd = fopen(fn, "w");
+      
+      assert(fd > 0);
+      
+      // this is needed for visit Point3D
+      fprintf(fd, "x y z Te\n");
+      
+      for(int k = 0; k < nz; ++k) {
+        for(int j = 0; j < ny; ++j) {
+          for(int i = 0; i < nx; ++i) {
+            unsigned int index = i + j * nx + k * nx * ny;
+            
+            double x = x0 + i * dx;
+            double y = y0 + j * dy;
+            double z = z0 + k * dz;
+            
+            fprintf(fd, "%.6e %.6e %.6e %.6e\n", x, y, z, T_e[index]);
+          }
+        }
+      }
+      
+      fclose(fd);
+    }
     
   private:
     size_t nx, ny, nz; // number of nodes in x,y,z
@@ -92,6 +142,7 @@ class EPH_FDM
      *  2 -> derivative 0
      **/
     std::vector<signed short> flag; // node property
+    std::vector<bool> T_flag; // temperature dependence of properties
     
     size_t steps; // number of steps 
     double dt; // value of global timestep
@@ -99,7 +150,6 @@ class EPH_FDM
     MPI_Comm world; // communicator
     int myID;
     int nrPS;
-    
     
     void resize_vectors()
     {
@@ -158,7 +208,8 @@ class EPH_FDM {
      *  2 -> derivative 0
      **/
     std::vector<signed short> flag; // point property
-    
+    std::vector<bool> T_flag; // temperature dependence
+
     unsigned int steps; // number of steps 
     double dt; // value of global timestep
     
