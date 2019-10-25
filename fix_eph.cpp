@@ -129,19 +129,23 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   /** initialise FDM grid **/
   // if filename is provided use that to initialise grid everything else is ignored
-  if(strcmp("NULL" , arg[13]) == 0) { // this might not be the best test
-    if(nx < 1 || ny < 1 || nz < 1) { // TODO: negative values could be used for sth
+  if(strcmp("NULL" , arg[13]) == 0) 
+  {
+    if(nx < 1 || ny < 1 || nz < 1) 
+    {
       error->all(FLERR, "FixEPH: non-positive grid values");
     }
-    fdm = EPH_FDM(nx, ny, nz);
+    
     double x0 = domain->boxlo[0];
     double x1 = domain->boxhi[0];
     double y0 = domain->boxlo[1];
     double y1 = domain->boxhi[1];
     double z0 = domain->boxlo[2];
     double z1 = domain->boxhi[2];
-    fdm.set_box_dimensions(x0, x1, y0, y1, z0, z1);
-    fdm.set_constants(v_Te, v_Ce, v_rho, v_kappa);
+    
+    fdm = EPH_FDM(nx, ny, nz,
+      x0, x1, y0, y1, z0, z1,
+      v_Te, v_Ce, v_rho, v_kappa);
     
     // now the FDM should be defined
     strcpy(T_state, "T.restart");
