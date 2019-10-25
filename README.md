@@ -353,9 +353,7 @@ $ bsub -Is jsrun -r4 -a1 -c1 -g1 ~/mywork/lammps/src/lmp_mpi_gpu -i run.lmp
 # Benchmark, CPUs vs GPU
 
 
-![Alt text](Doc/Benchmark/CPU_Timing_Quartz.png?raw=true "Code benchmark on Quartz CPU")
-![Alt text](Doc/Benchmark/CPU_Timing_Lassen.png?raw=true "Code benchmark on Lassen CPU")
-![Alt text](Doc/Benchmark/GPU_Timing_Lassen.png?raw=true "Code benchmark on Lassen GPU")
+![Combined code timing](Doc/Benchmark/Timing_Combined.png?raw=true "Code benchmark Quartz and Lassen")
 
 # Release
 
