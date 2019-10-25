@@ -12,6 +12,7 @@ echo "Syncing files in private repo with public repo"
 SRC=("README.md" "LICENSE" "eph_spline.h" "eph_beta.h" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp" "fix_eph_gpu.h" "fix_eph_gpu.cpp")
 SRC=(${SRC[*]} "lib/Beta_Rho.beta" "lib/eph_beta_gpu.h" "lib/eph_gpu.cpp" "lib/eph_gpu.cu" "lib/eph_gpu.h" "lib/eph_spline_gpu.h" "lib/main.cpp" "lib/Makefile")
 SRC=(${SRC[*]} "Doc/Beta/input.beta" "Doc/FDM/T_input.fdm")
+SRC=(${SRC[*]} "Doc/Benchmark/CPU_Timing_Lassen.png" "Doc/Benchmark/GPU_Timing_Lassen.png" "Doc/Benchmark/CPU_Timing_Quartz.png" "Doc/Benchmark/Timing_Combined.png")
 
 # documentation on input files
 SRC=(${SRC[*]} "Examples/Beta/Ni.beta" "Examples/Beta/Ni_model_4.beta")
@@ -29,18 +30,31 @@ SRC=(${SRC[*]} "Examples/Example_5/Ni.eam" "Examples/Example_5/Ni_model_4.beta" 
 N=${#SRC[*]}
 echo $N
 
-for i in $(seq 0 $[N-1]) ; do
-  file=${SRC[$i]}
-  ifile=$(md5sum $IN/$file | gawk '{print $1}')
-  ofile=$(md5sum $OUT/$file | gawk '{print $1}')
-
-  echo $file $ifile $ofile
-  if [ "$ifile" != "$ofile" ] ; then
-    cp -v $IN/$file $OUT/$file
-    git add $file
-  fi
+if [ "$1" == "Apply" ]
+  then
+  for i in $(seq 0 $[N-1]) ; do
+    file=${SRC[$i]}
+    ifile=$(md5sum $IN/$file | gawk '{print $1}')
+    ofile=$(md5sum $OUT/$file | gawk '{print $1}')
+  
+    echo $file $ifile $ofile
+    if [ "$ifile" != "$ofile" ] ; then
+      cp -v $IN/$file $OUT/$file
+      git add $file
+    fi
+  done
+else
+  for i in $(seq 0 $[N-1]) ; do
+    file=${SRC[$i]}
+    ifile=$(md5sum $IN/$file | gawk '{print $1}')
+    ofile=$(md5sum $OUT/$file | gawk '{print $1}')
+  
+    if [ "$ifile" != "$ofile" ] ; then
+      echo $file $ifile $ofile
+    fi
 
   done
+fi
 
 cd $OUT
 
