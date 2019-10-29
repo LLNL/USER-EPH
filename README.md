@@ -364,7 +364,7 @@ This example is same as example 4 except the parameters for electronic heat capa
 
 - 2018/05/10 Initial Release
 - 2019/09/15 GPU port Release
-- 2019/10/29 Implemented C_e(T) and kappa_e(T)
+- 2019/10/29 Implemented C_e(T) and kappa_e(T) (breaking changes)
 
 ## TODO
 
