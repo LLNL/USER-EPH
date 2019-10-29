@@ -129,19 +129,23 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   
   /** initialise FDM grid **/
   // if filename is provided use that to initialise grid everything else is ignored
-  if(strcmp("NULL" , arg[13]) == 0) { // this might not be the best test
-    if(nx < 1 || ny < 1 || nz < 1) { // TODO: negative values could be used for sth
+  if(strcmp("NULL" , arg[13]) == 0) 
+  {
+    if(nx < 1 || ny < 1 || nz < 1) 
+    {
       error->all(FLERR, "FixEPH: non-positive grid values");
     }
-    fdm = EPH_FDM(nx, ny, nz);
+    
     double x0 = domain->boxlo[0];
     double x1 = domain->boxhi[0];
     double y0 = domain->boxlo[1];
     double y1 = domain->boxhi[1];
     double z0 = domain->boxlo[2];
     double z1 = domain->boxhi[2];
-    fdm.setBox(x0, x1, y0, y1, z0, z1);
-    fdm.setConstants(v_Te, v_Ce, v_rho, v_kappa);
+    
+    fdm = EPH_FDM(nx, ny, nz,
+      x0, x1, y0, y1, z0, z1,
+      v_Te, v_Ce, v_rho, v_kappa);
     
     // now the FDM should be defined
     strcpy(T_state, "T.restart");
@@ -157,8 +161,8 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     sprintf(T_out, "%s", arg[15]);
   
   // set the communicator
-  fdm.setComm(world, myID, nrPS);
-  fdm.setDt(update->dt);
+  fdm.set_comm(world, myID, nrPS);
+  fdm.set_dt(update->dt);
   
   // initialise beta(rho)
   types = atom->ntypes;
@@ -357,7 +361,7 @@ void FixEPH::end_of_step() {
         dE_i -= f_EPH[i][1] * v[i][1] * update->dt;
         dE_i -= f_EPH[i][2] * v[i][2] * update->dt;
         
-        fdm.insertEnergy(x[i][0], x[i][1], x[i][2], dE_i);
+        fdm.insert_energy(x[i][0], x[i][1], x[i][2], dE_i);
         E_local += dE_i;
       }
     }
@@ -371,7 +375,7 @@ void FixEPH::end_of_step() {
         dE_i -= f_RNG[i][1] * v[i][1] * update->dt;
         dE_i -= f_RNG[i][2] * v[i][2] * update->dt;
         
-        fdm.insertEnergy(x[i][0], x[i][1], x[i][2], dE_i);
+        fdm.insert_energy(x[i][0], x[i][1], x[i][2], dE_i);
         E_local += dE_i;
       }
     }
@@ -383,7 +387,7 @@ void FixEPH::end_of_step() {
   
   // save heatmap
   if(myID == 0 && T_freq > 0 && (update->ntimestep % T_freq) == 0) { // TODO: implement a counter instead
-    fdm.saveTemperature(T_out, update->ntimestep / T_freq);
+    fdm.save_temperature(T_out, update->ntimestep / T_freq);
   }
   
   // this is for checking energy conservation
@@ -481,7 +485,7 @@ void FixEPH::force_ttm()
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
-        double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
+        double v_Te = fdm.get_T(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * beta.get_alpha(type_map[itype - 1], rho_i[i]) * sqrt(v_Te);
         f_RNG[i][0] = var * xi_i[i][0];
         f_RNG[i][1] = var * xi_i[i][1];
@@ -545,7 +549,7 @@ void FixEPH::force_prb()
     for(size_t i = 0; i < nlocal; i++) {
       if(mask[i] & groupbit) {
         int itype = type[i];
-        double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
+        double v_Te = fdm.get_T(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * beta.get_alpha(type_map[itype - 1], rho_i[i]) * sqrt(v_Te);
         
         f_RNG[i][0] = var * xi_i[i][0];
@@ -667,7 +671,7 @@ void FixEPH::force_prlcm() {
           }
         }
         
-        double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
+        double v_Te = fdm.get_T(x[i][0], x[i][1], x[i][2]);
         var = eta_factor * sqrt(v_Te);
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
@@ -823,7 +827,7 @@ void FixEPH::force_prl()
           f_RNG[i][2] += dvar * e_ij[2];
         }
         
-        double v_Te = fdm.getT(x[i][0], x[i][1], x[i][2]);
+        double v_Te = fdm.get_T(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te);
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
@@ -916,7 +920,7 @@ void FixEPH::reset_dt() {
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
   
-  fdm.setDt(update->dt);
+  fdm.set_dt(update->dt);
 }
 
 void FixEPH::grow_arrays(int ngrow) {
@@ -945,7 +949,7 @@ double FixEPH::compute_vector(int i) {
   if(i == 0)
     return Ee;
   else if(i == 1) {
-    return fdm.calcTtotal();
+    return fdm.get_T_total();
   }
   
   return Ee;
@@ -1081,6 +1085,6 @@ double FixEPH::memory_usage() {
 
 /* save temperature state after run */
 void FixEPH::post_run() {
-  if(myID == 0) fdm.saveState(T_state);
+  if(myID == 0) fdm.save_state(T_state);
 }
 
