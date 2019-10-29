@@ -1,0 +1,10 @@
+In this example a structure is read from the struc_in.data and the FDM (electronic) grid from T.in and uses parametric heat capacity and conduction from Parameters.data.
+
+The electronic systemhas a source term at 0 0 0 which will input energy into the system constantly at a specific rate. This will heat the electronic grid through heat diffusion equation and, additionally, heat the ionic system due to the random force.
+
+Total electronic and ionic temperatures can be obtained from out.data file with:
+plot "out.data" u 2:3 w l lw 2, "" u 2:5 w l lw 2
+
+Also electronic grid can be visualised with:
+plot "< cat T_out_000001 | gawk '{if ($3 == 0) print $0}'" u 1:2:4 w image
+
