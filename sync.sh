@@ -9,7 +9,7 @@ cd $OUT
 git pull
 
 echo "Syncing files in private repo with public repo"
-SRC=("README.md" "LICENSE" "eph_spline.h" "eph_beta.h" "eph_fdm.h" "eph_fdm.cpp" "fix_eph.h" "fix_eph.cpp" "fix_eph_gpu.h" "fix_eph_gpu.cpp")
+SRC=("README.md" "LICENSE" "eph_spline.h" "eph_beta.h" "eph_fdm.h" "fix_eph.h" "fix_eph.cpp" "fix_eph_gpu.h" "fix_eph_gpu.cpp")
 SRC=(${SRC[*]} "lib/Beta_Rho.beta" "lib/eph_beta_gpu.h" "lib/eph_gpu.cpp" "lib/eph_gpu.cu" "lib/eph_gpu.h" "lib/eph_spline_gpu.h" "lib/main.cpp" "lib/Makefile")
 SRC=(${SRC[*]} "Doc/Beta/input.beta" "Doc/FDM/T_input.fdm")
 SRC=(${SRC[*]} "Doc/Benchmark/CPU_Timing_Lassen.png" "Doc/Benchmark/GPU_Timing_Lassen.png" "Doc/Benchmark/CPU_Timing_Quartz.png" "Doc/Benchmark/Timing_Combined.png")
@@ -26,11 +26,13 @@ SRC=(${SRC[*]} "Examples/Example_3/Ni.eam" "Examples/Example_3/Ni_model_4.beta" 
 SRC=(${SRC[*]} "Examples/Example_4/Ni.eam" "Examples/Example_4/Ni_model_4.beta" "Examples/Example_4/run.lmp" "Examples/Example_4/T.in" "Examples/Example_4/README" "Examples/Example_4/Tfieldout.pdf" "Examples/Example_4/Tfieldout.png")
 # Example 5
 SRC=(${SRC[*]} "Examples/Example_5/Ni.eam" "Examples/Example_5/Ni_model_4.beta" "Examples/Example_5/run.lmp" "Examples/Example_5/README" "Examples/Example_5/Tout.pdf" "Examples/Example_5/Tout.png")
+# Example 6
+SRC=(${SRC[*]} "Examples/Example_6/Ni.eam" "Examples/Example_6/Ni_model_4.beta" "Examples/Example_6/run.lmp" "Examples/Example_6/T.in" "Examples/Example_6/README" "Examples/Example_6/Tfieldout.pdf" "Examples/Example_6/Tfieldout.png" "Examples/Example_6/Parameters.data")
 
 N=${#SRC[*]}
 echo $N
 
-if [ "$1" == "Apply" ]
+if [ "$1" == "Copy" ]
   then
   for i in $(seq 0 $[N-1]) ; do
     file=${SRC[$i]}
