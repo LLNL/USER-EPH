@@ -350,6 +350,9 @@ $ bsub -Is jsrun -r4 -a1 -c1 -g1 ~/mywork/lammps/src/lmp_mpi_gpu -i run.lmp
 ```
 (the arguments are: `-r`:num_resources (cpus), `-a`:mpi_tasks_per_resource, `-c`:cpus_per_resources, `-g`:gpus_per_resource)
 
+## Example 6
+This example is same as example 4 except the parameters for electronic heat capacity and conduction are read from the input file and can depend on the temperature.
+
 # Benchmark, CPUs vs GPU
 
 
@@ -361,6 +364,7 @@ $ bsub -Is jsrun -r4 -a1 -c1 -g1 ~/mywork/lammps/src/lmp_mpi_gpu -i run.lmp
 
 - 2018/05/10 Initial Release
 - 2019/09/15 GPU port Release
+- 2019/10/29 Implemented C_e(T) and kappa_e(T)
 
 ## TODO
 
