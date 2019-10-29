@@ -163,7 +163,7 @@ void FixEPHGPU::post_force(int)
   // get temperatures this will be pushed to gpu
   for(int i = 0; i != ntotal; ++i)
   {
-    T_e_i[i] = fdm.getT(x[i][0], x[i][1], x[i][2]);
+    T_e_i[i] = fdm.get_T(x[i][0], x[i][1], x[i][2]);
   }
   
   cpu_to_device_EPH_GPU((void*) eph_gpu.v_gpu, (void*) v[0], 3*ntotal*sizeof(double));

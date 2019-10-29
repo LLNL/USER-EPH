@@ -8,7 +8,7 @@ CUDA_CODE=sm_60
 
 NVCC=$(CUDA_HOME)/bin/nvcc
 MPICXX=mpicxx
-#CXX=
+CXX=$(MPICXX)
 
 CXXFLAGS= -g -O3 -std=c++11 -DFIX_EPH_GPU
 NVCCFLAGS= -g -O3 -ccbin=$(CXX) --std=c++11 -arch=$(CUDA_ARCH) -code $(CUDA_CODE) 

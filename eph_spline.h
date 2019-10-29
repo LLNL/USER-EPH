@@ -23,7 +23,7 @@ template<typename Float = double, template<typename> class Allocator = std::allo
 class EPH_Spline {
   public:
     EPH_Spline() {}
-    EPH_Spline(Float dx, Container<> &y) :
+    EPH_Spline(Float dx, Container<> const& y) :
       inv_dx {1./dx},
       c(y.size())
     {
