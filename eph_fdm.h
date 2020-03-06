@@ -41,6 +41,7 @@ class EPH_FDM
       set_constants(in_T_e, in_C_e, in_rho_e, in_kappa_e);
       set_steps(1);
       set_dt(1);
+      parameter_filename = "NULL";
     }
     
     EPH_FDM(const char *in_filename) 
