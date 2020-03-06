@@ -1,3 +1,5 @@
 Things that have to be done
 
 Check that if the variations in temperature are large that the momentas are still conserved
+
+There may be a possible bug in the case where the fix is applied only to one element. Should the friction be calculated over all its neighbours???
