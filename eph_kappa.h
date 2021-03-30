@@ -139,8 +139,8 @@ class EPHKappa {
       return r_cutoff_sq;
     }
 
-    Float get_rho_cutoff() const {
-      return rho_cutoff;
+    Float get_T_cutoff() const {
+      return 0.0;
     }
 
     uint8_t get_element_number(size_t index) const {
