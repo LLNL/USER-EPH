@@ -1,10 +1,13 @@
 
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 
 #include "eph_kappa.h"
 
 int main(int args, char **argv) {
+  double kB = 8.6173303e-5;
+
   std::cout << "EPH_kappa class tests" << std::endl;
   { // create an empty eph_kappa object
     Kappa kappa;
@@ -22,55 +25,49 @@ int main(int args, char **argv) {
 
     // save interpolated functions into a file
     {
-      { // rho(r)
-        std::ofstream fout("out/rho_r.data");
+      for(size_t i = 0; i < kappa.n_elements; ++i) { // rho(r)
+        char fn[128];
+        sprintf(fn, "out/rho_r_%ld.data", i);
+        std::ofstream fout(fn);
 
         double dr = 0.01;
         double r = 0.0;
 
         while(r < kappa.r_cutoff) {
-          fout << r << ' ' << kappa.rho[0](r) << '\n';
-
+          fout << r << ' ' << kappa.rho_r[i](r) << '\n';
           r += dr;
         }
       }
 
-      { // E_e(T)
-        std::ofstream fout("out/E_e_T.data");
+      for(size_t i = 0; i < kappa.n_elements; ++i) { // T(E)
+        char fn[128];
+        sprintf(fn, "out/T_E_%ld.data", i);
+        std::ofstream fout(fn);
 
-        double dT = 0.1;
-        double T = 0.0;
+        double dE = 0.1;
+        double E = 0.0;
 
-        while(T < kappa.T_max) {
-          fout << T << ' ' << kappa.E_e_atomic[0](T) << '\n';
+        while(E < kappa.E_max) {
+          fout << E << ' ' << kappa.T_E_atomic[i](E) << '\n';
 
-          T += dT;
+          E += dE;
         }
       }
 
-      { // C_e(T)
-        std::ofstream fout("out/C_e_T.data");
+      for(size_t i = 0; i < kappa.n_elements; ++i) { // kappa(E)
+        for(size_t j = 0; j < kappa.n_elements; ++j) {
+          char fn[128];
+          sprintf(fn, "out/K_E_%ld_%ld.data", i, j);
+          std::ofstream fout(fn);
 
-        double dT = 0.1;
-        double T = 0.0;
+          double dE = 0.1;
+          double E = 0.0;
 
-        while(T < kappa.T_max) {
-          fout << T << ' ' << kappa.C_e_atomic[0](T) << '\n';
+          while(E < kappa.E_max) {
+            fout << E << ' ' << E / kB << ' ' << kappa.get_K_E(i, j)(E) << '\n';
 
-          T += dT;
-        }
-      }
-
-      { // kappa_e(T)
-        std::ofstream fout("out/kappa_e_T.data");
-
-        double dT = 0.1;
-        double T = 0.0;
-
-        while(T < kappa.T_max) {
-          fout << T << ' ' << kappa.kappa_e_atomic[0](T) << '\n';
-
-          T += dT;
+            E += dE;
+          }
         }
       }
     }

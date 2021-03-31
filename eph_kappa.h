@@ -32,22 +32,23 @@ struct EPH_kappa {
 
   Float r_cutoff; // cutoff for locality
   Float r_cutoff_sq; // sq version for convienience
-  Float T_max;
+  Float E_max;
   size_t n_elements; // number of elements
+  size_t n_pairs;
 
   Container<int, Allocator<int>> element_number;
   Container<std::string, Allocator<std::string>> element_name;
-  Container<Spline, Allocator<Spline>> rho;
-  Container<Spline, Allocator<Spline>> rho_sq;
-  Container<Spline, Allocator<Spline>> E_e_atomic;
-  Container<Spline, Allocator<Spline>> C_e_atomic;
-  Container<Spline, Allocator<Spline>> kappa_e_atomic;
+  Container<Spline, Allocator<Spline>> rho_r; // spatial correlation rho(r) [n_elements]
+  Container<Spline, Allocator<Spline>> rho_r_sq; // rho(r**2) [n_elements]
+  Container<Spline, Allocator<Spline>> T_E_atomic; // T(E) temperature [n_elements]
+  Container<Spline, Allocator<Spline>> K_E_atomic; // K(E) conductivity [n_pairs]
 
   EPH_kappa() :
     n_elements {0},
+    n_pairs {0},
     r_cutoff {0},
     r_cutoff_sq {0},
-    T_max {0}
+    E_max {0}
     {}
 
   EPH_kappa(char const* file) {
@@ -66,13 +67,15 @@ struct EPH_kappa {
 
     assert(n_elements > 0 && "File contains zero elements");
 
+    n_pairs = (n_elements > 1) ? (n_elements + 1) * (n_elements - 1) / 2 : 1;
+
     element_name.resize(n_elements);
     element_number.resize(n_elements);
 
-    rho.resize(n_elements);
-    E_e_atomic.resize(n_elements);
-    C_e_atomic.resize(n_elements);
-    kappa_e_atomic.resize(n_elements);
+    rho_r.resize(n_elements);
+    rho_r_sq.resize(n_elements);
+    T_E_atomic.resize(n_elements);
+    K_E_atomic.resize(n_pairs);
 
     // read the number of elements and their names
     fd.getline(line, max_line_length);
@@ -86,25 +89,25 @@ struct EPH_kappa {
     }
 
     // read spline parameters
-    size_t n_points_rho, n_points_T;
+    size_t n_points_r, n_points_E;
 
-    Float dr, dr_sq, dT;
+    Float dr, dr_sq, dE;
 
     // read general tabulation properties
-    fd >> n_points_rho;
+    fd >> n_points_r;
     fd >> dr;
     fd >> r_cutoff;
-    fd >> n_points_T;
-    fd >> dT;
-    fd >> T_max;
+
+    fd >> n_points_E;
+    fd >> dE;
+    fd >> E_max;
 
     r_cutoff_sq = r_cutoff * r_cutoff;
-    dr_sq = r_cutoff_sq / (n_points_rho - 1);
+    dr_sq = r_cutoff_sq / (static_cast<double>(n_points_r - 1));
 
-    Container_Float _rho_r(n_points_rho);
-    Container_Float _E_e_T(n_points_T);
-    Container_Float _C_e_T(n_points_T);
-    Container_Float _kappa_e_T(n_points_T);
+    Container_Float _rho_r(n_points_r);
+    Container_Float _T_E(n_points_E);
+    Container_Float _K_E(n_points_E);
 
     // read spline knots for rho and beta for each element
     for(size_t i = 0; i < n_elements; ++i) {
@@ -114,29 +117,56 @@ struct EPH_kappa {
       element_number[i] = val;
 
       // read locality rho(r)
-      for(size_t j = 0; j != n_points_rho; ++j) {
+      for(size_t j = 0; j != n_points_r; ++j) {
         fd >> _rho_r[j];
       }
-      rho[i] = Spline(dr, _rho_r);
+      rho_r[i] = Spline(dr, _rho_r);
 
       // create square version
-      for(size_t j = 0; j != n_points_rho; ++j) {
-        _rho_r[j] = rho[i](sqrt(j * dr_sq));
+      for(size_t j = 0; j < n_points_r; ++j) {
+        _rho_r[j] = rho_r[i](sqrt(j * dr_sq));
       }
-      rho_sq[i] = Spline(dr_sq, _rho_r);
+      rho_r_sq[i] = Spline(dr_sq, _rho_r);
 
       // read thermal properties
-      for(size_t j = 0; j != n_points_T; ++j) {
-        fd >> _E_e_T[j] >> _C_e_T[j] >> _kappa_e_T[j];
+      for(size_t j = 0; j != n_points_E; ++j) {
+        fd >> _T_E[j];
       }
 
-      E_e_atomic[i] = Spline(dT, _E_e_T);
-      C_e_atomic[i] = Spline(dT, _C_e_T);
-      kappa_e_atomic[i] = Spline(dT, _kappa_e_T);
+      T_E_atomic[i] = Spline(dE, _T_E);
     }
+
+    // read kappa(E)
+    for(size_t i = 0; i < n_pairs; ++i) {
+      for(size_t j = 0; j < n_points_E; ++j) {
+        fd >> _K_E[j];
+      }
+
+      K_E_atomic[i] = Spline(dE, _K_E);
+    }
+
     fd.close();
   }
 
+  Spline& get_K_E(int i_type, int j_type) { // this is a convenience function
+    int k = i_j_to_k(i_type, j_type, n_elements);
+    return K_E_atomic[k];
+  }
+
+  static int i_j_to_k(int i_type, int j_type, int n) { // temporary solution
+    int k = 0;
+
+    for(int i = 0; i < n; ++i) {
+      for(int j = i; j < n; ++j) {
+        if(i == i_type && j == j_type) { break; }
+        ++k;
+      }
+
+      if(i == i_type) { break; }
+    }
+
+    return k;
+  }
 };
 
 using Kappa = EPH_kappa<Float, Allocator, Container>;
