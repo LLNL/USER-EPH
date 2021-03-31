@@ -1,0 +1,83 @@
+
+# initialisation
+units metal
+# mass -> grams/mole
+# distance -> Angstroms (A)
+# time -> picoseconds (ps)
+# energy -> eV
+# velocity -> A/ps
+# force -> eV/A
+# torque -> eV
+# temperature -> K
+# pressure -> bars
+# dynamic viscosity -> Poise
+# charge -> e
+# dipole -> e*A
+# electric field -> V/A
+# density -> gram/cm^3
+
+atom_style atomic
+
+boundary p p p
+atom_modify map array
+
+######################
+### create the box ###
+######################
+
+## box size ##
+variable n equal 8
+variable n_2 equal floor(${n}/2)
+
+## lattice constant ##
+variable a equal 3.52
+
+variable x index $n
+variable y index $n
+variable z index $n
+
+## lattice type ##
+lattice fcc $a
+region box block 0 $x 0 $y 0 $z
+
+## create box for two atom types ##
+create_box 1 box
+## fill box with atoms ##
+create_atoms 1 box
+
+## potential in use ##
+pair_style eam/alloy
+pair_coeff * * Ni.eam Ni
+
+#############################
+### intergration timestep ###
+#############################
+
+timestep 1e-3
+
+## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
+thermo_style custom step time temp press pe ke etotal 
+thermo 1000
+
+##################################
+### Create initial temperature ###
+##################################
+velocity all create 600.0 101 mom yes rot yes
+
+################################
+### Integrator and eph model ###
+################################
+
+## use velocity verlet integration 
+#fix integrate all nve
+
+## eph model ##
+## model is applied only to the PKA atom (a small error is created because of this) ##
+fix friction all eph/atomic 1111 3 300.0 NULL NULL Ni.beta Ni.kappa Ni Ni
+run 0
+
+##########################
+### run the simulation ###
+##########################
+run 10000
+

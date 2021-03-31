@@ -9,7 +9,7 @@
  */
 
 #ifdef FIX_CLASS
-FixStyle(eph,FixEPH)
+FixStyle(eph/atomic, FixEPHAtomic)
 #else
 
 #ifndef LMP_FIX_EPH_ATOMIC_H
@@ -42,14 +42,15 @@ class FixEPHAtomic : public Fix {
       WY,
       WZ,
       XI,
-      WI
+      WI,
+      TI // update temperatures // update energies
     };
 
     // enumeration for selecting fix functionality
     enum Flag : int {
       FRICTION = 0x01,
       RANDOM = 0x02,
-      FDM = 0x04,
+      HEAT = 0x04,
       NOINT = 0x08, // disable integration
       NOFRICTION = 0x10, // disable effect of friction force
       NORANDOM = 0x20 // disable effect of random force
@@ -81,16 +82,15 @@ class FixEPHAtomic : public Fix {
   protected:
     static constexpr size_t max_file_length = 256; // max filename length
 
-    int myID; // mpi rank for current instance
-    int nrPS; // number of processes
+    int my_id; // mpi rank for current instance
+    int nr_ps; // number of processes
 
     FixState state; // tracks the state of the fix
-
     int eph_flag; // term flags remove
 
     int types; // number of different types
-    int* type_map; // TODO: type map // change this to vector
-    //Container<uint8_t, Allocator<uint8_t> type_map; // type map // change this to vector
+    Container<int, Allocator<int>> type_map_beta; // type map for beta file
+    Container<int, Allocator<int>> type_map_kappa; // type map for kappa file
 
     Beta beta; // instance for beta(rho) parametrisation
     Kappa kappa; // heat diffusion parametrisation
@@ -101,11 +101,7 @@ class FixEPHAtomic : public Fix {
 
     double r_cutoff; // cutoff for rho(r)
     double r_cutoff_sq;
-    double rho_cutoff; // cutoff for beta(rho)
-
-    int T_freq; // frequency for printing electronic temperatures to files
-    char T_out[max_file_length]; // this will print temperature heatmap
-    char T_state[max_file_length]; // this will store the final state into file
+    double rho_cutoff;
 
     double eta_factor; // this is for the conversion from energy/ps -> force
 
@@ -115,52 +111,53 @@ class FixEPHAtomic : public Fix {
     // Neighbor list
     class NeighList *list;
 
-    // energy of the electronic system
-    double Ee;
+    double Ee; // energy of the electronic system
+    double Te; // average electronic temperature
 
     size_t n; // size of peratom arrays
 
     // friction force
-    double **f_EPH; // size = [nlocal][3] // TODO: try switching to vector
+    double **f_EPH; // size = [nlocal][3]
 
     // random force
-    double **f_RNG; // size = [nlocal][3] // TODO: try switching to vector
+    double **f_RNG; // size = [nlocal][3]
 
-    // Electronic density at each atom
-    double* rho_i; // size = [nlocal] // TODO: try switching to vector
+    // electronic density at each atom
+    double* rho_i; // size = [nlocal]
 
-    // Inverse of electronic density in order to avoid 1./rho_i
-    double* inv_rho_i; // size = [nlocal] // TODO: try switching to vector
+    // inverse of electronic density in order to avoid 1./rho_i
+    double* inv_rho_i; // size = [nlocal]
 
     // dissipation vector W_ij v_j
-    double** w_i; // size = [nlocal][3] // TODO: try switching to vector
+    double** w_i; // size = [nlocal][3]
 
     // random numbers
-    double **xi_i; // size = [nlocal][3] // TODO: try switching to vector
+    double **xi_i; // size = [nlocal][3]
 
     // electronic temperature per atom
-    double* T_e_i; // size = [nlocal + nghost]
+    double* rho_a_i; // this specifies correlations size = [nlocal + nghost]
+    double* T_a_i; // temperature per atom size = [nlocal + nghost]
+    double* E_a_i; // electronic energy per atom placeholder for future
+    double* dE_a_i; // energy deposition by stochastic forces
 
     // per atom array
-    double **array; // size = [nlocal][8] // TODO: try switching to vector
+    double **array; // size = [nlocal][8]
 
     // private member functions
     void calculate_environment(); // calculate the site density and coupling for every atom
     void force_prl(); // PRL model with full functionality
+    void heat_solve(); // atomic heat diffusion solving
 
     // TODO: remove
-    static Float get_scalar(const Float* x, const Float* y)
-    {
+    static Float get_scalar(Float const* x, Float const* y) {
       return x[0]*y[0] + x[1]*y[1] + x[2]*y[2];
     }
 
-    static Float get_norm(const Float* x)
-    {
+    static Float get_norm(Float const* x) {
       return x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
     }
 
-    static Float get_distance_sq(const Float* x, const Float* y)
-    {
+    static Float get_distance_sq(Float const* x, Float const* y) {
       Float dxy[3];
       dxy[0] = x[0] - y[0];
       dxy[1] = x[1] - y[1];
@@ -169,9 +166,7 @@ class FixEPHAtomic : public Fix {
       return get_norm(dxy);
     }
 
-    // TODO: add restrict
-    static Float get_difference_sq(const Float* x, const Float* y, Float* __restrict z)
-    {
+    static Float get_difference_sq(Float const* x, Float const* y, Float* __restrict z) {
       z[0] = x[0] - y[0];
       z[1] = x[1] - y[1];
       z[2] = x[2] - y[2];
