@@ -30,7 +30,7 @@ variable n equal 8
 variable n_2 equal floor(${n}/2)
 
 ## lattice constant ##
-variable a equal 3.52
+variable a equal 3.62
 
 variable x index $n
 variable y index $n
@@ -47,7 +47,7 @@ create_atoms 1 box
 
 ## potential in use ##
 pair_style eam/alloy
-pair_coeff * * Ni.eam Ni
+pair_coeff * * Cu.eam Cu
 
 #############################
 ### intergration timestep ###
@@ -73,7 +73,7 @@ velocity all create 600.0 101 mom yes rot yes
 
 ## eph model ##
 ## model is applied only to the PKA atom (a small error is created because of this) ##
-fix friction all eph/atomic 1111 3 300.0 NULL NULL Ni.beta Ni.kappa Ni Ni
+fix friction all eph/atomic 1111 3 300.0 NULL 0 NULL Cu.beta Cu.kappa Cu
 run 0
 
 ##########################

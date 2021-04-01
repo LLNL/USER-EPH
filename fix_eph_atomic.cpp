@@ -46,11 +46,12 @@ using namespace FixConst;
    * arg[ 4] <- eph parameter; 0 disable all terms; 1 enable friction term; 2 enable random force; 4 enable fde;
    * arg[ 5] <- initial electronic temperature
    * arg[ 6] <- input file for initial temperatures; how do we load temperatures?
-   * arg[ 7] <- output file for temperatures
-   * arg[ 8] <- input file for eph model functions
-   * arg[ 9] <- input file for kappa model functions
-   * arg[10] <- element name for type 0
-   * arg[11] <- element name for type 1
+   * arg[ 7] <- number of inner loops n < 1 -> automatic selection
+   * arg[ 8] <- output file for temperatures
+   * arg[ 9] <- input file for eph model functions
+   * arg[10] <- input file for kappa model functions
+   * arg[11] <- element name for type 0
+   * arg[12] <- element name for type 1
    * ...
    **/
 
@@ -58,7 +59,7 @@ using namespace FixConst;
 FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg) {
 
-  if (narg < 11) error->all(FLERR, "fix_eph_atomic: too few arguments");
+  if (narg < 12) error->all(FLERR, "fix_eph_atomic: too few arguments");
   if (atom->natoms < 1) error->all(FLERR, "fix_eph_atomic: error no atoms in simulation");
   MPI_Comm_rank(world, &my_id);
   MPI_Comm_size(world, &nr_ps);
@@ -148,23 +149,19 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     std::cout << '\n';
   }
 
-  { // setup temperatures per atom
-    double v_Te = atof(arg[5]);
+  // argument 5  and 6 are handled below
 
-    if(strcmp("NULL" , arg[6]) == 0) {
+  { // setup automagic inner loops or not
+    inner_loops = atoi(arg[7]);
 
-      //~ std::fill_n(&(E_a_i[0]), atom->nlocal, v_Te);
-    }
-    //~ else {
-      //~ std::fill_n(&(T_a_i[0]), atom->nlocal, v_Te); // TODO: placeholder
-    //~ }
+    if(inner_loops < 1) { inner_loops = 0; }
   }
 
   { // setup output
-    if(strcmp("NULL" , arg[7]) == 0) { } // do nothing for now
+    if(strcmp("NULL" , arg[8]) == 0) { } // do nothing for now
   }
 
-  int n_elem = 10; // location where element names start
+  int n_elem = 11; // location where element names start
 
   if(types > (narg - n_elem)) {
     error->all(FLERR, "fix_eph_atomic: number of types larger than provided in fix");
@@ -173,8 +170,8 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   type_map_beta.resize(types);
   type_map_kappa.resize(types);
 
-  beta = Beta(arg[8]);
-  kappa = Kappa(arg[9]);
+  beta = Beta(arg[9]);
+  kappa = Kappa(arg[10]);
 
   if(beta.get_n_elements() < 1) {
     error->all(FLERR, "fix_eph_atomic: no elements found in beta file");
@@ -210,6 +207,19 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     if(type_map_beta[i] > types || type_map_kappa[i] > types) {
       error->all(FLERR, "fix_eph_atomic: elements not found in input file");
     }
+  }
+
+  { // setup temperatures per atom
+    double v_Te = atof(arg[5]);
+
+    if(strcmp("NULL" , arg[6]) == 0) {
+      for(size_t i = 0; i < atom->nlocal; ++i) {
+        E_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]].reverse(v_Te);
+      }
+    }
+    //~ else {
+      //~ std::fill_n(&(T_a_i[0]), atom->nlocal, v_Te); // TODO: placeholder
+    //~ }
   }
 
   // I think we will switch to keeping track of energy instead of tracking temperature

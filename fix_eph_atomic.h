@@ -139,6 +139,8 @@ class FixEPHAtomic : public Fix {
     double* E_a_i; // electronic energy per atom placeholder for future
     double* dE_a_i; // energy deposition by stochastic forces
 
+    int inner_loops; // automatic loop selection override
+
     // per atom array
     double **array; // size = [nlocal][8]
 
