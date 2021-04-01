@@ -55,10 +55,6 @@ pair_coeff * * Cu.eam Cu
 
 timestep 1e-3
 
-## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
-thermo_style custom step time temp press pe ke etotal 
-thermo 1000
-
 ##################################
 ### Create initial temperature ###
 ##################################
@@ -75,6 +71,13 @@ velocity all create 600.0 101 mom yes rot yes
 ## model is applied only to the PKA atom (a small error is created because of this) ##
 fix friction all eph/atomic 1111 3 300.0 NULL 0 NULL Cu.beta Cu.kappa Cu
 run 0
+
+##############
+### Output ###
+##############
+## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
+thermo_style custom step time temp press pe ke etotal f_friction[1] f_friction[2]
+thermo 1000
 
 ##########################
 ### run the simulation ###

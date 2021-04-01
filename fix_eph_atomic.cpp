@@ -72,11 +72,11 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     extvector = 1; // external vector allocated by this fix???
     nevery = 1; // call end_of_step every step
     peratom_flag = 1; // fix provides per atom values
-    size_peratom_cols = 11; // per atom has 8 dimensions
+    size_peratom_cols = 12; // per atom has 8 dimensions
     peratom_freq = 1; // per atom values are provided every step
     //ghostneigh = 1; // neighbours of neighbours
 
-    comm_forward = 1; // forward communication is needed
+    comm_forward = 3; // forward communication is needed
     comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
   }
 
@@ -94,6 +94,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     rho_a_i = nullptr;
     E_a_i = nullptr;
     dE_a_i = nullptr;
+    T_a_i = nullptr;
 
     list = nullptr;
 
@@ -224,6 +225,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
 
   // I think we will switch to keeping track of energy instead of tracking temperature
   Ee = 0.0; // electronic energy is zero in the beginning
+  Te = 0.0;
 }
 
 // destructor
@@ -243,6 +245,7 @@ FixEPHAtomic::~FixEPHAtomic() {
   memory->destroy(rho_a_i);
   memory->destroy(E_a_i);
   memory->destroy(dE_a_i);
+  memory->destroy(T_a_i);
 }
 
 void FixEPHAtomic::init() {
@@ -339,6 +342,7 @@ void FixEPHAtomic::end_of_step() {
   int nlocal = atom->nlocal;
 
   double E_local = 0.0;
+  double T_local = 0.0;
 
   // calculate the energy transferred to electronic system
   // this is a potential source of errors due to using velocity verlet for integration
@@ -376,11 +380,21 @@ void FixEPHAtomic::end_of_step() {
   if(eph_flag & Flag::HEAT) {
     heat_solve();
   }
+  { // calculate the total temperature
+    for(size_t i = 0; i < nlocal; ++i) {
+      if(mask[i] & groupbit) {
+        T_local += kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
+      }
+    }
+    T_local /= static_cast<double>(nlocal);
+  }
 
   // this is for checking energy conservation
   MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, &T_local, 1, MPI_DOUBLE, MPI_SUM, world);
 
   Ee += E_local;
+  Te = T_local / static_cast<double>(nr_ps);
 
   for(size_t i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
@@ -396,6 +410,7 @@ void FixEPHAtomic::end_of_step() {
       array[i][ 8] = rho_a_i[i];
       array[i][ 9] = E_a_i[i];
       array[i][10] = dE_a_i[i];
+      array[i][11] = T_a_i[i];
     }
     else {
       array[i][ 0] = 0.0;
@@ -409,6 +424,7 @@ void FixEPHAtomic::end_of_step() {
       array[i][ 8] = 0.0;
       array[i][ 9] = 0.0;
       array[i][10] = 0.0;
+      array[i][11] = 0.0;
     }
   }
 }
@@ -509,12 +525,15 @@ void FixEPHAtomic::force_prl() {
       }
     }
 
-    state = FixState::WX;
+    state = FixState::WI;
     comm->forward_comm_fix(this);
-    state = FixState::WY;
-    comm->forward_comm_fix(this);
-    state = FixState::WZ;
-    comm->forward_comm_fix(this);
+
+    //~ state = FixState::WX;
+    //~ comm->forward_comm_fix(this);
+    //~ state = FixState::WY;
+    //~ comm->forward_comm_fix(this);
+    //~ state = FixState::WZ;
+    //~ comm->forward_comm_fix(this);
 
     // now calculate the forces
     // f_i = W_ij w_j
@@ -669,6 +688,7 @@ void FixEPHAtomic::post_force(int vflag) {
   std::fill_n(&(xi_i[0][0]), 3 * nlocal, 0);
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0);
+  std::fill_n(&(dE_a_i[0]), nlocal, 0);
 
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {
@@ -680,12 +700,15 @@ void FixEPHAtomic::post_force(int vflag) {
       }
     }
 
-    state = FixState::XIX;
+    state = FixState::XI;
     comm->forward_comm_fix(this);
-    state = FixState::XIY;
-    comm->forward_comm_fix(this);
-    state = FixState::XIZ;
-    comm->forward_comm_fix(this);
+
+    //~ state = FixState::XIX;
+    //~ comm->forward_comm_fix(this);
+    //~ state = FixState::XIY;
+    //~ comm->forward_comm_fix(this);
+    //~ state = FixState::XIZ;
+    //~ comm->forward_comm_fix(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
@@ -738,6 +761,7 @@ void FixEPHAtomic::grow_arrays(int ngrow) {
   memory->grow(rho_a_i, ngrow, "eph:rho_a_i");
   memory->grow(E_a_i, ngrow, "eph:E_a_i");
   memory->grow(dE_a_i, ngrow, "eph:dE_a_i");
+  memory->grow(T_a_i, ngrow, "eph:T_a_i");
 
   // per atom values
   // we need only nlocal elements here
@@ -761,7 +785,7 @@ int FixEPHAtomic::pack_forward_comm(int n, int *list, double *data, int pbc_flag
   m = 0;
   switch(state) {
     case FixState::RHO:
-      for(size_t i = 0; i < n; ++i) {
+      for(size_t i = 0; i < n; ++i) { // TODO: things can break here in mpi
         data[m++] = rho_i[list[i]];
         data[m++] = rho_a_i[list[i]];
       }
