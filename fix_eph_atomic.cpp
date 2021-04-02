@@ -271,6 +271,9 @@ void FixEPHAtomic::init() {
   neighbor->requests[irequest]->cutoff = r_cutoff;
 
   reset_dt();
+
+  state = FixState::EI;
+  comm->forward_comm_fix(this);
 }
 
 void FixEPHAtomic::init_list(int id, NeighList *ptr) {
@@ -349,6 +352,8 @@ void FixEPHAtomic::end_of_step() {
   // friction force depends on the velocities and therefore acceleration at
   //   next timestep depends on the velocity at next time step
   // this leads to errors of the order of dt^2
+  std::fill_n(&(dE_a_i[0]), nlocal, 0.0);
+
   if(eph_flag & Flag::FRICTION) {
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
@@ -357,8 +362,8 @@ void FixEPHAtomic::end_of_step() {
         dE_i -= f_EPH[i][1] * v[i][1] * update->dt;
         dE_i -= f_EPH[i][2] * v[i][2] * update->dt;
 
-        //~ fdm.insert_energy(x[i][0], x[i][1], x[i][2], dE_i);
         E_local += dE_i;
+        dE_a_i[i] += dE_i;
       }
     }
   }
@@ -371,8 +376,8 @@ void FixEPHAtomic::end_of_step() {
         dE_i -= f_RNG[i][1] * v[i][1] * update->dt;
         dE_i -= f_RNG[i][2] * v[i][2] * update->dt;
 
-        //~ fdm.insert_energy(x[i][0], x[i][1], x[i][2], dE_i);
         E_local += dE_i;
+        dE_a_i[i] += dE_i;
       }
     }
   }
@@ -380,6 +385,7 @@ void FixEPHAtomic::end_of_step() {
   if(eph_flag & Flag::HEAT) {
     heat_solve();
   }
+
   { // calculate the total temperature
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
@@ -481,8 +487,7 @@ void FixEPHAtomic::force_prl() {
   int **firstneigh = list->firstneigh;
 
   // create friction forces
-  if(eph_flag & Flag::FRICTION)
-  {
+  if(eph_flag & Flag::FRICTION) {
     // w_i = W_ij^T v_j
     for(size_t i = 0; i != nlocal; ++i)
     {
@@ -590,6 +595,7 @@ void FixEPHAtomic::force_prl() {
         if(!(rho_i[i] > 0)) continue;
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
+        double v_Ti = sqrt(kappa.T_E_atomic[itype - 1](E_a_i[i]));
 
         for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
@@ -603,14 +609,15 @@ void FixEPHAtomic::force_prl() {
           if((e_r_sq >= r_cutoff_sq) || !(rho_i[jj] > 0)) continue;
 
           double alpha_j = beta.get_alpha(type_map_beta[jtype - 1], rho_i[jj]);
+          double v_Tj = sqrt(kappa.T_E_atomic[jtype - 1](E_a_i[jj]));
 
           double v_rho_ji = beta.get_rho_r_sq(type_map_beta[jtype - 1], e_r_sq);
           double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
-          double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
+          double var1 = v_Ti * alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
 
           double v_rho_ij = beta.get_rho_r_sq(type_map_beta[itype - 1], e_r_sq);
           double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
-          double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
+          double var2 = v_Tj * alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
 
           double dvar = var1 - var2;
           f_RNG[i][0] += dvar * e_ij[0];
@@ -618,8 +625,10 @@ void FixEPHAtomic::force_prl() {
           f_RNG[i][2] += dvar * e_ij[2];
         }
 
-        double v_Te = kappa.T_E_atomic[itype - 1](E_a_i[i]);
-        double var = eta_factor * sqrt(v_Te);
+        //~ double v_Te = kappa.T_E_atomic[itype - 1](E_a_i[i]);
+        //~ if(i == 0) { std::cout << E_a_i[0] << ' ' << v_Te << '\n'; }
+        //~ double var = eta_factor * sqrt(v_Te);
+        double var = eta_factor;
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
         f_RNG[i][2] *= var;
@@ -653,8 +662,12 @@ void FixEPHAtomic::heat_solve() {
     { // add small portion of energy and redistribute temperatures
       for(size_t j = 0; j < nlocal; ++j) {
         if(mask[j] & groupbit) {
-          int jtype = type[j];
+          //~ if(j == 0) {
+            //~ std::cout << E_a_i[j] << ' ' << dE_a_i[j] << '\n';
+          //~ }
+
           E_a_i[j] += dE_a_i[j] * scaling;
+          if(E_a_i[j] < 0) { E_a_i[j] = 0.0; } // energy cannot go negative
         }
       }
 
@@ -694,6 +707,11 @@ void FixEPHAtomic::post_force(int vflag) {
   std::fill_n(&(f_EPH[0][0]), 3 * nlocal, 0);
   std::fill_n(&(f_RNG[0][0]), 3 * nlocal, 0);
   std::fill_n(&(dE_a_i[0]), nlocal, 0);
+
+  // TODO: TEMPORARY
+  state = FixState::EI;
+  comm->forward_comm_fix(this);
+  // END TODO
 
   // generate random forces and distribute them
   if(eph_flag & Flag::RANDOM) {

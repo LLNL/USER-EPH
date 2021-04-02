@@ -25,6 +25,10 @@ atom_modify map array
 ### create the box ###
 ######################
 
+## temperature ##
+variable T equal 300.0
+variable T2 equal 2*${T}
+
 ## box size ##
 variable n equal 8
 variable n_2 equal floor(${n}/2)
@@ -52,13 +56,12 @@ pair_coeff * * Cu.eam Cu
 #############################
 ### intergration timestep ###
 #############################
-
-timestep 1e-3
+timestep 1e-5
 
 ##################################
 ### Create initial temperature ###
 ##################################
-velocity all create 600.0 101 mom yes rot yes
+velocity all create ${T2} 101 mom yes rot yes
 
 ################################
 ### Integrator and eph model ###
@@ -69,7 +72,7 @@ velocity all create 600.0 101 mom yes rot yes
 
 ## eph model ##
 ## model is applied only to the PKA atom (a small error is created because of this) ##
-fix friction all eph/atomic 1111 3 300.0 NULL 0 NULL Cu.beta Cu.kappa Cu
+fix friction all eph/atomic 1111 7 ${T2} NULL 1 NULL Cu.beta Cu.kappa Cu
 run 0
 
 ##############
@@ -77,7 +80,7 @@ run 0
 ##############
 ## print stuff into stdout every 1000 steps (atoms moves about 1A in that time) ##
 thermo_style custom step time temp press pe ke etotal f_friction[1] f_friction[2]
-thermo 1000
+thermo 100
 
 ##########################
 ### run the simulation ###

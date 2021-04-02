@@ -8,7 +8,7 @@ Elems = ["Cu"]; # use Elems = ["A"; "B"; "C"] for multiple elements
 N = length(Zs); # number of types
 N_pairs = 1;
 
-N_atoms = [4];
+N_atoms = [2];
 
 if(N > 1)
   N_pairs = (N+1)*(N-1) / 2;
