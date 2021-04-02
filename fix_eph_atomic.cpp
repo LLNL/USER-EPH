@@ -637,12 +637,17 @@ void FixEPHAtomic::heat_solve() {
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
 
-  // test stability
-  double stability = 1.0;
+  int loops = 1;
 
-  double loops = 2;
-  double scaling = 1.0 / loops;
-  double dt = scaling * dtv; // we will do extra steps if necessary
+  // test stability
+  if(inner_loops > 0) { loops = inner_loops; } // user defined number of loops
+  else { // automatic number of loops
+    double stability = 1.0;
+    loops = 1;
+  }
+
+  double scaling = 1.0 / static_cast<double>(loops);
+  double dt = dtv * scaling;
 
   for(size_t i = 0; i < loops; ++i) {
     { // add small portion of energy and redistribute temperatures
