@@ -77,6 +77,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     //ghostneigh = 1; // neighbours of neighbours
 
     comm_forward = 3; // forward communication is needed
+    //~ comm_forward = 1; // forward communication is needed
     comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
   }
 
@@ -120,9 +121,11 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     std::fill_n(&(dE_a_i[0]), ntotal, 0);
   }
 
-  {
+  { // some other variables
     types = atom->ntypes;
     eta_factor = sqrt(2.0 * force->boltz / update->dt);
+    kB = force->boltz;
+    std::cout << "######" << kB << '\n';
   }
 
   { /** integrator functionality **/
@@ -225,7 +228,18 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
 
   // I think we will switch to keeping track of energy instead of tracking temperature
   Ee = 0.0; // electronic energy is zero in the beginning
-  Te = 0.0;
+  
+  { // calculate the local temperatures
+    Te = 0.0;
+    
+    for(size_t i = 0; i < atom->nlocal; ++i) {
+      Te += kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+    }
+    Te /= static_cast<double>(atom->nlocal);
+    MPI_Allreduce(MPI_IN_PLACE, &Te, 1, MPI_DOUBLE, MPI_SUM, world);
+
+    Te /= static_cast<double>(nr_ps);
+  }
 }
 
 // destructor
@@ -271,9 +285,6 @@ void FixEPHAtomic::init() {
   neighbor->requests[irequest]->cutoff = r_cutoff;
 
   reset_dt();
-
-  state = FixState::EI;
-  comm->forward_comm_fix(this);
 }
 
 void FixEPHAtomic::init_list(int id, NeighList *ptr) {
@@ -445,8 +456,7 @@ void FixEPHAtomic::calculate_environment() {
   int **firstneigh = list->firstneigh;
 
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(size_t i = 0; i != nlocal; ++i)
-  {
+  for(size_t i = 0; i != nlocal; ++i) {
     rho_i[i] = 0;
     rho_a_i[i] = 0;
 
@@ -667,7 +677,12 @@ void FixEPHAtomic::heat_solve() {
           //~ }
 
           E_a_i[j] += dE_a_i[j] * scaling;
-          if(E_a_i[j] < 0) { E_a_i[j] = 0.0; } // energy cannot go negative
+          if(E_a_i[j] < 0.0) { 
+            std::cerr << "HIT THE WALL 1: " << dE_a_i[j] << ' ' <<
+            scaling << ' ' << E_a_i[j] - dE_a_i[j] * scaling << '\n';
+            
+            E_a_i[j] = 0.0; 
+          } // energy cannot go negative
         }
       }
 
@@ -682,13 +697,37 @@ void FixEPHAtomic::heat_solve() {
           int *klist = firstneigh[j];
           int knum = numneigh[j];
 
-          if(!(rho_a_i[j] > 0)) continue;
-
+          if(!(rho_a_i[j] > 0)) { continue; }
+          
+          double l_dE_j = 0.0;
+          double l_T_j = kappa.T_E_atomic[jtype - 1](E_a_i[j]);
+          double l_K_j = kappa.K_E_atomic[jtype - 1](l_T_j * kB);
+          
           for(size_t k = 0; k != knum; ++k) {
             int kk = klist[k];
             kk &= NEIGHMASK;
             int ktype = type[kk];
+            
+            double l_T_k = kappa.T_E_atomic[ktype - 1](E_a_i[kk]);
+            double l_K_k = kappa.K_E_atomic[ktype - 1](l_T_k * kB);
+            
+            double v_dT = l_T_k - l_T_j;
+            double v_K = 0.5 * (l_K_k + l_K_j);
+            
+            double e_jk[3];
+            double e_r_sq = get_difference_sq(x[kk], x[j], e_jk);
+            
+            if(e_r_sq >= kappa.r_cutoff_sq) { continue; }
+            
+            double v_rho_k = kappa.rho_r_sq(type_map_kappa[ktype - 1], e_r_sq);
+            
+            l_dE_j += v_rho_k * v_K * v_dT;
           }
+          
+          l_dE_j /= rho_a_i[j];
+          
+          E_a_i[j] += l_dE_j * dt;
+          if(E_a_i[j] < 0) { std::cerr << "HIT THE WALL 2" << '\n'; E_a_i[j] = 0.0; } // energy cannot go negative
         }
       }
     }
@@ -810,7 +849,7 @@ int FixEPHAtomic::pack_forward_comm(int n, int *list, double *data, int pbc_flag
     case FixState::RHO:
       for(size_t i = 0; i < n; ++i) { // TODO: things can break here in mpi
         data[m++] = rho_i[list[i]];
-        data[m++] = rho_a_i[list[i]];
+        //~ data[m++] = rho_a_i[list[i]];
       }
       break;
     case FixState::XI:
@@ -878,7 +917,7 @@ void FixEPHAtomic::unpack_forward_comm(int n, int first, double *data) {
     case FixState::RHO:
       for(size_t i = first; i < last; ++i) {
         rho_i[i] = data[m++];
-        rho_a_i[i] = data[m++];
+        //~ rho_a_i[i] = data[m++];
       }
       break;
     case FixState::XI:

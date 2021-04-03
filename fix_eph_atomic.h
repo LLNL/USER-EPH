@@ -104,7 +104,8 @@ class FixEPHAtomic : public Fix {
     double rho_cutoff;
 
     double eta_factor; // this is for the conversion from energy/ps -> force
-
+    double kB;
+    
     int seed; // seed for random number generator
     class RanMars *random; // rng
 

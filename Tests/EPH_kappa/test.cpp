@@ -44,7 +44,7 @@ int main(int args, char **argv) {
         sprintf(fn, "out/T_E_%ld.data", i);
         std::ofstream fout(fn);
 
-        double dE = 0.1;
+        double dE = 0.01;
         double E = 0.0;
 
         while(E < kappa.E_max) {
@@ -60,7 +60,7 @@ int main(int args, char **argv) {
           sprintf(fn, "out/K_E_%ld_%ld.data", i, j);
           std::ofstream fout(fn);
 
-          double dE = 0.1;
+          double dE = 0.01;
           double E = 0.0;
 
           while(E < kappa.E_max) {

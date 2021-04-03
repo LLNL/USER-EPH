@@ -26,7 +26,7 @@ atom_modify map array
 ######################
 
 ## box size ##
-variable n equal 8
+variable n equal 4
 variable n_2 equal floor(${n}/2)
 
 ## lattice constant ##
@@ -53,7 +53,7 @@ pair_coeff * * Cu.eam Cu
 ### intergration timestep ###
 #############################
 
-timestep 1e-3
+timestep 1e-4
 
 ##################################
 ### Create initial temperature ###
@@ -83,4 +83,6 @@ thermo 1000
 ### run the simulation ###
 ##########################
 run 100000
+
+write_data struc_out.data
 

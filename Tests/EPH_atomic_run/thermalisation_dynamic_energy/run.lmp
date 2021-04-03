@@ -29,25 +29,8 @@ atom_modify map array
 variable T equal 300.0
 variable T2 equal 2*${T}
 
-## box size ##
-variable n equal 8
-variable n_2 equal floor(${n}/2)
-
-## lattice constant ##
-variable a equal 3.62
-
-variable x index $n
-variable y index $n
-variable z index $n
-
-## lattice type ##
-lattice fcc $a
-region box block 0 $x 0 $y 0 $z
-
-## create box for two atom types ##
-create_box 1 box
-## fill box with atoms ##
-create_atoms 1 box
+## load structure from input ##
+read_data struc_in.data
 
 ## potential in use ##
 pair_style eam/alloy
@@ -58,11 +41,6 @@ pair_coeff * * Cu.eam Cu
 #############################
 timestep 1e-5
 
-##################################
-### Create initial temperature ###
-##################################
-velocity all create ${T2} 101 mom yes rot yes
-
 ################################
 ### Integrator and eph model ###
 ################################
@@ -72,7 +50,7 @@ velocity all create ${T2} 101 mom yes rot yes
 
 ## eph model ##
 ## model is applied only to the PKA atom (a small error is created because of this) ##
-fix friction all eph/atomic 1111 7 ${T2} NULL 1 NULL Cu.beta Cu.kappa Cu
+fix friction all eph/atomic 1111 7 ${T} NULL 10 NULL Cu.beta Cu.kappa Cu
 run 0
 
 ##############
@@ -85,5 +63,5 @@ thermo 100
 ##########################
 ### run the simulation ###
 ##########################
-run 100000
+run 1000000
 
