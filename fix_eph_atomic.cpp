@@ -125,7 +125,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     types = atom->ntypes;
     eta_factor = sqrt(2.0 * force->boltz / update->dt);
     kB = force->boltz;
-    std::cout << "######" << kB << '\n';
+    //~ std::cout << "######" << kB << '\n';
   }
 
   { /** integrator functionality **/
@@ -218,7 +218,9 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
 
     if(strcmp("NULL" , arg[6]) == 0) {
       for(size_t i = 0; i < atom->nlocal; ++i) {
-        E_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]].reverse(v_Te);
+        if(atom->mask[i] & groupbit) {
+          E_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]].reverse(v_Te);
+        }
       }
     }
     //~ else {
@@ -229,16 +231,24 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   // I think we will switch to keeping track of energy instead of tracking temperature
   Ee = 0.0; // electronic energy is zero in the beginning
   
+  //~ std::cout << "##### GROUP BIT A " << groupbit << '\n'; 
+  
   { // calculate the local temperatures
     Te = 0.0;
+    int atom_counter = 0;
     
     for(size_t i = 0; i < atom->nlocal; ++i) {
-      Te += kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+      if(atom->mask[i] & groupbit) {
+        Te += kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+        atom_counter++;
+      }
     }
-    Te /= static_cast<double>(atom->nlocal);
+    if(atom_counter > 0) { Te /= static_cast<double>(atom_counter); }
+    int proc_counter = (atom_counter > 0) ? 1 : 0;
     MPI_Allreduce(MPI_IN_PLACE, &Te, 1, MPI_DOUBLE, MPI_SUM, world);
+    MPI_Allreduce(MPI_IN_PLACE, &proc_counter, 1, MPI_INT, MPI_SUM, world);
 
-    Te /= static_cast<double>(nr_ps);
+    Te /= static_cast<double>(proc_counter);
   }
 }
 
@@ -393,26 +403,30 @@ void FixEPHAtomic::end_of_step() {
     }
   }
 
-  if(eph_flag & Flag::HEAT) {
-    heat_solve();
-  }
-
-  { // calculate the total temperature
-    for(size_t i = 0; i < nlocal; ++i) {
-      if(mask[i] & groupbit) {
-        T_local += kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
-      }
-    }
-    T_local /= static_cast<double>(nlocal);
-  }
-
-  // this is for checking energy conservation
-  MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
-  MPI_Allreduce(MPI_IN_PLACE, &T_local, 1, MPI_DOUBLE, MPI_SUM, world);
+  if(eph_flag & Flag::HEAT) { heat_solve(); }
 
   Ee += E_local;
-  Te = T_local / static_cast<double>(nr_ps);
-
+  // this is for checking energy conservation
+  MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
+  
+  { // average temperature calculation
+    int atom_counter = 0;
+    for(size_t i = 0; i < nlocal; ++i) { // calculate the total temperature
+      if(mask[i] & groupbit) {
+        T_local += kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
+        atom_counter++;
+      }
+    }
+    
+    if(atom_counter > 0) { T_local /= static_cast<double>(atom_counter); }
+    int proc_counter = (atom_counter > 0) ? 1 : 0;
+    
+    MPI_Allreduce(MPI_IN_PLACE, &T_local, 1, MPI_DOUBLE, MPI_SUM, world);
+    MPI_Allreduce(MPI_IN_PLACE, &proc_counter, 1, MPI_INT, MPI_SUM, world);
+    
+    Te = T_local / static_cast<double>(proc_counter);
+  }
+  
   for(size_t i = 0; i < nlocal; ++i) {
     if(mask[i] & groupbit) {
       int itype = type[i];
@@ -499,8 +513,7 @@ void FixEPHAtomic::force_prl() {
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
     // w_i = W_ij^T v_j
-    for(size_t i = 0; i != nlocal; ++i)
-    {
+    for(size_t i = 0; i != nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -510,8 +523,7 @@ void FixEPHAtomic::force_prl() {
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
 
-        for(size_t j = 0; j != jnum; ++j)
-        {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
