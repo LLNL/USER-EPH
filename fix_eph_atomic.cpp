@@ -719,7 +719,7 @@ void FixEPHAtomic::heat_solve() {
             
             if(e_r_sq >= kappa.r_cutoff_sq) { continue; }
             
-            double v_rho_k = kappa.rho_r_sq(type_map_kappa[ktype - 1], e_r_sq);
+            double v_rho_k = kappa.rho_r_sq[type_map_kappa[ktype - 1]](e_r_sq);
             
             l_dE_j += v_rho_k * v_K * v_dT;
           }
