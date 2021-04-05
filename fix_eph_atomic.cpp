@@ -239,7 +239,8 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     
     for(size_t i = 0; i < atom->nlocal; ++i) {
       if(atom->mask[i] & groupbit) {
-        Te += kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+        T_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+        Te += T_a_i[i];
         atom_counter++;
       }
     }
@@ -413,7 +414,8 @@ void FixEPHAtomic::end_of_step() {
     int atom_counter = 0;
     for(size_t i = 0; i < nlocal; ++i) { // calculate the total temperature
       if(mask[i] & groupbit) {
-        T_local += kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
+        T_a_i[i] = kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
+        T_local += T_a_i[i];
         atom_counter++;
       }
     }
@@ -475,8 +477,7 @@ void FixEPHAtomic::calculate_environment() {
     rho_a_i[i] = 0;
 
     // check if current atom belongs to fix group and if an atom is local
-    if(mask[i] & groupbit)
-    {
+    if(mask[i] & groupbit) {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
@@ -484,7 +485,10 @@ void FixEPHAtomic::calculate_environment() {
       for(size_t j = 0; j != jnum; ++j) {
         int jj = jlist[j];
         jj &= NEIGHMASK;
-
+        
+        // this is new behaviour. In the past we did not check about the neighbours group status
+        if(!(mask[jj] & groupbit)) { continue; } // neighbour is not in the group 
+        
         int jtype = type[jj];
         double r_sq = get_distance_sq(x[jj], x[i]);
 
@@ -527,7 +531,9 @@ void FixEPHAtomic::force_prl() {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
-
+          
+          if(!(mask[jj] & groupbit)) { continue; }
+          
           // calculate the e_ij vector TODO: change these
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
@@ -574,12 +580,13 @@ void FixEPHAtomic::force_prl() {
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
 
-        for(size_t j = 0; j != jnum; ++j)
-        {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
-
+          
+          if(!(mask[jj] & groupbit)) { continue; }
+          
           // calculate the e_ij vector
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
@@ -623,7 +630,9 @@ void FixEPHAtomic::force_prl() {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
-
+          
+          if(!(mask[jj] & groupbit)) { continue; }
+          
           // calculate the e_ij vector
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
@@ -690,8 +699,8 @@ void FixEPHAtomic::heat_solve() {
 
           E_a_i[j] += dE_a_i[j] * scaling;
           if(E_a_i[j] < 0.0) { 
-            std::cerr << "HIT THE WALL 1: " << dE_a_i[j] << ' ' <<
-            scaling << ' ' << E_a_i[j] - dE_a_i[j] * scaling << '\n';
+            //~ std::cerr << "HIT THE WALL 1: " << j << ' ' << type[j]-1 << ' ' << 
+              //~ dE_a_i[j] << ' ' << scaling << ' ' << E_a_i[j] << '\n';
             
             E_a_i[j] = 0.0; 
           } // energy cannot go negative
@@ -720,6 +729,8 @@ void FixEPHAtomic::heat_solve() {
             kk &= NEIGHMASK;
             int ktype = type[kk];
             
+            if(!(mask[kk] & groupbit)) { continue; }
+            
             double l_T_k = kappa.T_E_atomic[ktype - 1](E_a_i[kk]);
             double l_K_k = kappa.K_E_atomic[ktype - 1](l_T_k * kB);
             
@@ -739,7 +750,10 @@ void FixEPHAtomic::heat_solve() {
           l_dE_j /= rho_a_i[j];
           
           E_a_i[j] += l_dE_j * dt;
-          if(E_a_i[j] < 0) { std::cerr << "HIT THE WALL 2" << '\n'; E_a_i[j] = 0.0; } // energy cannot go negative
+          if(E_a_i[j] < 0) { 
+            //~ std::cerr << "HIT THE WALL 2" << '\n'; 
+            E_a_i[j] = 0.0; // energy cannot go negative
+          } 
         }
       }
     }
