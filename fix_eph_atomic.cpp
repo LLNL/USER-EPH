@@ -253,7 +253,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   }
   
   { // put initial values into array
-    populate_array();
+    populate_array(); this does not work properly
   }
 }
 
@@ -531,7 +531,7 @@ void FixEPHAtomic::force_prl() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
 
-        if(!(rho_i[i] > 0)) continue;
+        if(!(rho_i[i] > 0)) { continue; }
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
 
@@ -547,7 +547,7 @@ void FixEPHAtomic::force_prl() {
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
 
           // first sum
-          if(e_r_sq >= r_cutoff_sq) continue;
+          if(e_r_sq >= r_cutoff_sq) { continue; }
 
           double v_rho_ji = beta.get_rho_r_sq(type_map_beta[jtype - 1], e_r_sq);
           double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
@@ -584,7 +584,7 @@ void FixEPHAtomic::force_prl() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
 
-        if( not(rho_i[i] > 0) ) continue;
+        if( not(rho_i[i] > 0) ) { continue; }
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
 
@@ -599,8 +599,8 @@ void FixEPHAtomic::force_prl() {
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
 
-          if(e_r_sq >= r_cutoff_sq or not(rho_i[jj] > 0)) continue;
-
+          if(e_r_sq >= r_cutoff_sq or not(rho_i[jj] > 0)) { continue; }
+          
           double alpha_j = beta.get_alpha(type_map_beta[jtype - 1], rho_i[jj]);
 
           double v_rho_ji = beta.get_rho_r_sq(type_map_beta[jtype - 1], e_r_sq);
@@ -629,7 +629,7 @@ void FixEPHAtomic::force_prl() {
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
 
-        if(!(rho_i[i] > 0)) continue;
+        if(!(rho_i[i] > 0)) { continue; }
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
         double v_Ti = sqrt(kappa.T_E_atomic[itype - 1](E_a_i[i]));
@@ -645,7 +645,7 @@ void FixEPHAtomic::force_prl() {
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
 
-          if((e_r_sq >= r_cutoff_sq) || !(rho_i[jj] > 0)) continue;
+          if((e_r_sq >= r_cutoff_sq) || !(rho_i[jj] > 0)) { continue; }
 
           double alpha_j = beta.get_alpha(type_map_beta[jtype - 1], rho_i[jj]);
           double v_Tj = sqrt(kappa.T_E_atomic[jtype - 1](E_a_i[jj]));
@@ -710,8 +710,8 @@ void FixEPHAtomic::heat_solve() {
             //~ std::cerr << "HIT THE WALL 1: " << j << ' ' << type[j]-1 << ' ' << 
               //~ dE_a_i[j] << ' ' << scaling << ' ' << E_a_i[j] << '\n';
             
-            E_a_i[j] = 0.0; 
-          } // energy cannot go negative
+            E_a_i[j] = 0.0; // energy cannot go negative
+          }
         }
       }
 
@@ -818,17 +818,21 @@ void FixEPHAtomic::post_force(int vflag) {
   // second loop over atoms if needed
   if((eph_flag & Flag::FRICTION) && !(eph_flag & Flag::NOFRICTION)) {
     for(int i = 0; i < nlocal; i++) {
-      f[i][0] += f_EPH[i][0];
-      f[i][1] += f_EPH[i][1];
-      f[i][2] += f_EPH[i][2];
+      if(mask[i] & groupbit) {
+        f[i][0] += f_EPH[i][0];
+        f[i][1] += f_EPH[i][1];
+        f[i][2] += f_EPH[i][2];
+      }
     }
   }
 
   if((eph_flag & Flag::RANDOM) && !(eph_flag & Flag::NORANDOM)) {
     for(int i = 0; i < nlocal; i++) {
-      f[i][0] += f_RNG[i][0];
-      f[i][1] += f_RNG[i][1];
-      f[i][2] += f_RNG[i][2];
+      if(mask[i] & groupbit) {
+        f[i][0] += f_RNG[i][0];
+        f[i][1] += f_RNG[i][1];
+        f[i][2] += f_RNG[i][2];
+      }
     }
   }
 }
@@ -883,7 +887,7 @@ int FixEPHAtomic::pack_forward_comm(int n, int *list, double *data, int pbc_flag
     case FixState::RHO:
       for(size_t i = 0; i < n; ++i) { // TODO: things can break here in mpi
         data[m++] = rho_i[list[i]];
-        //~ data[m++] = rho_a_i[list[i]];
+        data[m++] = rho_a_i[list[i]];
       }
       break;
     case FixState::XI:
