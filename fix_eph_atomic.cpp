@@ -251,6 +251,10 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
 
     Te /= static_cast<double>(proc_counter);
   }
+  
+  { // put initial values into array
+    populate_array();
+  }
 }
 
 // destructor
@@ -429,9 +433,13 @@ void FixEPHAtomic::end_of_step() {
     Te = T_local / static_cast<double>(proc_counter);
   }
   
-  for(size_t i = 0; i < nlocal; ++i) {
-    if(mask[i] & groupbit) {
-      int itype = type[i];
+  populate_array();
+}
+
+void FixEPHAtomic::populate_array() {
+  for(size_t i = 0; i < atom->nlocal; ++i) {
+    if(atom->mask[i] & groupbit) {
+      int itype = atom->type[i];
       array[i][ 0] = rho_i[i];
       array[i][ 1] = beta.get_beta(type_map_beta[itype - 1], rho_i[i]);
       array[i][ 2] = f_EPH[i][0];

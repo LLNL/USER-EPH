@@ -150,6 +150,7 @@ class FixEPHAtomic : public Fix {
     void calculate_environment(); // calculate the site density and coupling for every atom
     void force_prl(); // PRL model with full functionality
     void heat_solve(); // atomic heat diffusion solving
+    void populate_array(); // populate per atom array with values
 
     // TODO: remove
     static Float get_scalar(Float const* x, Float const* y) {
