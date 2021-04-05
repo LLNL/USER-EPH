@@ -253,7 +253,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   }
   
   { // put initial values into array
-    populate_array(); this does not work properly
+    populate_array();
   }
 }
 
