@@ -69,7 +69,7 @@ class FixEPHAtomic : public Fix {
     double compute_vector(int) override; // called by lammps if a value is requested
     double memory_usage() override; // prints the memory usage // TODO
     void post_run() override; // called by lammps after run ends
-
+    
     /* integrator functionality */
     void initial_integrate(int) override; // called in the beginning of a step
     void final_integrate() override; // called in the end of the step
@@ -78,7 +78,11 @@ class FixEPHAtomic : public Fix {
     // atoms, reverse communication does the opposite
     int pack_forward_comm(int, int *, double *, int, int *) override;
     void unpack_forward_comm(int, int, double *) override;
-
+    
+    // needed to distribute electronic energy per atom
+    int pack_exchange(int, double *);
+    int unpack_exchange(int, double*);
+    
   protected:
     static constexpr size_t max_file_length = 256; // max filename length
 

@@ -1024,3 +1024,15 @@ void FixEPHAtomic::post_run() {
   // save temperatures somehow (MPI maybe)
 }
 
+int FixEPHAtomic::pack_exchange(int i, double *buf) {
+  int m = 0;
+  buf[m++] = E_a_i[i];
+  return m;
+}
+
+int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
+  int m = 0;
+  E_a_i[nlocal] = buf[m++];
+  return m;
+}
+
