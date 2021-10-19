@@ -1,1 +1,10 @@
-# This test loads the beta file and tests the interpolation
+The purpose of this test is to see if the EPH_Spline and EPH_Beta 
+functionality is working correctly
+
+1) Create a spline based on sin(x) in the range of [0.0:10.0] with 1001 points and tests the interpolation.
+1.1) Verify that the spline values are consistent at the knot points (+-epsilon).
+1.2) Verify that the spline values are within margins in between knot points.
+1.3) Test runtime failures when using values outside interpolation range.
+
+
+This test loads the beta file and tests the interpolation
