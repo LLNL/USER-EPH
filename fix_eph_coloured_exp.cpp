@@ -26,7 +26,7 @@
 #include "comm.h"
 
 // internal headers
-#include "fix_eph_mem.h"
+#include "fix_eph_coloured_exp.h"
 #include "eph_beta.h"
 #include "eph_fdm.h"
 
@@ -40,7 +40,7 @@ using namespace FixConst;
    * arg[ 2] <- name
    * arg[ 3] <- rng seed
    * arg[ 4] <- eph parameter; 0 disable all terms; 1 enable friction term; 2 enable random force; 4 enable fde;
-   * arg[ 5] <- eph model selection; 1 standard langevin with beta(rho); 2 PRB version; 3 new model with CM only; 4 full new model ; 9 Testing
+   * arg[ 5] <- tau0; coloured noise parameter for exp // in time units
    * arg[ 6] <- electronic density; this might be changed with new fdm model // this might be used in the future
    * arg[ 7] <- electronic heat capacity
    * arg[ 8] <- electronic heat conduction
@@ -58,7 +58,7 @@ using namespace FixConst;
    **/
 
 // constructor
-FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
+FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg) {
 
   if (narg < 18) error->all(FLERR, "Illegal fix eph command: too few arguments");
@@ -76,11 +76,12 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
   peratom_flag = 1; // fix provides per atom values
   size_peratom_cols = 8; // per atom has 8 dimensions
   peratom_freq = 1; // per atom values are provided every step
-  //ghostneigh = 1; // neighbours of neighbours
-
+  
   comm_forward = 3; // forward communication is needed
   comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
-
+  
+  //~ maxexchange = 3;
+  
   // initialise rng
   seed = atoi(arg[3]);
   random = new RanMars(lmp, seed + myID);
@@ -102,15 +103,8 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
   }
 
   // read model selection
-  eph_model = atoi(arg[5]);
-
-  // print citing information for the selected model
-  if(myID == 0) {
-    std::cout << std::endl;
-    std::cout << "Model read: " << arg[5] << " -> " << eph_model << '\n';
-    std::cout << std::endl;
-  }
-
+  tau0 = atof(arg[5]);
+  
   // electronic structure parameters
   double v_rho = atof(arg[6]);
   double v_Ce = atof(arg[7]);
@@ -122,10 +116,8 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
 
   /** initialise FDM grid **/
   // if filename is provided use that to initialise grid everything else is ignored
-  if(strcmp("NULL" , arg[13]) == 0)
-  {
-    if(nx < 1 || ny < 1 || nz < 1)
-    {
+  if(strcmp("NULL" , arg[13]) == 0) {
+    if(nx < 1 || ny < 1 || nz < 1) {
       error->all(FLERR, "FixEPH: non-positive grid values");
     }
 
@@ -150,8 +142,7 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
   }
 
   T_freq = atoi(arg[14]);
-  if(T_freq > 0)
-    sprintf(T_out, "%s", arg[15]);
+  if(T_freq > 0) { sprintf(T_out, "%s", arg[15]); }
 
   // set the communicator
   fdm.set_comm(world, myID, nrPS);
@@ -160,15 +151,17 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
   // initialise beta(rho)
   types = atom->ntypes;
 
-  if(types > (narg - 17))
+  if(types > (narg - 17)) {
     error->all(FLERR, "Fix eph: number of types larger than provided in fix");
+  }
 
   type_map = new int[types]; // TODO: switch to vector
 
   beta = Beta(arg[16]);
 
-  if(beta.get_n_elements() < 1)
+  if(beta.get_n_elements() < 1) {
     error->all(FLERR, "Fix eph: no elements found in input file");
+  }
 
   r_cutoff = beta.get_r_cutoff();
   r_cutoff_sq = beta.get_r_cutoff_sq();
@@ -187,7 +180,8 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
 
   // set force prefactors
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
-
+  zeta_factor = 1.0 - exp(- update->dt / tau0);
+  
   /** integrator functionality **/
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
@@ -202,6 +196,9 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
   array = nullptr;
 
   xi_i = nullptr;
+  zi_i = nullptr;
+  
+  zv_i = nullptr;
 
   T_e_i = nullptr;
 
@@ -217,6 +214,9 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
 
   std::fill_n(&(rho_i[0]), ntotal, 0);
   std::fill_n(&(xi_i[0][0]), 3 * ntotal, 0);
+  std::fill_n(&(zi_i[0][0]), 3 * ntotal, 0);
+  
+  std::fill_n(&(zv_i[0][0]), 3 * ntotal, 0);
   std::fill_n(&(w_i[0][0]), 3 * ntotal, 0);
 
   std::fill_n(&(T_e_i[0]), ntotal, 0);
@@ -230,7 +230,7 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
 }
 
 // destructor
-FixEPHMem::~FixEPHMem() {
+FixEPHColouredExp::~FixEPHColouredExp() {
   delete random;
   delete[] type_map;
 
@@ -244,12 +244,15 @@ FixEPHMem::~FixEPHMem() {
   memory->destroy(f_RNG);
 
   memory->destroy(xi_i);
+  memory->destroy(zi_i);
+  
+  memory->destroy(zv_i);
   memory->destroy(w_i);
 
   memory->destroy(T_e_i);
 }
 
-void FixEPHMem::init() {
+void FixEPHColouredExp::init() {
   if (domain->dimension == 2)
     error->all(FLERR,"Cannot use fix eph with 2d simulation");
   if (domain->nonperiodic != 0)
@@ -271,11 +274,11 @@ void FixEPHMem::init() {
   reset_dt();
 }
 
-void FixEPHMem::init_list(int id, NeighList *ptr) {
+void FixEPHColouredExp::init_list(int id, NeighList *ptr) {
   this->list = ptr;
 }
 
-int FixEPHMem::setmask() {
+int FixEPHColouredExp::setmask() {
   int mask = 0;
   mask |= POST_FORCE;
   mask |= END_OF_STEP;
@@ -287,7 +290,7 @@ int FixEPHMem::setmask() {
 }
 
 /* integrator functionality */
-void FixEPHMem::initial_integrate(int) {
+void FixEPHColouredExp::initial_integrate(int) {
   if(eph_flag & Flag::NOINT) return;
 
   double **x = atom->x;
@@ -312,7 +315,7 @@ void FixEPHMem::initial_integrate(int) {
   }
 }
 
-void FixEPHMem::final_integrate() {
+void FixEPHColouredExp::final_integrate() {
   if(eph_flag & Flag::NOINT) return;
 
   double **v = atom->v;
@@ -332,7 +335,7 @@ void FixEPHMem::final_integrate() {
   }
 }
 
-void FixEPHMem::end_of_step() {
+void FixEPHColouredExp::end_of_step() {
   double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
@@ -413,8 +416,7 @@ void FixEPHMem::end_of_step() {
   }
 }
 
-void FixEPHMem::calculate_environment()
-{
+void FixEPHColouredExp::calculate_environment() {
   double **x = atom->x;
   int *type = atom->type;
   int *mask = atom->mask;
@@ -424,13 +426,11 @@ void FixEPHMem::calculate_environment()
   int **firstneigh = list->firstneigh;
 
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(size_t i = 0; i != nlocal; ++i)
-  {
+  for(size_t i = 0; i != nlocal; ++i) {
     rho_i[i] = 0;
 
     // check if current atom belongs to fix group and if an atom is local
-    if(mask[i] & groupbit)
-    {
+    if(mask[i] & groupbit) {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
@@ -442,8 +442,7 @@ void FixEPHMem::calculate_environment()
         int jtype = type[jj];
         double r_sq = get_distance_sq(x[jj], x[i]);
 
-        if(r_sq < r_cutoff_sq)
-        {
+        if(r_sq < r_cutoff_sq) {
           rho_i[i] += beta.get_rho_r_sq(type_map[jtype-1], r_sq);
         }
       }
@@ -451,8 +450,7 @@ void FixEPHMem::calculate_environment()
   }
 }
 
-void FixEPHMem::force_prl()
-{
+void FixEPHColouredExp::force_prl() {
   double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
@@ -463,11 +461,9 @@ void FixEPHMem::force_prl()
   int **firstneigh = list->firstneigh;
 
   // create friction forces
-  if(eph_flag & Flag::FRICTION)
-  {
+  if(eph_flag & Flag::FRICTION) {
     // w_i = W_ij^T v_j
-    for(size_t i = 0; i != nlocal; ++i)
-    {
+    for(size_t i = 0; i != nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -477,8 +473,7 @@ void FixEPHMem::force_prl()
 
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
 
-        for(size_t j = 0; j != jnum; ++j)
-        {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
@@ -509,14 +504,7 @@ void FixEPHMem::force_prl()
 
     state = FixState::WI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::WX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WZ;
-    //~ comm->forward_comm_fix(this);
-
+    
     // now calculate the forces
     // f_i = W_ij w_j
     for(size_t i = 0; i != nlocal; ++i) {
@@ -525,12 +513,11 @@ void FixEPHMem::force_prl()
         int *jlist = firstneigh[i];
         int jnum = numneigh[i];
 
-        if( not(rho_i[i] > 0) ) continue;
+        if(not(rho_i[i] > 0.)) { continue; }
 
         double alpha_i = beta.get_alpha(type_map[itype - 1], rho_i[i]);
 
-        for(size_t j = 0; j != jnum; ++j)
-        {
+        for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
           jj &= NEIGHMASK;
           int jtype = type[jj];
@@ -539,7 +526,7 @@ void FixEPHMem::force_prl()
           double e_ij[3];
           double e_r_sq = get_difference_sq(x[jj], x[i], e_ij);
 
-          if(e_r_sq >= r_cutoff_sq or not(rho_i[jj] > 0)) continue;
+          if(e_r_sq >= r_cutoff_sq or not(rho_i[jj] > 0)) { continue; }
 
           double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
 
@@ -610,7 +597,7 @@ void FixEPHMem::force_prl()
   }
 }
 
-void FixEPHMem::post_force(int vflag) {
+void FixEPHColouredExp::post_force(int vflag) {
   double **f = atom->f;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
@@ -631,16 +618,14 @@ void FixEPHMem::post_force(int vflag) {
         xi_i[i][2] = random->gaussian();
       }
     }
-
-    state = FixState::XI;
+    
+    // colourize noise
+    for(size_t i = 0; i < nlocal; ++i) {
+      
+    }
+    
+    state = FixState::ZI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::XIX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIZ;
-    //~ comm->forward_comm_fix(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
@@ -673,19 +658,17 @@ void FixEPHMem::post_force(int vflag) {
   }
 }
 
-void FixEPHMem::reset_dt() {
+void FixEPHColouredExp::reset_dt() {
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
-
+  zeta_factor = 1.0 - exp(- update->dt / tau0);
+  
   dtv = update->dt;
   dtf = 0.5 * update->dt * force->ftm2v;
 
   fdm.set_dt(update->dt);
 }
 
-void FixEPHMem::grow_arrays(int ngrow) {
-  //std::cout << "NGROW NLOCAL NGHOST NMAX\n";
-  //std::cout << ngrow << ' ' <<
-  //  atom->nlocal << ' ' << atom->nghost << ' ' << atom->nmax << '\n';
+void FixEPHColouredExp::grow_arrays(int ngrow) {
   n = ngrow;
 
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
@@ -695,6 +678,9 @@ void FixEPHMem::grow_arrays(int ngrow) {
 
   memory->grow(w_i, ngrow, 3, "eph:w_i");
   memory->grow(xi_i, ngrow, 3, "eph:xi_i");
+  memory->grow(zi_i, ngrow, 3, "eph:zi_i");
+  
+  memory->grow(zv_i, ngrow, 3, "eph:zv_i");
 
   memory->grow(T_e_i, ngrow, "eph:T_e_i");
 
@@ -704,7 +690,7 @@ void FixEPHMem::grow_arrays(int ngrow) {
   array_atom = array;
 }
 
-double FixEPHMem::compute_vector(int i) {
+double FixEPHColouredExp::compute_vector(int i) {
   if(i == 0)
     return Ee;
   else if(i == 1) {
@@ -715,7 +701,7 @@ double FixEPHMem::compute_vector(int i) {
 }
 
 /** TODO: There might be synchronisation issues here; maybe should add barrier for sync **/
-int FixEPHMem::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
+int FixEPHColouredExp::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
   int m;
   m = 0;
   switch(state) {
@@ -724,47 +710,17 @@ int FixEPHMem::pack_forward_comm(int n, int *list, double *data, int pbc_flag, i
         data[m++] = rho_i[list[i]];
       }
       break;
-    case FixState::XI:
+    case FixState::ZI:
       for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][0];
-        data[m++] = xi_i[list[i]][1];
-        data[m++] = xi_i[list[i]][2];
-      }
-      break;
-    case FixState::XIX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][0];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][1];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][2];
+        data[m++] = zi_i[list[i]][0];
+        data[m++] = zi_i[list[i]][1];
+        data[m++] = zi_i[list[i]][2];
       }
       break;
     case FixState::WI:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][0];
         data[m++] = w_i[list[i]][1];
-        data[m++] = w_i[list[i]][2];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][0];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][1];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][2];
       }
       break;
@@ -775,7 +731,7 @@ int FixEPHMem::pack_forward_comm(int n, int *list, double *data, int pbc_flag, i
   return m;
 }
 
-void FixEPHMem::unpack_forward_comm(int n, int first, double *data) {
+void FixEPHColouredExp::unpack_forward_comm(int n, int first, double *data) {
   int m, last;
   m = 0;
   last = first + n;
@@ -786,26 +742,11 @@ void FixEPHMem::unpack_forward_comm(int n, int first, double *data) {
         rho_i[i] = data[m++];
       }
       break;
-    case FixState::XI:
+    case FixState::ZI:
       for(size_t i = first; i < last; ++i) {
-        xi_i[i][0] = data[m++];
-        xi_i[i][1] = data[m++];
-        xi_i[i][2] = data[m++];
-      }
-      break;
-    case FixState::XIX:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][2] = data[m++];
+        zi_i[i][0] = data[m++];
+        zi_i[i][1] = data[m++];
+        zi_i[i][2] = data[m++];
       }
       break;
     case FixState::WI:
@@ -815,35 +756,32 @@ void FixEPHMem::unpack_forward_comm(int n, int first, double *data) {
         w_i[i][2] = data[m++];
       }
       break;
-    case FixState::WX:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][2] = data[m++];
-      }
-      break;
     default:
       break;
   }
 }
 
 /** TODO **/
-double FixEPHMem::memory_usage() {
-    double bytes = 0;
-
-    return bytes;
-}
+double FixEPHColouredExp::memory_usage() { return 0; }
 
 /* save temperature state after run */
-void FixEPHMem::post_run() {
+void FixEPHColouredExp::post_run() {
   if(myID == 0) fdm.save_state(T_state);
+}
+
+int FixEPHColouredExp::pack_exchange(int i, double *buf) {
+  size_t m = 0;
+  buf[m++] = zi_i[i][0];
+  buf[m++] = zi_i[i][1];
+  buf[m++] = zi_i[i][2];
+  return m;
+}
+
+int FixEPHColouredExp::unpack_exchange(int nlocal, double *buf) {
+  size_t m = 0;
+  zi_i[nlocal][0] = buf[m++];
+  zi_i[nlocal][1] = buf[m++];
+  zi_i[nlocal][2] = buf[m++];
+  return m;
 }
 

@@ -1,19 +1,14 @@
-/**
- * This fix is a rewrite of our previous USER-EPH (a mod of fix_ttm) code and is based on our 
- * PRB 94, 024305 (2016) paper
- **/
-
 /*
- * Authors of the extension Artur Tamm, Alfredo Caro, Alfredo Correa, Mattias Klintenberg
+ * Authors of the extension Artur Tamm, Alfredo Correa
  * e-mail: artur.tamm.work@gmail.com
  */
 
 #ifdef FIX_CLASS
-FixStyle(eph,FixEPHMem)
+FixStyle(eph/coloured,FixEPHColoured)
 #else
 
-#ifndef LMP_FIX_EPH_H
-#define LMP_FIX_EPH_H
+#ifndef LMP_FIX_EPH_COLOURED_H
+#define LMP_FIX_EPH_COLOURED_H
 
 // external headers
 #include <memory>
@@ -28,8 +23,7 @@ FixStyle(eph,FixEPHMem)
 #include "eph_fdm.h"
 
 namespace LAMMPS_NS {
-
-class FixEPHMem : public Fix {
+class FixEPHColoured : public Fix {
  public:
     // enumeration for tracking fix state, this is used in comm forward
     enum class FixState : unsigned int {
@@ -55,8 +49,8 @@ class FixEPHMem : public Fix {
       NORANDOM = 0x20 // disable effect of random force
     };
     
-    FixEPHMem(class LAMMPS *, int, char **); // constructor
-    ~FixEPHMem(); // destructor
+    FixEPHColoured(class LAMMPS *, int, char **); // constructor
+    ~FixEPHColoured(); // destructor
     
     void init() override; // called by lammps after constructor
     void init_list(int id, NeighList *ptr) override; // called by lammps after constructor
@@ -180,7 +174,6 @@ class FixEPHMem : public Fix {
       return get_norm(z);
     }
 };
-
 }
 #endif
 #endif

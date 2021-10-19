@@ -26,7 +26,7 @@
 #include "comm.h"
 
 // internal headers
-#include "fix_eph_mem.h"
+#include "fix_eph_coloured.h"
 #include "eph_beta.h"
 #include "eph_fdm.h"
 
@@ -58,7 +58,7 @@ using namespace FixConst;
    **/
 
 // constructor
-FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
+FixEPHColoured::FixEPHColoured(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg) {
 
   if (narg < 18) error->all(FLERR, "Illegal fix eph command: too few arguments");
@@ -230,7 +230,7 @@ FixEPHMem::FixEPHMem(LAMMPS *lmp, int narg, char **arg) :
 }
 
 // destructor
-FixEPHMem::~FixEPHMem() {
+FixEPHColoured::~FixEPHColoured() {
   delete random;
   delete[] type_map;
 
@@ -249,7 +249,7 @@ FixEPHMem::~FixEPHMem() {
   memory->destroy(T_e_i);
 }
 
-void FixEPHMem::init() {
+void FixEPHColoured::init() {
   if (domain->dimension == 2)
     error->all(FLERR,"Cannot use fix eph with 2d simulation");
   if (domain->nonperiodic != 0)
@@ -271,11 +271,11 @@ void FixEPHMem::init() {
   reset_dt();
 }
 
-void FixEPHMem::init_list(int id, NeighList *ptr) {
+void FixEPHColoured::init_list(int id, NeighList *ptr) {
   this->list = ptr;
 }
 
-int FixEPHMem::setmask() {
+int FixEPHColoured::setmask() {
   int mask = 0;
   mask |= POST_FORCE;
   mask |= END_OF_STEP;
@@ -287,7 +287,7 @@ int FixEPHMem::setmask() {
 }
 
 /* integrator functionality */
-void FixEPHMem::initial_integrate(int) {
+void FixEPHColoured::initial_integrate(int) {
   if(eph_flag & Flag::NOINT) return;
 
   double **x = atom->x;
@@ -312,7 +312,7 @@ void FixEPHMem::initial_integrate(int) {
   }
 }
 
-void FixEPHMem::final_integrate() {
+void FixEPHColoured::final_integrate() {
   if(eph_flag & Flag::NOINT) return;
 
   double **v = atom->v;
@@ -332,7 +332,7 @@ void FixEPHMem::final_integrate() {
   }
 }
 
-void FixEPHMem::end_of_step() {
+void FixEPHColoured::end_of_step() {
   double **x = atom->x;
   double **v = atom->v;
   int *type = atom->type;
@@ -413,7 +413,7 @@ void FixEPHMem::end_of_step() {
   }
 }
 
-void FixEPHMem::calculate_environment()
+void FixEPHColoured::calculate_environment()
 {
   double **x = atom->x;
   int *type = atom->type;
@@ -451,7 +451,7 @@ void FixEPHMem::calculate_environment()
   }
 }
 
-void FixEPHMem::force_prl()
+void FixEPHColoured::force_prl()
 {
   double **x = atom->x;
   double **v = atom->v;
@@ -610,7 +610,7 @@ void FixEPHMem::force_prl()
   }
 }
 
-void FixEPHMem::post_force(int vflag) {
+void FixEPHColoured::post_force(int vflag) {
   double **f = atom->f;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
@@ -673,7 +673,7 @@ void FixEPHMem::post_force(int vflag) {
   }
 }
 
-void FixEPHMem::reset_dt() {
+void FixEPHColoured::reset_dt() {
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
 
   dtv = update->dt;
@@ -682,7 +682,7 @@ void FixEPHMem::reset_dt() {
   fdm.set_dt(update->dt);
 }
 
-void FixEPHMem::grow_arrays(int ngrow) {
+void FixEPHColoured::grow_arrays(int ngrow) {
   //std::cout << "NGROW NLOCAL NGHOST NMAX\n";
   //std::cout << ngrow << ' ' <<
   //  atom->nlocal << ' ' << atom->nghost << ' ' << atom->nmax << '\n';
@@ -704,7 +704,7 @@ void FixEPHMem::grow_arrays(int ngrow) {
   array_atom = array;
 }
 
-double FixEPHMem::compute_vector(int i) {
+double FixEPHColoured::compute_vector(int i) {
   if(i == 0)
     return Ee;
   else if(i == 1) {
@@ -715,7 +715,7 @@ double FixEPHMem::compute_vector(int i) {
 }
 
 /** TODO: There might be synchronisation issues here; maybe should add barrier for sync **/
-int FixEPHMem::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
+int FixEPHColoured::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int *pbc) {
   int m;
   m = 0;
   switch(state) {
@@ -775,7 +775,7 @@ int FixEPHMem::pack_forward_comm(int n, int *list, double *data, int pbc_flag, i
   return m;
 }
 
-void FixEPHMem::unpack_forward_comm(int n, int first, double *data) {
+void FixEPHColoured::unpack_forward_comm(int n, int first, double *data) {
   int m, last;
   m = 0;
   last = first + n;
@@ -836,14 +836,10 @@ void FixEPHMem::unpack_forward_comm(int n, int first, double *data) {
 }
 
 /** TODO **/
-double FixEPHMem::memory_usage() {
-    double bytes = 0;
-
-    return bytes;
-}
+double FixEPHColoured::memory_usage() { return 0.; }
 
 /* save temperature state after run */
-void FixEPHMem::post_run() {
+void FixEPHColoured::post_run() {
   if(myID == 0) fdm.save_state(T_state);
 }
 
