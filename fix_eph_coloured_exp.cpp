@@ -462,8 +462,18 @@ void FixEPHColouredExp::force_prl() {
 
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
+    // coloured dissipation
+    for(size_t i = 0; i < nlocal; ++i) {
+      zv_i[i][0] = zv_i[i][0] * (1. - zeta_factor) + zeta_factor * v[i][0];
+      zv_i[i][1] = zv_i[i][1] * (1. - zeta_factor) + zeta_factor * v[i][1];
+      zv_i[i][2] = zv_i[i][2] * (1. - zeta_factor) + zeta_factor * v[i][2];
+    }
+    
+    state = FixState::ZV;
+    comm->forward_comm_fix(this);
+    
     // w_i = W_ij^T v_j
-    for(size_t i = 0; i != nlocal; ++i) {
+    for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -488,10 +498,10 @@ void FixEPHColouredExp::force_prl() {
           double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
           double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
 
-          double e_v_v1 = get_scalar(e_ij, v[i]);
+          double e_v_v1 = get_scalar(e_ij, zv_i[i]);
           double var1 = prescaler * e_v_v1;
 
-          double e_v_v2 = get_scalar(e_ij, v[jj]);
+          double e_v_v2 = get_scalar(e_ij, zv_i[jj]);
           double var2 = prescaler * e_v_v2;
 
           double dvar = var1 - var2;
@@ -621,24 +631,22 @@ void FixEPHColouredExp::post_force(int vflag) {
     
     // colourize noise
     for(size_t i = 0; i < nlocal; ++i) {
-      
+      zi_i[i][0] = zi_i[i][0] * (1. - zeta_factor) + zeta_factor * xi_i[i][0];
+      zi_i[i][1] = zi_i[i][1] * (1. - zeta_factor) + zeta_factor * xi_i[i][1];
+      zi_i[i][2] = zi_i[i][2] * (1. - zeta_factor) + zeta_factor * xi_i[i][2];
     }
     
     state = FixState::ZI;
     comm->forward_comm_fix(this);
   }
-
+  
   // calculate the site densities, gradients (future) and beta(rho)
   calculate_environment();
 
   state = FixState::RHO;
   comm->forward_comm_fix(this);
-
-  /*
-   * we have separated the model specific codes to make it more readable
-   * at the expense of code duplication
-   */
-  force_prl();
+  
+  force_prl(); // calculate the dissipation and friction forces
 
   // second loop over atoms if needed
   if((eph_flag & Flag::FRICTION) && !(eph_flag & Flag::NOFRICTION)) {
