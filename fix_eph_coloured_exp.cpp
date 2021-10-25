@@ -782,6 +782,10 @@ int FixEPHColouredExp::pack_exchange(int i, double *buf) {
   buf[m++] = zi_i[i][0];
   buf[m++] = zi_i[i][1];
   buf[m++] = zi_i[i][2];
+  
+  buf[m++] = zv_i[i][0];
+  buf[m++] = zv_i[i][1];
+  buf[m++] = zv_i[i][2];
   return m;
 }
 
@@ -790,6 +794,10 @@ int FixEPHColouredExp::unpack_exchange(int nlocal, double *buf) {
   zi_i[nlocal][0] = buf[m++];
   zi_i[nlocal][1] = buf[m++];
   zi_i[nlocal][2] = buf[m++];
+  
+  zv_i[nlocal][0] = buf[m++];
+  zv_i[nlocal][1] = buf[m++];
+  zv_i[nlocal][2] = buf[m++];
   return m;
 }
 

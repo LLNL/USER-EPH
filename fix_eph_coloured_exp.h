@@ -69,8 +69,8 @@ class FixEPHColouredExp : public Fix {
   void unpack_forward_comm(int, int, double *) override;
   
   // needed to distribute electronic energy per atom
-  int pack_exchange(int, double *);
-  int unpack_exchange(int, double*);
+  int pack_exchange(int, double *) override;
+  int unpack_exchange(int, double*) override;
  
  protected:
   static constexpr size_t max_file_length = 256; // max filename length
