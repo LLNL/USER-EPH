@@ -181,6 +181,8 @@ FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
   // set force prefactors
   eta_factor = sqrt(2.0 * force->boltz / update->dt);
   zeta_factor = 1.0 - exp(- update->dt / tau0);
+  /** DEBUG **/
+  //~ std::cout << "DEBUG: dt: " << update->dt << " zeta_factor: " << zeta_factor << '\n';
   
   /** integrator functionality **/
   dtv = update->dt;
@@ -584,12 +586,12 @@ void FixEPHColouredExp::force_prl() {
           double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
 
           double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
-          double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
-          double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
+          double e_v_zi1 = get_scalar(e_ij, zi_i[i]);
+          double var1 = alpha_i * v_rho_ji * e_v_zi1 / (rho_i[i] * e_r_sq);
 
           double v_rho_ij = beta.get_rho_r_sq(type_map[itype - 1], e_r_sq);
-          double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
-          double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
+          double e_v_zi2 = get_scalar(e_ij, zi_i[jj]);
+          double var2 = alpha_j * v_rho_ij * e_v_zi2 / (rho_i[jj] * e_r_sq);
 
           double dvar = var1 - var2;
           f_RNG[i][0] += dvar * e_ij[0];
@@ -725,6 +727,13 @@ int FixEPHColouredExp::pack_forward_comm(int n, int *list, double *data, int pbc
         data[m++] = zi_i[list[i]][2];
       }
       break;
+    case FixState::ZV:
+      for(size_t i = 0; i < n; ++i) {
+        data[m++] = zv_i[list[i]][0];
+        data[m++] = zv_i[list[i]][1];
+        data[m++] = zv_i[list[i]][2];
+      }
+      break;
     case FixState::WI:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][0];
@@ -755,6 +764,13 @@ void FixEPHColouredExp::unpack_forward_comm(int n, int first, double *data) {
         zi_i[i][0] = data[m++];
         zi_i[i][1] = data[m++];
         zi_i[i][2] = data[m++];
+      }
+      break;
+    case FixState::ZV:
+      for(size_t i = first; i < last; ++i) {
+        zv_i[i][0] = data[m++];
+        zv_i[i][1] = data[m++];
+        zv_i[i][2] = data[m++];
       }
       break;
     case FixState::WI:
