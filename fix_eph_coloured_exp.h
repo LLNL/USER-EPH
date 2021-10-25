@@ -30,8 +30,7 @@ class FixEPHColouredExp : public Fix {
   enum class FixState : unsigned int {
     NONE, 
     RHO, 
-    ZI, 
-    ZV, 
+    XI, 
     WI
   };
     
@@ -71,7 +70,9 @@ class FixEPHColouredExp : public Fix {
   // needed to distribute electronic energy per atom
   int pack_exchange(int, double *) override;
   int unpack_exchange(int, double*) override;
- 
+  
+  // copy_arrays
+  void copy_arrays(int i, int j, int /*delflag*/) override;
  protected:
   static constexpr size_t max_file_length = 256; // max filename length
 
@@ -128,11 +129,9 @@ class FixEPHColouredExp : public Fix {
   // random numbers
   double **xi_i; // size = [nlocal][3]
   
-  // coloured noise
-  double **zi_i; // size = [nlocal][3]
-  
-  // coloured dissipation
-  double **zv_i; // size = [nlocal][3]
+  // try a different approach
+  double **f_sto_i;
+  double **f_dis_i;
   
   // electronic temperature per atom
   double* T_e_i; // size = [nlocal + nghost]

@@ -80,7 +80,7 @@ FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
   comm_forward = 3; // forward communication is needed
   comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
   
-  //~ maxexchange = 3;
+  maxexchange = 6;
   
   // initialise rng
   seed = atoi(arg[3]);
@@ -191,16 +191,16 @@ FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
   // allocate arrays for fix_eph
   f_EPH = nullptr;
   f_RNG = nullptr;
-
+  
+  f_sto_i = nullptr;
+  f_dis_i = nullptr;
+  
   w_i = nullptr;
 
   rho_i = nullptr;
   array = nullptr;
 
   xi_i = nullptr;
-  zi_i = nullptr;
-  
-  zv_i = nullptr;
 
   T_e_i = nullptr;
 
@@ -216,11 +216,12 @@ FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
 
   std::fill_n(&(rho_i[0]), ntotal, 0);
   std::fill_n(&(xi_i[0][0]), 3 * ntotal, 0);
-  std::fill_n(&(zi_i[0][0]), 3 * ntotal, 0);
   
-  std::fill_n(&(zv_i[0][0]), 3 * ntotal, 0);
   std::fill_n(&(w_i[0][0]), 3 * ntotal, 0);
 
+  std::fill_n(&(f_sto_i[0][0]), 3 * ntotal, 0.);
+  std::fill_n(&(f_dis_i[0][0]), 3 * ntotal, 0.);
+  
   std::fill_n(&(T_e_i[0]), ntotal, 0);
 
   std::fill_n(&(f_EPH[0][0]), 3 * ntotal, 0);
@@ -246,10 +247,10 @@ FixEPHColouredExp::~FixEPHColouredExp() {
   memory->destroy(f_RNG);
 
   memory->destroy(xi_i);
-  memory->destroy(zi_i);
-  
-  memory->destroy(zv_i);
   memory->destroy(w_i);
+  
+  memory->destroy(f_sto_i);
+  memory->destroy(f_dis_i);
 
   memory->destroy(T_e_i);
 }
@@ -461,19 +462,9 @@ void FixEPHColouredExp::force_prl() {
 
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
-
+    
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
-    // coloured dissipation
-    for(size_t i = 0; i < nlocal; ++i) {
-      zv_i[i][0] = zv_i[i][0] * (1. - zeta_factor) + zeta_factor * v[i][0];
-      zv_i[i][1] = zv_i[i][1] * (1. - zeta_factor) + zeta_factor * v[i][1];
-      zv_i[i][2] = zv_i[i][2] * (1. - zeta_factor) + zeta_factor * v[i][2];
-    }
-    
-    state = FixState::ZV;
-    comm->forward_comm_fix(this);
-    
     // w_i = W_ij^T v_j
     for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
@@ -500,10 +491,10 @@ void FixEPHColouredExp::force_prl() {
           double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
           double prescaler = alpha_i * v_rho_ji / (rho_i[i] * e_r_sq);
 
-          double e_v_v1 = get_scalar(e_ij, zv_i[i]);
+          double e_v_v1 = get_scalar(e_ij, v[i]);
           double var1 = prescaler * e_v_v1;
 
-          double e_v_v2 = get_scalar(e_ij, zv_i[jj]);
+          double e_v_v2 = get_scalar(e_ij, v[jj]);
           double var2 = prescaler * e_v_v2;
 
           double dvar = var1 - var2;
@@ -519,7 +510,7 @@ void FixEPHColouredExp::force_prl() {
     
     // now calculate the forces
     // f_i = W_ij w_j
-    for(size_t i = 0; i != nlocal; ++i) {
+    for(size_t i = 0; i < nlocal; ++i) {
       if(mask[i] & groupbit) {
         int itype = type[i];
         int *jlist = firstneigh[i];
@@ -556,6 +547,14 @@ void FixEPHColouredExp::force_prl() {
           f_EPH[i][1] -= dvar * e_ij[1];
           f_EPH[i][2] -= dvar * e_ij[2];
         }
+        
+        f_dis_i[i][0] = f_dis_i[i][0] * (1. - zeta_factor) + zeta_factor * f_EPH[i][0];
+        f_dis_i[i][1] = f_dis_i[i][1] * (1. - zeta_factor) + zeta_factor * f_EPH[i][1];
+        f_dis_i[i][2] = f_dis_i[i][2] * (1. - zeta_factor) + zeta_factor * f_EPH[i][2];
+        
+        f_EPH[i][0] = f_dis_i[i][0];
+        f_EPH[i][1] = f_dis_i[i][1];
+        f_EPH[i][2] = f_dis_i[i][2];
       }
     }
   }
@@ -586,12 +585,12 @@ void FixEPHColouredExp::force_prl() {
           double alpha_j = beta.get_alpha(type_map[jtype - 1], rho_i[jj]);
 
           double v_rho_ji = beta.get_rho_r_sq(type_map[jtype - 1], e_r_sq);
-          double e_v_zi1 = get_scalar(e_ij, zi_i[i]);
-          double var1 = alpha_i * v_rho_ji * e_v_zi1 / (rho_i[i] * e_r_sq);
+          double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
+          double var1 = alpha_i * v_rho_ji * e_v_xi1 / (rho_i[i] * e_r_sq);
 
           double v_rho_ij = beta.get_rho_r_sq(type_map[itype - 1], e_r_sq);
-          double e_v_zi2 = get_scalar(e_ij, zi_i[jj]);
-          double var2 = alpha_j * v_rho_ij * e_v_zi2 / (rho_i[jj] * e_r_sq);
+          double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
+          double var2 = alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
 
           double dvar = var1 - var2;
           f_RNG[i][0] += dvar * e_ij[0];
@@ -601,9 +600,18 @@ void FixEPHColouredExp::force_prl() {
 
         double v_Te = fdm.get_T(x[i][0], x[i][1], x[i][2]);
         double var = eta_factor * sqrt(v_Te);
+        
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
         f_RNG[i][2] *= var;
+        
+        f_sto_i[i][0] = f_sto_i[i][0] * (1. - zeta_factor) + zeta_factor * f_RNG[i][0];
+        f_sto_i[i][1] = f_sto_i[i][1] * (1. - zeta_factor) + zeta_factor * f_RNG[i][1];
+        f_sto_i[i][2] = f_sto_i[i][2] * (1. - zeta_factor) + zeta_factor * f_RNG[i][2];
+        
+        f_RNG[i][0] = f_sto_i[i][0];
+        f_RNG[i][1] = f_sto_i[i][1];
+        f_RNG[i][2] = f_sto_i[i][2];
       }
     }
   }
@@ -631,14 +639,7 @@ void FixEPHColouredExp::post_force(int vflag) {
       }
     }
     
-    // colourize noise
-    for(size_t i = 0; i < nlocal; ++i) {
-      zi_i[i][0] = zi_i[i][0] * (1. - zeta_factor) + zeta_factor * xi_i[i][0];
-      zi_i[i][1] = zi_i[i][1] * (1. - zeta_factor) + zeta_factor * xi_i[i][1];
-      zi_i[i][2] = zi_i[i][2] * (1. - zeta_factor) + zeta_factor * xi_i[i][2];
-    }
-    
-    state = FixState::ZI;
+    state = FixState::XI;
     comm->forward_comm_fix(this);
   }
   
@@ -680,7 +681,6 @@ void FixEPHColouredExp::reset_dt() {
 
 void FixEPHColouredExp::grow_arrays(int ngrow) {
   n = ngrow;
-
   memory->grow(f_EPH, ngrow, 3,"EPH:fEPH");
   memory->grow(f_RNG, ngrow, 3,"EPH:fRNG");
 
@@ -688,12 +688,12 @@ void FixEPHColouredExp::grow_arrays(int ngrow) {
 
   memory->grow(w_i, ngrow, 3, "eph:w_i");
   memory->grow(xi_i, ngrow, 3, "eph:xi_i");
-  memory->grow(zi_i, ngrow, 3, "eph:zi_i");
   
-  memory->grow(zv_i, ngrow, 3, "eph:zv_i");
-
+  memory->grow(f_sto_i, ngrow, 3, "eph:f_sto_i");
+  memory->grow(f_dis_i, ngrow, 3, "eph:f_dis_i");
+  
   memory->grow(T_e_i, ngrow, "eph:T_e_i");
-
+  
   // per atom values
   // we need only nlocal elements here
   memory->grow(array, ngrow, size_peratom_cols, "eph:array");
@@ -720,18 +720,11 @@ int FixEPHColouredExp::pack_forward_comm(int n, int *list, double *data, int pbc
         data[m++] = rho_i[list[i]];
       }
       break;
-    case FixState::ZI:
+    case FixState::XI:
       for(size_t i = 0; i < n; ++i) {
-        data[m++] = zi_i[list[i]][0];
-        data[m++] = zi_i[list[i]][1];
-        data[m++] = zi_i[list[i]][2];
-      }
-      break;
-    case FixState::ZV:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = zv_i[list[i]][0];
-        data[m++] = zv_i[list[i]][1];
-        data[m++] = zv_i[list[i]][2];
+        data[m++] = xi_i[list[i]][0];
+        data[m++] = xi_i[list[i]][1];
+        data[m++] = xi_i[list[i]][2];
       }
       break;
     case FixState::WI:
@@ -759,18 +752,11 @@ void FixEPHColouredExp::unpack_forward_comm(int n, int first, double *data) {
         rho_i[i] = data[m++];
       }
       break;
-    case FixState::ZI:
+    case FixState::XI:
       for(size_t i = first; i < last; ++i) {
-        zi_i[i][0] = data[m++];
-        zi_i[i][1] = data[m++];
-        zi_i[i][2] = data[m++];
-      }
-      break;
-    case FixState::ZV:
-      for(size_t i = first; i < last; ++i) {
-        zv_i[i][0] = data[m++];
-        zv_i[i][1] = data[m++];
-        zv_i[i][2] = data[m++];
+        xi_i[i][0] = data[m++];
+        xi_i[i][1] = data[m++];
+        xi_i[i][2] = data[m++];
       }
       break;
     case FixState::WI:
@@ -794,26 +780,35 @@ void FixEPHColouredExp::post_run() {
 }
 
 int FixEPHColouredExp::pack_exchange(int i, double *buf) {
-  size_t m = 0;
-  buf[m++] = zi_i[i][0];
-  buf[m++] = zi_i[i][1];
-  buf[m++] = zi_i[i][2];
+  int m = 0;
+  buf[m++] = f_sto_i[i][0];
+  buf[m++] = f_sto_i[i][1];
+  buf[m++] = f_sto_i[i][2];
   
-  buf[m++] = zv_i[i][0];
-  buf[m++] = zv_i[i][1];
-  buf[m++] = zv_i[i][2];
+  buf[m++] = f_dis_i[i][0];
+  buf[m++] = f_dis_i[i][1];
+  buf[m++] = f_dis_i[i][2];
   return m;
 }
 
 int FixEPHColouredExp::unpack_exchange(int nlocal, double *buf) {
-  size_t m = 0;
-  zi_i[nlocal][0] = buf[m++];
-  zi_i[nlocal][1] = buf[m++];
-  zi_i[nlocal][2] = buf[m++];
+  int m = 0;
+  f_sto_i[nlocal][0] = buf[m++];
+  f_sto_i[nlocal][1] = buf[m++];
+  f_sto_i[nlocal][2] = buf[m++];
   
-  zv_i[nlocal][0] = buf[m++];
-  zv_i[nlocal][1] = buf[m++];
-  zv_i[nlocal][2] = buf[m++];
+  f_dis_i[nlocal][0] = buf[m++];
+  f_dis_i[nlocal][1] = buf[m++];
+  f_dis_i[nlocal][2] = buf[m++];
   return m;
 }
 
+void FixEPHColouredExp::copy_arrays(int i, int j, int) {
+  f_sto_i[j][0] = f_sto_i[i][0];
+  f_sto_i[j][1] = f_sto_i[i][1];
+  f_sto_i[j][2] = f_sto_i[i][2];
+  
+  f_dis_i[j][0] = f_dis_i[i][0];
+  f_dis_i[j][1] = f_dis_i[i][1];
+  f_dis_i[j][2] = f_dis_i[i][2];
+}

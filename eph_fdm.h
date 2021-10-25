@@ -193,7 +193,7 @@ class EPH_FDM
       sprintf(fn, "%s_%06d", in_filename, in_n);
       FILE *fd = fopen(fn, "w");
       
-      assert(fd > 0);
+      assert(fd != nullptr);
       
       // this is needed for visit Point3D
       fprintf(fd, "x y z Te\n");
@@ -219,7 +219,7 @@ class EPH_FDM
     {
       FILE *fd = fopen(in_filename, "w");
       
-      assert(fd > 0);
+      assert(fd != nullptr);
       
       // 3 first lines are comments
       fprintf(fd, "# A comment\n");
