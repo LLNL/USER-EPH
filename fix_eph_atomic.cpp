@@ -568,14 +568,7 @@ void FixEPHAtomic::force_prl() {
 
     state = FixState::WI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::WX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WZ;
-    //~ comm->forward_comm_fix(this);
-
+    
     // now calculate the forces
     // f_i = W_ij w_j
     for(size_t i = 0; i != nlocal; ++i) {
@@ -798,13 +791,6 @@ void FixEPHAtomic::post_force(int vflag) {
 
     state = FixState::XI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::XIX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIZ;
-    //~ comm->forward_comm_fix(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
@@ -897,40 +883,10 @@ int FixEPHAtomic::pack_forward_comm(int n, int *list, double *data, int pbc_flag
         data[m++] = xi_i[list[i]][2];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][0];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][1];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][2];
-      }
-      break;
     case FixState::WI:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][0];
         data[m++] = w_i[list[i]][1];
-        data[m++] = w_i[list[i]][2];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][0];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][1];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][2];
       }
       break;
@@ -965,40 +921,10 @@ void FixEPHAtomic::unpack_forward_comm(int n, int first, double *data) {
         xi_i[i][2] = data[m++];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][2] = data[m++];
-      }
-      break;
     case FixState::WI:
       for(size_t i = first; i < last; ++i) {
         w_i[i][0] = data[m++];
         w_i[i][1] = data[m++];
-        w_i[i][2] = data[m++];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = first; i < last; ++i) {
         w_i[i][2] = data[m++];
       }
       break;
@@ -1036,3 +962,6 @@ int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
   return m;
 }
 
+void FixEPHAtomic::copy_arrays(int i, int j, int /*delflag*/) {
+  E_a_i[j] = E_a_i[i];
+}
