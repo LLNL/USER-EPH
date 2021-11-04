@@ -398,6 +398,7 @@ class EPH_FDM
     double dx, dy, dz;
     double dV; // volume of the element
     
+    std::vector<double> E_e; // current electronic energy grid 
     std::vector<double> T_e; // current electronic temperature grid 
     std::vector<double> dT_e; // source/sink term from atoms 
     std::vector<double> ddT_e; // grid to store temporary values (almost second derivative)
@@ -434,6 +435,7 @@ class EPH_FDM
     // filename for the file where temperature dependent properties are saved
     std::string parameter_filename; // NULL is special value
     
+    Spline E_e_T; // 
     Spline C_e_T; // temperature dependent interpolation for C_e
     Spline kappa_e_T; // tempearture dependent interpolation for kappa_e
     
