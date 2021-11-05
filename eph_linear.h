@@ -60,6 +60,13 @@ struct EPH_Linear {
     return 0.;
   }
   
+  double derivative(double _x) {
+    size_t idx = static_cast<size_t>(_x / dx); // we ignore the end point
+    if(idx < y.size()) { return dy[idx]; }
+    
+    return dy[dy.size() - 1];
+  }
+  
 };
 
 #endif

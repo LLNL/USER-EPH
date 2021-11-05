@@ -7,6 +7,7 @@
 #define EPH_FDM_H
 
 #include "eph_spline.h"
+#include "eph_linear.h"
 
 #include <iostream>
 #include <cassert>
@@ -93,6 +94,13 @@ class EPH_FDM
         
         C_e_T = Spline(dT, in_C_e_T);
         kappa_e_T = Spline(dT, in_kappa_e_T);
+        
+        // create Ee(Te) mapping
+        in_C_e_T[0] = 0.;
+        for(size_t i = 1; i < in_C_e_T.size(); ++i) {
+          in_C_e_T[i] = in_C_e_T[i - 1] + in_C_e_T[i] * dT;
+        }
+        E_e_T = EPH_Linear(dT, in_C_e_T.begin(), in_C_e_T.end());
       }
       
       // read grid values
@@ -193,7 +201,7 @@ class EPH_FDM
       sprintf(fn, "%s_%06d", in_filename, in_n);
       FILE *fd = fopen(fn, "w");
       
-      assert(fd > 0);
+      assert(fd != nullptr);
       
       // this is needed for visit Point3D
       fprintf(fd, "x y z Te\n");
@@ -219,7 +227,7 @@ class EPH_FDM
     {
       FILE *fd = fopen(in_filename, "w");
       
-      assert(fd > 0);
+      assert(fd != nullptr);
       
       // 3 first lines are comments
       fprintf(fd, "# A comment\n");
@@ -366,7 +374,18 @@ class EPH_FDM
             
             switch(flag[i]) {
               case DYNAMIC:
-                T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
+                // workaround
+                if(T_dynamic_flag[i] == 1) { // this should do the trick
+                  double E_e = E_e_T(T_e[i]);
+                  //~ std::cout << "Te is: " << T_e[i];
+                  //~ std::cout << " Ee is: " << E_e;
+                  E_e += (ddT_e[i] + dT_e[i] + S_e[i]) / rho_e[i] * inner_dt;
+                  //~ std::cout << " new Ee is: " << E_e;
+                  T_e[i] = E_e_T.reverse_lookup(E_e);
+                  //~ std::cout << " Te is: " << T_e[i] << '\n';
+                }
+                else {T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;} // this works for constant Ce
+                //~ T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
                 break;
               default:
                 break;
@@ -398,7 +417,6 @@ class EPH_FDM
     double dx, dy, dz;
     double dV; // volume of the element
     
-    std::vector<double> E_e; // current electronic energy grid 
     std::vector<double> T_e; // current electronic temperature grid 
     std::vector<double> dT_e; // source/sink term from atoms 
     std::vector<double> ddT_e; // grid to store temporary values (almost second derivative)
@@ -435,7 +453,7 @@ class EPH_FDM
     // filename for the file where temperature dependent properties are saved
     std::string parameter_filename; // NULL is special value
     
-    Spline E_e_T; // 
+    EPH_Linear E_e_T; // 
     Spline C_e_T; // temperature dependent interpolation for C_e
     Spline kappa_e_T; // tempearture dependent interpolation for kappa_e
     
