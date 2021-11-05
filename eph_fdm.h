@@ -377,15 +377,10 @@ class EPH_FDM
                 // workaround
                 if(T_dynamic_flag[i] == 1) { // this should do the trick
                   double E_e = E_e_T(T_e[i]);
-                  //~ std::cout << "Te is: " << T_e[i];
-                  //~ std::cout << " Ee is: " << E_e;
                   E_e += (ddT_e[i] + dT_e[i] + S_e[i]) / rho_e[i] * inner_dt;
-                  //~ std::cout << " new Ee is: " << E_e;
                   T_e[i] = E_e_T.reverse_lookup(E_e);
-                  //~ std::cout << " Te is: " << T_e[i] << '\n';
                 }
                 else {T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;} // this works for constant Ce
-                //~ T_e[i] += (ddT_e[i] + dT_e[i] + S_e[i]) / prescaler * inner_dt;
                 break;
               default:
                 break;
