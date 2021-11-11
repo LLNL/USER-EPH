@@ -72,7 +72,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     extvector = 1; // external vector allocated by this fix???
     nevery = 1; // call end_of_step every step
     peratom_flag = 1; // fix provides per atom values
-    size_peratom_cols = 12; // per atom has 8 dimensions
+    size_peratom_cols = 12; // per atom has 12 dimensions
     peratom_freq = 1; // per atom values are provided every step
     //ghostneigh = 1; // neighbours of neighbours
 
@@ -219,7 +219,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     if(strcmp("NULL" , arg[6]) == 0) {
       for(size_t i = 0; i < atom->nlocal; ++i) {
         if(atom->mask[i] & groupbit) {
-          E_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]].reverse(v_Te);
+          E_a_i[i] = kappa.E_T_atomic[type_map_kappa[atom->type[i] - 1]](v_Te);
         }
       }
     }
@@ -239,7 +239,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     
     for(size_t i = 0; i < atom->nlocal; ++i) {
       if(atom->mask[i] & groupbit) {
-        T_a_i[i] = kappa.T_E_atomic[type_map_kappa[atom->type[i] - 1]](E_a_i[i]);
+        T_a_i[i] = kappa.E_T_atomic[type_map_kappa[atom->type[i] - 1]].reverse(E_a_i[i]);
         Te += T_a_i[i];
         atom_counter++;
       }
@@ -418,7 +418,7 @@ void FixEPHAtomic::end_of_step() {
     int atom_counter = 0;
     for(size_t i = 0; i < nlocal; ++i) { // calculate the total temperature
       if(mask[i] & groupbit) {
-        T_a_i[i] = kappa.T_E_atomic[type_map_kappa[type[i] - 1]](E_a_i[i]);
+        T_a_i[i] = kappa.E_T_atomic[type_map_kappa[type[i] - 1]].reverse(E_a_i[i]);
         T_local += T_a_i[i];
         atom_counter++;
       }
@@ -632,7 +632,7 @@ void FixEPHAtomic::force_prl() {
         if(!(rho_i[i] > 0)) { continue; }
 
         double alpha_i = beta.get_alpha(type_map_beta[itype - 1], rho_i[i]);
-        double v_Ti = sqrt(kappa.T_E_atomic[itype - 1](E_a_i[i]));
+        double v_Ti = sqrt(kappa.E_T_atomic[type_map_kappa[itype - 1]].reverse(E_a_i[i]));
 
         for(size_t j = 0; j != jnum; ++j) {
           int jj = jlist[j];
@@ -648,7 +648,9 @@ void FixEPHAtomic::force_prl() {
           if((e_r_sq >= r_cutoff_sq) || !(rho_i[jj] > 0)) { continue; }
 
           double alpha_j = beta.get_alpha(type_map_beta[jtype - 1], rho_i[jj]);
-          double v_Tj = sqrt(kappa.T_E_atomic[jtype - 1](E_a_i[jj]));
+          
+          //~ std::cout << "DEBUG: " << jj << ' ' << jtype - 1 << ' ' << E_a_i[jj] << '\n';
+          double v_Tj = sqrt(kappa.E_T_atomic[type_map_kappa[jtype - 1]].reverse(E_a_i[jj]));
 
           double v_rho_ji = beta.get_rho_r_sq(type_map_beta[jtype - 1], e_r_sq);
           double e_v_xi1 = get_scalar(e_ij, xi_i[i]);
@@ -663,10 +665,7 @@ void FixEPHAtomic::force_prl() {
           f_RNG[i][1] += dvar * e_ij[1];
           f_RNG[i][2] += dvar * e_ij[2];
         }
-
-        //~ double v_Te = kappa.T_E_atomic[itype - 1](E_a_i[i]);
-        //~ if(i == 0) { std::cout << E_a_i[0] << ' ' << v_Te << '\n'; }
-        //~ double var = eta_factor * sqrt(v_Te);
+        
         double var = eta_factor;
         f_RNG[i][0] *= var;
         f_RNG[i][1] *= var;
@@ -707,8 +706,8 @@ void FixEPHAtomic::heat_solve() {
 
           E_a_i[j] += dE_a_i[j] * scaling;
           if(E_a_i[j] < 0.0) { 
-            //~ std::cerr << "HIT THE WALL 1: " << j << ' ' << type[j]-1 << ' ' << 
-              //~ dE_a_i[j] << ' ' << scaling << ' ' << E_a_i[j] << '\n';
+            std::cerr << "HIT THE WALL 1: " << j << ' ' << type[j]-1 << ' ' << 
+              dE_a_i[j] << ' ' << scaling << ' ' << E_a_i[j] << '\n';
             
             E_a_i[j] = 0.0; // energy cannot go negative
           }
@@ -729,8 +728,8 @@ void FixEPHAtomic::heat_solve() {
           if(!(rho_a_i[j] > 0)) { continue; }
           
           double l_dE_j = 0.0;
-          double l_T_j = kappa.T_E_atomic[jtype - 1](E_a_i[j]);
-          double l_K_j = kappa.K_E_atomic[jtype - 1](l_T_j * kB);
+          double l_T_j = kappa.E_T_atomic[type_map_kappa[jtype - 1]].reverse(E_a_i[j]);
+          double l_K_j = kappa.K_T_atomic[type_map_kappa[jtype - 1]](l_T_j);
           
           for(size_t k = 0; k != knum; ++k) {
             int kk = klist[k];
@@ -739,8 +738,8 @@ void FixEPHAtomic::heat_solve() {
             
             if(!(mask[kk] & groupbit)) { continue; }
             
-            double l_T_k = kappa.T_E_atomic[ktype - 1](E_a_i[kk]);
-            double l_K_k = kappa.K_E_atomic[ktype - 1](l_T_k * kB);
+            double l_T_k = kappa.E_T_atomic[type_map_kappa[ktype - 1]].reverse(E_a_i[kk]);
+            double l_K_k = kappa.K_T_atomic[type_map_kappa[ktype - 1]](l_T_k);
             
             double v_dT = l_T_k - l_T_j;
             double v_K = 0.5 * (l_K_k + l_K_j);
@@ -759,7 +758,7 @@ void FixEPHAtomic::heat_solve() {
           
           E_a_i[j] += l_dE_j * dt;
           if(E_a_i[j] < 0) { 
-            //~ std::cerr << "HIT THE WALL 2" << '\n'; 
+            std::cerr << "HIT THE WALL 2" << '\n'; 
             E_a_i[j] = 0.0; // energy cannot go negative
           } 
         }
@@ -798,13 +797,6 @@ void FixEPHAtomic::post_force(int vflag) {
 
     state = FixState::XI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::XIX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIZ;
-    //~ comm->forward_comm_fix(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
@@ -897,40 +889,10 @@ int FixEPHAtomic::pack_forward_comm(int n, int *list, double *data, int pbc_flag
         data[m++] = xi_i[list[i]][2];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][0];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][1];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][2];
-      }
-      break;
     case FixState::WI:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][0];
         data[m++] = w_i[list[i]][1];
-        data[m++] = w_i[list[i]][2];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][0];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][1];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][2];
       }
       break;
@@ -955,7 +917,7 @@ void FixEPHAtomic::unpack_forward_comm(int n, int first, double *data) {
     case FixState::RHO:
       for(size_t i = first; i < last; ++i) {
         rho_i[i] = data[m++];
-        //~ rho_a_i[i] = data[m++];
+        rho_a_i[i] = data[m++];
       }
       break;
     case FixState::XI:
@@ -965,40 +927,10 @@ void FixEPHAtomic::unpack_forward_comm(int n, int first, double *data) {
         xi_i[i][2] = data[m++];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][2] = data[m++];
-      }
-      break;
     case FixState::WI:
       for(size_t i = first; i < last; ++i) {
         w_i[i][0] = data[m++];
         w_i[i][1] = data[m++];
-        w_i[i][2] = data[m++];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = first; i < last; ++i) {
         w_i[i][2] = data[m++];
       }
       break;
@@ -1026,12 +958,14 @@ void FixEPHAtomic::post_run() {
 
 int FixEPHAtomic::pack_exchange(int i, double *buf) {
   int m = 0;
+  std::cout << "sending atom i: " << i << '\n';
   buf[m++] = E_a_i[i];
   return m;
 }
 
 int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
   int m = 0;
+  std::cout << "recieving atom i: " << nlocal << '\n';
   E_a_i[nlocal] = buf[m++];
   return m;
 }

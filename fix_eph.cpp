@@ -978,40 +978,10 @@ int FixEPH::pack_forward_comm(int n, int *list, double *data, int pbc_flag, int 
         data[m++] = xi_i[list[i]][2];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][0];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][1];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = xi_i[list[i]][2];
-      }
-      break;
     case FixState::WI:
       for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][0];
         data[m++] = w_i[list[i]][1];
-        data[m++] = w_i[list[i]][2];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][0];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = 0; i < n; ++i) {
-        data[m++] = w_i[list[i]][1];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = 0; i < n; ++i) {
         data[m++] = w_i[list[i]][2];
       }
       break;
@@ -1040,40 +1010,10 @@ void FixEPH::unpack_forward_comm(int n, int first, double *data) {
         xi_i[i][2] = data[m++];
       }
       break;
-    case FixState::XIX:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::XIY:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::XIZ:
-      for(size_t i = first; i < last; ++i) {
-        xi_i[i][2] = data[m++];
-      }
-      break;
     case FixState::WI:
       for(size_t i = first; i < last; ++i) {
         w_i[i][0] = data[m++];
         w_i[i][1] = data[m++];
-        w_i[i][2] = data[m++];
-      }
-      break;
-    case FixState::WX:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][0] = data[m++];
-      }
-      break;
-    case FixState::WY:
-      for(size_t i = first; i < last; ++i) {
-        w_i[i][1] = data[m++];
-      }
-      break;
-    case FixState::WZ:
-      for(size_t i = first; i < last; ++i) {
         w_i[i][2] = data[m++];
       }
       break;

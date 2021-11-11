@@ -132,6 +132,7 @@ class EPH_Spline {
     }
 
     Float operator() (Float x) const {
+      if(x < 0.0) { std::cout << "error input larger than 0.: " << x << '\n'; }
       assert(x >= 0.0);
 
       size_t index = x * inv_dx;

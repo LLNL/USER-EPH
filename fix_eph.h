@@ -34,13 +34,7 @@ class FixEPH : public Fix {
     // enumeration for tracking fix state, this is used in comm forward
     enum class FixState : unsigned int {
       NONE,
-      XIX,
-      XIY,
-      XIZ,
       RHO,
-      WX,
-      WY,
-      WZ,
       XI,
       WI
     };

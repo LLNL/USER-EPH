@@ -60,6 +60,11 @@ struct EPH_Linear {
     return 0.;
   }
   
+  // given a y find the appropriate x
+  double reverse(double _y) {
+    return reverse_lookup(_y);
+  }
+  
   double derivative(double _x) {
     size_t idx = static_cast<size_t>(_x / dx); // we ignore the end point
     if(idx < y.size()) { return dy[idx]; }
