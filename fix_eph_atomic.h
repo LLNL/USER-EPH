@@ -138,7 +138,7 @@ class FixEPHAtomic : public Fix {
 
     // electronic temperature per atom
     double* rho_a_i; // this specifies correlations size = [nlocal + nghost]
-    double* E_a_i; // electronic energy per atom placeholder for future
+    double** E_a_i; // electronic energy per atom placeholder for future
     double* dE_a_i; // energy deposition by stochastic forces
     double* T_a_i; // this is for convenience
 
