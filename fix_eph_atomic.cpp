@@ -851,7 +851,7 @@ void FixEPHAtomic::grow_arrays(int ngrow) {
   memory->grow(xi_i, ngrow, 3, "eph:xi_i");
 
   memory->grow(rho_a_i, ngrow, "eph:rho_a_i");
-  memory->grow(E_a_i, ngrow, "eph:E_a_i");
+  memory->grow(E_a_i, ngrow, "eph:E_a_i"); // TODO: change to 2 dimensions for keeping old data
   memory->grow(dE_a_i, ngrow, "eph:dE_a_i");
   memory->grow(T_a_i, ngrow, "eph:T_a_i");
 
@@ -958,15 +958,18 @@ void FixEPHAtomic::post_run() {
 
 int FixEPHAtomic::pack_exchange(int i, double *buf) {
   int m = 0;
-  std::cout << "sending atom i: " << i << '\n';
+  //~ std::cout << "sending atom i: " << i << '\n';
   buf[m++] = E_a_i[i];
   return m;
 }
 
 int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
   int m = 0;
-  std::cout << "recieving atom i: " << nlocal << '\n';
+  //~ std::cout << "recieving atom i: " << nlocal << '\n';
   E_a_i[nlocal] = buf[m++];
   return m;
 }
 
+void FixEPHAtomic::copy_arrays(int i, int j, int) {
+  E_a_i[j] = E_a_i[i];
+}

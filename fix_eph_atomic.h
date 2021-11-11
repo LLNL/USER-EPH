@@ -77,6 +77,9 @@ class FixEPHAtomic : public Fix {
     int pack_exchange(int, double *) override;
     int unpack_exchange(int, double*) override;
     
+    // needed to copy atoms around
+    void copy_arrays(int i, int j, int /*delflag*/) override;
+    
   protected:
     static constexpr size_t max_file_length = 256; // max filename length
 
