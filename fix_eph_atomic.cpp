@@ -63,7 +63,12 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   if (atom->natoms < 1) error->all(FLERR, "fix_eph_atomic: error no atoms in simulation");
   MPI_Comm_rank(world, &my_id);
   MPI_Comm_size(world, &nr_ps);
-
+  
+  std::cout << "!!! WARNING WARNING WARNING !!!\n";
+  std::cout << "This code is under development.\n";
+  std::cout << "Use at your own risk.\n";
+  std::cout << "!!! WARNING WARNING WARNING !!!\n";
+  
   state = FixState::NONE;
   { // setup fix properties
     vector_flag = 1; // fix is able to output a vector compute
