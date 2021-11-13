@@ -130,7 +130,6 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     types = atom->ntypes;
     eta_factor = sqrt(2.0 * force->boltz / update->dt);
     kB = force->boltz;
-    //~ std::cout << "######" << kB << '\n';
   }
 
   { /** integrator functionality **/
@@ -705,15 +704,13 @@ void FixEPHAtomic::heat_solve() {
     { // add small portion of energy and redistribute temperatures
       for(size_t j = 0; j < nlocal; ++j) {
         if(mask[j] & groupbit) {
-          //~ if(j == 0) {
-            //~ std::cout << E_a_i[j] << ' ' << dE_a_i[j] << '\n';
-          //~ }
-
           E_a_i[j][0] += dE_a_i[j] * scaling;
           if(E_a_i[j][0] < 0.0) { 
-            //~ std::cerr << "HIT THE WALL 1: " << j << ' ' << type[j]-1 << ' ' << 
-              dE_a_i[j] << ' ' << scaling << ' ' << E_a_i[j][0] << '\n';
-            
+            #ifndef NDEBUG
+            std::cerr << "WARNING NEGATIVE TEMPERATURES FOR ATOM " 
+              << j << ' ' << type[j]-1 << ' ' << E_a_i[j][0] << '\n';
+            std::cerr << "DECREASE DT or add additional loops\n";
+            #endif
             E_a_i[j][0] = 0.0; // energy cannot go negative
           }
         }
@@ -763,9 +760,13 @@ void FixEPHAtomic::heat_solve() {
           
           E_a_i[j][1] = E_a_i[j][0] + l_dE_j * dt;
           if(E_a_i[j][1] < 0) { 
-            //~ std::cerr << "HIT THE WALL 2" << '\n'; 
+            #ifndef NDEBUG
+            std::cerr << "WARNING NEGATIVE TEMPERATURES FOR ATOM " 
+              << j << ' ' << type[j]-1 << ' ' << E_a_i[j][0] << '\n';
+            std::cerr << "DECREASE DT or add additional loops\n";
+            #endif
             E_a_i[j][1] = 0.0; // energy cannot go negative
-          } 
+          }
         }
       }
     }
@@ -846,9 +847,6 @@ void FixEPHAtomic::reset_dt() {
 }
 
 void FixEPHAtomic::grow_arrays(int ngrow) {
-  //std::cout << "NGROW NLOCAL NGHOST NMAX\n";
-  //std::cout << ngrow << ' ' <<
-  //  atom->nlocal << ' ' << atom->nghost << ' ' << atom->nmax << '\n';
   n = ngrow;
 
   memory->grow(f_EPH, ngrow, 3,"eph_atomic:fEPH");
@@ -967,14 +965,12 @@ void FixEPHAtomic::post_run() {
 
 int FixEPHAtomic::pack_exchange(int i, double *buf) {
   int m = 0;
-  //~ std::cout << "sending atom i: " << i << '\n';
   buf[m++] = E_a_i[i][0];
   return m;
 }
 
 int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
   int m = 0;
-  //~ std::cout << "recieving atom i: " << nlocal << '\n';
   E_a_i[nlocal][0] = buf[m++];
   return m;
 }
