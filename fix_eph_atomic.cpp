@@ -64,7 +64,7 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   MPI_Comm_rank(world, &my_id);
   MPI_Comm_size(world, &nr_ps);
   
-  if(myid == 0) {
+  if(my_id == 0) {
     std::cout << "!!! WARNING WARNING WARNING !!!\n";
     std::cout << "This code is under development.\n";
     std::cout << "Use at your own risk.\n";
@@ -724,6 +724,8 @@ void FixEPHAtomic::heat_solve() {
 
     { // solve diffusion a bit
       for(size_t j = 0; j < nlocal; ++j) {
+        E_a_i[j][1] = E_a_i[j][0];
+        
         if(mask[j] & groupbit) {
           int jtype = type[j];
           int *klist = firstneigh[j];
