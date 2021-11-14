@@ -66,6 +66,13 @@ FixEPHColouredExp::FixEPHColouredExp(LAMMPS *lmp, int narg, char **arg) :
   MPI_Comm_rank(world, &myID);
   MPI_Comm_size(world, &nrPS);
 
+  if(myID == 0) {
+    std::cout << "!!! WARNING WARNING WARNING !!!\n";
+    std::cout << "This part of the code is experimental and under development\n";
+    std::cout << "Use at your own risk\n";
+    std::cout << "!!! WARNING WARNING WARNING !!!\n";
+  }
+
   state = FixState::NONE;
 
   vector_flag = 1; // fix is able to output a vector compute
