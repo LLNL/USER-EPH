@@ -64,10 +64,12 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
   MPI_Comm_rank(world, &my_id);
   MPI_Comm_size(world, &nr_ps);
   
-  std::cout << "!!! WARNING WARNING WARNING !!!\n";
-  std::cout << "This code is under development.\n";
-  std::cout << "Use at your own risk.\n";
-  std::cout << "!!! WARNING WARNING WARNING !!!\n";
+  if(myid == 0) {
+    std::cout << "!!! WARNING WARNING WARNING !!!\n";
+    std::cout << "This code is under development.\n";
+    std::cout << "Use at your own risk.\n";
+    std::cout << "!!! WARNING WARNING WARNING !!!\n";
+  }
   
   state = FixState::NONE;
   { // setup fix properties
