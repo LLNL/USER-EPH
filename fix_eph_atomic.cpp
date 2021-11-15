@@ -371,54 +371,26 @@ void FixEPHAtomic::final_integrate() {
 
 void FixEPHAtomic::end_of_step() {
   double **x = atom->x;
-  double **v = atom->v;
   int *type = atom->type;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
   double E_local = 0.0;
   double T_local = 0.0;
-
-  // calculate the energy transferred to electronic system
-  // this is a potential source of errors due to using velocity verlet for integration
-  // friction force depends on the velocities and therefore acceleration at
-  //   next timestep depends on the velocity at next time step
-  // this leads to errors of the order of dt^2
-  std::fill_n(&(dE_a_i[0]), nlocal, 0.0);
-
-  if(eph_flag & Flag::FRICTION) {
-    for(size_t i = 0; i < nlocal; ++i) {
-      if(mask[i] & groupbit) {
-        double dE_i = 0.0;
-        dE_i -= f_EPH[i][0] * v[i][0] * update->dt;
-        dE_i -= f_EPH[i][1] * v[i][1] * update->dt;
-        dE_i -= f_EPH[i][2] * v[i][2] * update->dt;
-
-        E_local += dE_i;
-        dE_a_i[i] += dE_i;
-      }
-    }
-  }
-
-  if(eph_flag & Flag::RANDOM) {
-    for(size_t i = 0; i < nlocal; ++i) {
-      if(mask[i] & groupbit) {
-        double dE_i = 0.0;
-        dE_i -= f_RNG[i][0] * v[i][0] * update->dt;
-        dE_i -= f_RNG[i][1] * v[i][1] * update->dt;
-        dE_i -= f_RNG[i][2] * v[i][2] * update->dt;
-
-        E_local += dE_i;
-        dE_a_i[i] += dE_i;
-      }
-    }
-  }
-
+  
   if(eph_flag & Flag::HEAT) { heat_solve(); }
 
-  Ee += E_local;
+  if(eph_flag & Flag::FRICTION || eph_flag & Flag::RANDOM) {
+    for(size_t i = 0; i < nlocal; ++i) {
+      if(mask[i] & groupbit) {
+        E_local += E_a_i[i][0];
+      }
+    }
+  }
+
   // this is for checking energy conservation
   MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
+  Ee = E_local;
   
   { // average temperature calculation
     int atom_counter = 0;
@@ -527,7 +499,9 @@ void FixEPHAtomic::force_prl() {
 
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
-
+  
+  double const l_dt = update->dt;
+  
   // create friction forces
   if(eph_flag & Flag::FRICTION) {
     // w_i = W_ij^T v_j
@@ -574,14 +548,7 @@ void FixEPHAtomic::force_prl() {
 
     state = FixState::WI;
     comm->forward_comm_fix(this);
-
-    //~ state = FixState::WX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WZ;
-    //~ comm->forward_comm_fix(this);
-
+    
     // now calculate the forces
     // f_i = W_ij w_j
     for(size_t i = 0; i != nlocal; ++i) {
@@ -618,10 +585,18 @@ void FixEPHAtomic::force_prl() {
           double var2 = alpha_j * v_rho_ij * e_v_v2 / (rho_i[jj] * e_r_sq);
 
           double dvar = var1 - var2;
+          double const f_ij[3] = {dvar * e_ij[0], dvar * e_ij[1], dvar * e_ij[2]};
+          
           // friction is negative!
-          f_EPH[i][0] -= dvar * e_ij[0];
-          f_EPH[i][1] -= dvar * e_ij[1];
-          f_EPH[i][2] -= dvar * e_ij[2];
+          f_EPH[i][0] -= f_ij[0];
+          f_EPH[i][1] -= f_ij[1];
+          f_EPH[i][2] -= f_ij[2];
+          
+          if(!(eph_flag & Flag::NOFRICTION)) {
+            dE_a_i[i] += 0.5 * f_ij[0] * (v[i][0] - v[jj][0]) * l_dt;
+            dE_a_i[i] += 0.5 * f_ij[1] * (v[i][1] - v[jj][1]) * l_dt;
+            dE_a_i[i] += 0.5 * f_ij[2] * (v[i][2] - v[jj][2]) * l_dt;
+          }
         }
       }
     }
@@ -655,7 +630,6 @@ void FixEPHAtomic::force_prl() {
 
           double alpha_j = beta.get_alpha(type_map_beta[jtype - 1], rho_i[jj]);
           
-          //~ std::cout << "DEBUG: " << jj << ' ' << jtype - 1 << ' ' << E_a_i[jj] << '\n';
           double v_Tj = sqrt(kappa.E_T_atomic[type_map_kappa[jtype - 1]].reverse(E_a_i[jj][0]));
 
           double v_rho_ji = beta.get_rho_r_sq(type_map_beta[jtype - 1], e_r_sq);
@@ -665,17 +639,20 @@ void FixEPHAtomic::force_prl() {
           double v_rho_ij = beta.get_rho_r_sq(type_map_beta[itype - 1], e_r_sq);
           double e_v_xi2 = get_scalar(e_ij, xi_i[jj]);
           double var2 = v_Tj * alpha_j * v_rho_ij * e_v_xi2 / (rho_i[jj] * e_r_sq);
-
-          double dvar = var1 - var2;
-          f_RNG[i][0] += dvar * e_ij[0];
-          f_RNG[i][1] += dvar * e_ij[1];
-          f_RNG[i][2] += dvar * e_ij[2];
+          
+          double const dvar = eta_factor * (var1 - var2);
+          
+          double const f_ij[3] = {dvar * e_ij[0], dvar * e_ij[1], dvar * e_ij[2]};
+          f_RNG[i][0] += f_ij[0];
+          f_RNG[i][1] += f_ij[1];
+          f_RNG[i][2] += f_ij[2];
+          
+          if(!(eph_flag & Flag::NORANDOM)) {
+            dE_a_i[i] += 0.5 * f_ij[0] * (v[i][0] - v[jj][0]) * l_dt;
+            dE_a_i[i] += 0.5 * f_ij[1] * (v[i][1] - v[jj][1]) * l_dt;
+            dE_a_i[i] += 0.5 * f_ij[2] * (v[i][2] - v[jj][2]) * l_dt;
+          }
         }
-        
-        double var = eta_factor;
-        f_RNG[i][0] *= var;
-        f_RNG[i][1] *= var;
-        f_RNG[i][2] *= var;
       }
     }
   }
