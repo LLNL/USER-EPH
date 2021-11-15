@@ -234,10 +234,15 @@ FixEPHAtomic::FixEPHAtomic(LAMMPS *lmp, int narg, char **arg) :
     //~ }
   }
 
-  // I think we will switch to keeping track of energy instead of tracking temperature
-  Ee = 0.0; // electronic energy is zero in the beginning
-  
-  //~ std::cout << "##### GROUP BIT A " << groupbit << '\n'; 
+  { // create initial value for total electronic energy
+    Ee = 0.;
+    for(size_t i = 0; i < atom->nlocal; ++i) {
+      if(atom->mask[i] & groupbit) {
+        Ee += E_a_i[i][0];
+      }
+    }
+    MPI_Allreduce(MPI_IN_PLACE, &Ee, 1, MPI_DOUBLE, MPI_SUM, world);
+  }
   
   { // calculate the local temperatures
     Te = 0.0;
@@ -380,14 +385,12 @@ void FixEPHAtomic::end_of_step() {
   
   if(eph_flag & Flag::HEAT) { heat_solve(); }
 
-  if(eph_flag & Flag::FRICTION || eph_flag & Flag::RANDOM) {
-    for(size_t i = 0; i < nlocal; ++i) {
-      if(mask[i] & groupbit) {
-        E_local += E_a_i[i][0];
-      }
+  for(size_t i = 0; i < nlocal; ++i) {
+    if(mask[i] & groupbit) {
+      E_local += E_a_i[i][0];
     }
   }
-
+  
   // this is for checking energy conservation
   MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
   Ee = E_local;
