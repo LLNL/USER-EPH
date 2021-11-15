@@ -651,9 +651,9 @@ void FixEPHAtomic::force_prl() {
           f_RNG[i][2] += f_ij[2];
           
           if(!(eph_flag & Flag::NORANDOM)) {
-            dE_a_i[i] += 0.5 * f_ij[0] * (v[i][0] - v[jj][0]) * l_dt;
-            dE_a_i[i] += 0.5 * f_ij[1] * (v[i][1] - v[jj][1]) * l_dt;
-            dE_a_i[i] += 0.5 * f_ij[2] * (v[i][2] - v[jj][2]) * l_dt;
+            dE_a_i[i] -= 0.5 * f_ij[0] * (v[i][0] - v[jj][0]) * l_dt;
+            dE_a_i[i] -= 0.5 * f_ij[1] * (v[i][1] - v[jj][1]) * l_dt;
+            dE_a_i[i] -= 0.5 * f_ij[2] * (v[i][2] - v[jj][2]) * l_dt;
           }
         }
       }
