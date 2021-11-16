@@ -680,7 +680,7 @@ void FixEPHAtomic::heat_solve() {
   }
 
   double scaling = 1.0 / static_cast<double>(loops);
-  double dt = dtv * scaling;
+  double dt = update->dt * scaling;
 
   for(size_t i = 0; i < loops; ++i) {
     { // add small portion of energy and redistribute temperatures
@@ -710,12 +710,13 @@ void FixEPHAtomic::heat_solve() {
           int jtype = type[j];
           int *klist = firstneigh[j];
           int knum = numneigh[j];
-
-          if(!(rho_a_i[j] > 0)) { continue; }
           
-          double l_dE_j = 0.0;
+          double l_dE_j {0.};
           double l_T_j = kappa.E_T_atomic[type_map_kappa[jtype - 1]].reverse(E_a_i[j][0]);
           double l_K_j = kappa.K_T_atomic[type_map_kappa[jtype - 1]](l_T_j);
+          
+          double const rho_j {rho_a_i[j]};
+          double const rho_j_inv = {1. / rho_a_i[j]};
           
           for(size_t k = 0; k != knum; ++k) {
             int kk = klist[k];
@@ -724,25 +725,33 @@ void FixEPHAtomic::heat_solve() {
             
             if(!(mask[kk] & groupbit)) { continue; }
             
+            double const rho_k {rho_a_i[kk]};
+            double const rho_k_inv = {1. / rho_a_i[kk]};
+            
             double l_T_k = kappa.E_T_atomic[type_map_kappa[ktype - 1]].reverse(E_a_i[kk][0]);
             double l_K_k = kappa.K_T_atomic[type_map_kappa[ktype - 1]](l_T_k);
             
-            double v_dT = l_T_k - l_T_j;
-            double v_K = 0.5 * (l_K_k + l_K_j);
+            double const l_K {0.5 * (l_K_j + l_K_k)}; // we use average heat conduction
+            double const v_dT {l_T_k - l_T_j};
             
             double e_jk[3];
             double e_r_sq = get_difference_sq(x[kk], x[j], e_jk);
             
             if(e_r_sq >= kappa.r_cutoff_sq) { continue; }
             
+            double v_rho_j = kappa.rho_r_sq[type_map_kappa[jtype - 1]](e_r_sq);
             double v_rho_k = kappa.rho_r_sq[type_map_kappa[ktype - 1]](e_r_sq);
             
-            l_dE_j += v_rho_k * v_K * v_dT;
+            if(rho_j > 0.) {
+              l_dE_j += l_K * v_rho_k * rho_j_inv * v_dT;
+            }
+            
+            if(rho_k > 0.) {
+              l_dE_j += l_K * v_rho_j * rho_k_inv * v_dT;
+            }
           }
           
-          l_dE_j /= rho_a_i[j];
-          
-          E_a_i[j][1] = E_a_i[j][0] + l_dE_j * dt;
+          E_a_i[j][1] = E_a_i[j][0] + 0.5 * l_dE_j * dt;
           if(E_a_i[j][1] < 0) { 
             #ifndef NDEBUG
             std::cerr << "WARNING NEGATIVE TEMPERATURES FOR ATOM " 
@@ -755,8 +764,8 @@ void FixEPHAtomic::heat_solve() {
       }
     }
     
-    for(size_t i = 0; i < nlocal; ++i) {
-      E_a_i[i][0] = E_a_i[i][1]; // use some kind of memcpy instead
+    for(size_t j = 0; j < nlocal; ++j) {
+      E_a_i[j][0] = E_a_i[j][1]; // use some kind of memcpy instead
     }
   }
 }
