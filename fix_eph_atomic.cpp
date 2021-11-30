@@ -383,22 +383,13 @@ void FixEPHAtomic::end_of_step() {
   double E_local = 0.0;
   double T_local = 0.0;
   
-  if(eph_flag & Flag::HEAT) { heat_solve(); }
-
-  for(size_t i = 0; i < nlocal; ++i) {
-    if(mask[i] & groupbit) {
-      E_local += E_a_i[i][0];
-    }
-  }
-  
-  // this is for checking energy conservation
-  MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world);
-  Ee = E_local;
+  if(eph_flag & Flag::HEAT) { heat_solve(); }  
   
   { // average temperature calculation
     int atom_counter = 0;
     for(size_t i = 0; i < nlocal; ++i) { // calculate the total temperature
       if(mask[i] & groupbit) {
+        E_local += E_a_i[i][0];
         T_a_i[i] = kappa.E_T_atomic[type_map_kappa[type[i] - 1]].reverse(E_a_i[i][0]);
         T_local += T_a_i[i];
         atom_counter++;
@@ -408,9 +399,12 @@ void FixEPHAtomic::end_of_step() {
     if(atom_counter > 0) { T_local /= static_cast<double>(atom_counter); }
     int proc_counter = (atom_counter > 0) ? 1 : 0;
     
+    // this is for checking energy conservation
+    MPI_Allreduce(MPI_IN_PLACE, &E_local, 1, MPI_DOUBLE, MPI_SUM, world); // make this into a vector?
     MPI_Allreduce(MPI_IN_PLACE, &T_local, 1, MPI_DOUBLE, MPI_SUM, world);
     MPI_Allreduce(MPI_IN_PLACE, &proc_counter, 1, MPI_INT, MPI_SUM, world);
     
+    Ee = E_local;
     Te = T_local / static_cast<double>(proc_counter);
   }
   
@@ -723,7 +717,7 @@ void FixEPHAtomic::heat_solve() {
             kk &= NEIGHMASK;
             int ktype = type[kk];
             
-            if(!(mask[kk] & groupbit)) { continue; }
+            if(!(mask[kk] & groupbit)) {continue;}
             
             double const rho_k {rho_a_i[kk]};
             double const rho_k_inv = {1. / rho_a_i[kk]};
@@ -737,18 +731,13 @@ void FixEPHAtomic::heat_solve() {
             double e_jk[3];
             double e_r_sq = get_difference_sq(x[kk], x[j], e_jk);
             
-            if(e_r_sq >= kappa.r_cutoff_sq) { continue; }
+            if(e_r_sq >= kappa.r_cutoff_sq) {continue;}
             
             double v_rho_j = kappa.rho_r_sq[type_map_kappa[jtype - 1]](e_r_sq);
             double v_rho_k = kappa.rho_r_sq[type_map_kappa[ktype - 1]](e_r_sq);
             
-            if(rho_j > 0.) {
-              l_dE_j += l_K * v_rho_k * rho_j_inv * v_dT;
-            }
-            
-            if(rho_k > 0.) {
-              l_dE_j += l_K * v_rho_j * rho_k_inv * v_dT;
-            }
+            if(rho_j > 0.) {l_dE_j += l_K * v_rho_k * rho_j_inv * v_dT;}
+            if(rho_k > 0.) {l_dE_j += l_K * v_rho_j * rho_k_inv * v_dT;}
           }
           
           E_a_i[j][1] = E_a_i[j][0] + 0.5 * l_dE_j * dt;
