@@ -957,6 +957,6 @@ int FixEPHAtomic::unpack_exchange(int nlocal, double *buf) {
   return m;
 }
 
-void FixEPHAtomic::copy_arrays(int i, int j, int) {
-  E_a_i[j][0] = E_a_i[i][0];
+void FixEPHAtomic::copy_arrays(int i, int j, int /*delflag*/) {
+  E_a_i[j] = E_a_i[i];
 }
