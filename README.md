@@ -12,6 +12,8 @@ We use this extension mechanism to generalize the two-temperature model to inclu
 The theory behind this extension is designed to represent cascades, laser heating and equilibration and study energy transport with realistic electronic stopping power and electron-phonon coupling.
 The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (https://dx.doi.org/10.1103/PhysRevLett.120.185501) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
 
+[[_TOC_]]
+
 ## Installation Instructions
 
 First you need a version of LAMMPS (source code)
@@ -243,10 +245,14 @@ Units are [Kelvin], [eV/Ang^3/ps], [unitless], [in eV/K/Ang^3] [eV/K/Ang/ps] for
 ## Notes and limitations
 
 * The exact physical interpretation of beta(rho) changes with the precise model. 
-* `C_e`, `rho_e`, and `kappa_e` are constants at the moment (not temperature dependent).
 * If `T_infile` is not `NULL` then `C_e`, `rho_e`, `kappa_e`, `T_e`, `NX`, `NY`, `NZ` are ignored and are read from the filename supplied. 
 If `NULL` is provided as the filename then the FDM grid is initialised with the parameters provided in the command.
 * The implementation of the model is applicable to alloys, but this has not been tested thoroughly yet.
+
+# Electron-ion coupling database
+USER-EPH model requires for the user to supply electron-ion coupling parametrisations, analogous to empirical potentials, which will define the non-equilibrium dynamics of the system they are studying. As the creation of these files is rather involved (both computationally as well as work hours) we provide here an option to supply user supplied and peer reviewed parametrisations for open use by the general scientific community.
+
+See [`Data/README.md`](Data/README.md) for currently published parametrisation along with references.
 
 # Tutorial
 
