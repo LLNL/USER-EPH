@@ -2,7 +2,8 @@
 
 LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction and electronic stopping. LLNL-CODE-750832
 
-Artur Tamm and Alfredo A. Correa (LLNL)
+Artur Tamm (University of Tartu) \<artur.tamm@ut.ee\>
+Alfredo A. Correa (LLNL)
 
 ## Introduction
 
@@ -250,9 +251,12 @@ If `NULL` is provided as the filename then the FDM grid is initialised with the 
 * The implementation of the model is applicable to alloys, but this has not been tested thoroughly yet.
 
 # Electron-ion coupling database
+
 USER-EPH model requires for the user to supply electron-ion coupling parametrisations, analogous to empirical potentials, which will define the non-equilibrium dynamics of the system they are studying. As the creation of these files is rather involved (both computationally as well as work hours) we provide here an option to supply user supplied and peer reviewed parametrisations for open use by the general scientific community.
 
 See [`Data/README.md`](Data/README.md) for currently published parametrisation along with references.
+
+If you want to add your parametrisation with correct references, send a request with an e-mail to \<artur.tamm@ut.ee\>
 
 # Tutorial
 
