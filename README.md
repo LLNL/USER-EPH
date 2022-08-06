@@ -386,6 +386,6 @@ USER-EPH is licensed under the terms of the [GPL v3 License](/COPYING).
 
 USER-EPH is not part of the LAMMPS code https://github.com/lammps/lammps
 
-If you have any questions contact Artur Tamm <tamm3@llnl.gov> or Alfredo Correa <correaa@llnl.gov>
+If you have any questions contact Artur Tamm <artur.tamm@ut.ee> or Alfredo Correa <correaa@llnl.gov>
 
 ``LLNL-CODE-750832``
