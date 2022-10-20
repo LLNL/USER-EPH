@@ -3,14 +3,14 @@
 LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction and electronic stopping. LLNL-CODE-750832
 
 Artur Tamm (University of Tartu) \<artur.tamm@ut.ee\>
-Alfredo A. Correa (LLNL)
+Alfredo A. Correa (LLNL) \<correaa@llnl.gov\>
 
 ## Introduction
 
-In LAMMPS, a "fix" is a plugin or extension to the main code that performs a specific operation to the atomistic system during
-timestepping or minimization. 
+In LAMMPS, a "fix" is a plugin or extension to the main code that performs a specific operation on the atomistic system during
+time-stepping or minimization. 
 We use this extension mechanism to generalize the two-temperature model to include electron-phonon coupling.
-The theory behind this extension is designed to represent cascades, laser heating and equilibration and study energy transport with realistic electronic stopping power and electron-phonon coupling.
+The fix implements a theory to model collision cascades, laser heating, and equilibration and to study energy transport, incorporating realistic electronic stopping power and electron-phonon coupling.
 The theory is developed in the papers "Langevin dynamics with spatial correlations as a model for electron-phonon coupling" (https://dx.doi.org/10.1103/PhysRevLett.120.185501) and "Electron-phonon interaction within classical molecular dynamics" (https://link.aps.org/doi/10.1103/PhysRevB.94.024305).
 
 [[_TOC_]]
