@@ -301,14 +301,16 @@ void FixEPHAtomic::init() {
 
   /* copy paste from vcsgc */
   /** we are a fix and we need full neighbour list **/
-  int irequest = neighbor->request((void*)this, this->instance_me);
-  neighbor->requests[irequest]->pair = 0;
-  neighbor->requests[irequest]->fix = 1;
-  neighbor->requests[irequest]->half = 0;
-  neighbor->requests[irequest]->full = 1;
-  neighbor->requests[irequest]->ghost = 1;
-
-  neighbor->requests[irequest]->cutoff = r_cutoff;
+  int request_style = NeighConst::REQ_FULL | NeighConst::REQ_GHOST;
+  auto req = neighbor->add_request(this, request_style);
+  req->set_cutoff(r_cutoff);
+  //int irequest = neighbor->request((void*)this, this->instance_me);
+  //neighbor->requests[irequest]->pair = 0;
+  //neighbor->requests[irequest]->fix = 1;
+  //neighbor->requests[irequest]->half = 0;
+  //neighbor->requests[irequest]->full = 1;
+  //neighbor->requests[irequest]->ghost = 1;
+  //neighbor->requests[irequest]->cutoff = r_cutoff;
 
   reset_dt();
 }
@@ -544,7 +546,7 @@ void FixEPHAtomic::force_prl() {
     }
 
     state = FixState::WI;
-    comm->forward_comm_fix(this);
+    comm->forward_comm(this);
     
     // now calculate the forces
     // f_i = W_ij w_j
@@ -693,7 +695,7 @@ void FixEPHAtomic::heat_solve() {
       }
 
       state = FixState::EI;
-      comm->forward_comm_fix(this);
+      comm->forward_comm(this);
     }
 
     { // solve diffusion a bit
@@ -774,7 +776,7 @@ void FixEPHAtomic::post_force(int vflag) {
 
   // TODO: TEMPORARY
   state = FixState::EI;
-  comm->forward_comm_fix(this);
+  comm->forward_comm(this);
   // END TODO
 
   // generate random forces and distribute them
@@ -788,14 +790,14 @@ void FixEPHAtomic::post_force(int vflag) {
     }
 
     state = FixState::XI;
-    comm->forward_comm_fix(this);
+    comm->forward_comm(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
   calculate_environment();
 
   state = FixState::RHO;
-  comm->forward_comm_fix(this);
+  comm->forward_comm(this);
 
   force_prl();
 

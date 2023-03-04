@@ -266,14 +266,17 @@ void FixEPHColoured::init() {
 
   /* copy paste from vcsgc */
   /** we are a fix and we need full neighbour list **/
-  int irequest = neighbor->request((void*)this, this->instance_me);
-  neighbor->requests[irequest]->pair = 0;
-  neighbor->requests[irequest]->fix = 1;
-  neighbor->requests[irequest]->half = 0;
-  neighbor->requests[irequest]->full = 1;
-  neighbor->requests[irequest]->ghost = 1;
-
-  neighbor->requests[irequest]->cutoff = r_cutoff;
+  int request_style = NeighConst::REQ_FULL | NeighConst::REQ_GHOST;
+  auto req = neighbor->add_request(this, request_style);
+  req->set_cutoff(r_cutoff);
+  
+  //int irequest = neighbor->request((void*)this, this->instance_me);
+  //neighbor->requests[irequest]->pair = 0;
+  //neighbor->requests[irequest]->fix = 1;
+  //neighbor->requests[irequest]->half = 0;
+  //neighbor->requests[irequest]->full = 1;
+  //neighbor->requests[irequest]->ghost = 1;
+  //neighbor->requests[irequest]->cutoff = r_cutoff;
 
   reset_dt();
 }
@@ -515,14 +518,7 @@ void FixEPHColoured::force_prl()
     }
 
     state = FixState::WI;
-    comm->forward_comm_fix(this);
-
-    //~ state = FixState::WX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::WZ;
-    //~ comm->forward_comm_fix(this);
+    comm->forward_comm(this);
 
     // now calculate the forces
     // f_i = W_ij w_j
@@ -640,21 +636,14 @@ void FixEPHColoured::post_force(int vflag) {
     }
 
     state = FixState::XI;
-    comm->forward_comm_fix(this);
-
-    //~ state = FixState::XIX;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIY;
-    //~ comm->forward_comm_fix(this);
-    //~ state = FixState::XIZ;
-    //~ comm->forward_comm_fix(this);
+    comm->forward_comm(this);
   }
 
   // calculate the site densities, gradients (future) and beta(rho)
   calculate_environment();
 
   state = FixState::RHO;
-  comm->forward_comm_fix(this);
+  comm->forward_comm(this);
 
   /*
    * we have separated the model specific codes to make it more readable
