@@ -1,7 +1,8 @@
-
 # EPH model database
+
 This serves as an open database to share user contributed parameterisations for EPH model. 
-All parameterisations in this database are based on the PRL version of the EPH model (meaning `model == 4`, will be default in the future).
+All parameterisations in this database are based on published applications, by us or others.
+They all use the EPH model (meaning `model == 4`, which will be default in the future).
 
 **Please cite the source papers when using these parameterisations.**
 
