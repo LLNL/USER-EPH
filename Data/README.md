@@ -30,7 +30,8 @@ file: [`Si_PRB2021_quadratic.beta`](Data/Si/Si_PRB2021_quadratic.beta)
 In development
 
 ## GaAs
-cite: J. L. Teunissen, *et al* Phys. Rev. Materials, 7, 025404 (2023). [doi: 10.1103/PhysRevMaterials.7.025404](https://doi.org/10.1103/PhysRevMaterials.7.025404)
+### Teunissen 2023
+cite: J. L. Teunissen, *et al* Phys. Rev. Materials, 7, 025404 (2023). [doi: 10.1103/PhysRevMaterials.7.025404](https://doi.org/10.1103/PhysRevMaterials.7.025404)  
 file: [`GaAs_PRM2023.beta`](Data/GaAs/GaAs_PRM2023.beta)
 
 ## NiCoCrFe FCC alloy
