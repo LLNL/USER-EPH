@@ -170,14 +170,35 @@ class EPH_Beta {
 
     Float get_beta(size_t index, Float rho_i) const {
       assert(index < n_elements);
-      assert(rho_i < rho_cutoff);
+      static bool once = true;
+
+      if(rho_i > rho_cutoff){
+
+                if(once){
+                        std::cout << 'WARNING: function get_beta() in$
+                        once = false;
+                }
+
+                return 0;
+      }
+
 
       return beta[index](rho_i);
     }
 
     Float get_alpha(size_t index, Float rho_i) const {
       assert(index < n_elements);
-      assert(rho_i < rho_cutoff);
+      static bool once = true;
+
+      if(rho_i > rho_cutoff){
+
+                if(once){
+                        std::cout << 'WARNING: function get_alpha() i$
+                        once = false;
+                }
+
+                return 0;
+      }
 
       return alpha[index](rho_i);
     }
