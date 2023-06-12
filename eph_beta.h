@@ -175,7 +175,7 @@ class EPH_Beta {
       if(rho_i > rho_cutoff){
 
                 if(once){
-                        std::cout << 'WARNING: function get_beta() in$
+                        std::cout << 'WARNING: function get_beta() in eph_beta.h: rho_i > rho_cutoff, beta set to zero\n';
                         once = false;
                 }
 
@@ -193,7 +193,7 @@ class EPH_Beta {
       if(rho_i > rho_cutoff){
 
                 if(once){
-                        std::cout << 'WARNING: function get_alpha() i$
+                        std::cout << 'WARNING: function get_alpha() in eph_beta.h: rho_i > rho_cutoff, alpha set to zero\n';
                         once = false;
                 }
 
