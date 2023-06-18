@@ -101,10 +101,9 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     std::cout << '\n';
   }
   
-  time_integrate = 1; // this will silence the integration warning
-  if(!eph_flag & Flag::NOINT) {
-    time_integrate = 0; // time integration is disabled
-  }
+  // this will silence the integration warning
+  if(eph_flag & Flag::NOINT) { time_integrate = 0; }
+  else { time_integrate = 0; }
 
   // read model selection
   eph_model = atoi(arg[5]);
