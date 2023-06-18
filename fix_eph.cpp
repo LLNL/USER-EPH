@@ -77,7 +77,7 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
   size_peratom_cols = 8; // per atom has 8 dimensions
   peratom_freq = 1; // per atom values are provided every step
   //ghostneigh = 1; // neighbours of neighbours
-
+  
   comm_forward = 3; // forward communication is needed
   comm->ghost_velocity = 1; // special: fix requires velocities for ghost atoms
 
@@ -99,6 +99,11 @@ FixEPH::FixEPH(LAMMPS *lmp, int narg, char **arg) :
     if(eph_flag & Flag::NOFRICTION) std::cout << "No friction application: ON\n";
     if(eph_flag & Flag::NORANDOM) std::cout << "No random application: ON\n";
     std::cout << '\n';
+  }
+  
+  time_integrate = 1; // this will silence the integration warning
+  if(!eph_flag & Flag::NOINT) {
+    time_integrate = 0; // time integration is disabled
   }
 
   // read model selection
@@ -424,8 +429,7 @@ void FixEPH::end_of_step() {
   }
 }
 
-void FixEPH::calculate_environment()
-{
+void FixEPH::calculate_environment() {
   double **x = atom->x;
   int *type = atom->type;
   int *mask = atom->mask;
@@ -435,13 +439,11 @@ void FixEPH::calculate_environment()
   int **firstneigh = list->firstneigh;
 
   // loop over atoms and their neighbours and calculate rho and beta(rho)
-  for(size_t i = 0; i != nlocal; ++i)
-  {
+  for(size_t i = 0; i != nlocal; ++i) {
     rho_i[i] = 0;
 
     // check if current atom belongs to fix group and if an atom is local
-    if(mask[i] & groupbit)
-    {
+    if(mask[i] & groupbit) {
       int itype = type[i];
       int *jlist = firstneigh[i];
       int jnum = numneigh[i];
@@ -459,6 +461,8 @@ void FixEPH::calculate_environment()
         }
       }
     }
+    
+    
   }
 }
 

@@ -168,12 +168,12 @@ class EPH_Beta {
       return rho_r_sq[index](r_sq);
     }
 
-    Float get_beta(size_t index, Float rho_i) const {
-      assert(index < n_elements);
+    Float get_beta(size_t index, Float rho_i) {
+      assert(index < n_elements && "eph_beta::get_beta() ERROR: index out of range");
 
       if(rho_i > rho_cutoff) {
         if(!beta_zero_warning) {
-          std::cout << 'WARNING: function get_beta() in eph_beta.h: rho_i > rho_cutoff, beta set to zero\n';
+          std::cout << "WARNING: function get_beta() in eph_beta.h: rho_i > rho_cutoff, beta set to zero\n";
           beta_zero_warning = true;
         }
         return 0.;
@@ -183,15 +183,15 @@ class EPH_Beta {
       return beta[index](rho_i);
     }
 
-    Float get_alpha(size_t index, Float rho_i) const {
-      assert(index < n_elements);
+    Float get_alpha(size_t index, Float rho_i) {
+      assert(index < n_elements && "eph_beta::get_alpha() ERROR: index out of range");
 
       if(rho_i > rho_cutoff) {
         if(!beta_zero_warning) {
-          std::cout << 'WARNING: function get_alpha() in eph_beta.h: rho_i > rho_cutoff, alpha set to zero\n';
+          std::cout << "WARNING: function get_alpha() in eph_beta.h: rho_i > rho_cutoff, alpha set to zero\n";
           beta_zero_warning = true;
         }
-        return 0;
+        return 0.;
       }
 
       return alpha[index](rho_i);
@@ -212,7 +212,7 @@ class EPH_Beta {
     Container<Spline, Allocator<Spline>> alpha;
     Container<Spline, Allocator<Spline>> beta;
 
-    bool beta_zero_warning {false};
+    bool beta_zero_warning {false}; // this t
 };
 
 using Beta = EPH_Beta<Float, Allocator, Container>;
