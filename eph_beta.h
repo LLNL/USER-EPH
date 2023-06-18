@@ -171,9 +171,12 @@ class EPH_Beta {
     Float get_beta(size_t index, Float rho_i) const {
       assert(index < n_elements);
 
-      if(rho_i > rho_cutoff){
-        std::cout << 'WARNING: function get_beta() in eph_beta.h: rho_i > rho_cutoff, beta set to zero\n';
-        return 0;
+      if(rho_i > rho_cutoff) {
+        if(!beta_zero_warning) {
+          std::cout << 'WARNING: function get_beta() in eph_beta.h: rho_i > rho_cutoff, beta set to zero\n';
+          beta_zero_warning = true;
+        }
+        return 0.;
       }
 
 
@@ -182,10 +185,12 @@ class EPH_Beta {
 
     Float get_alpha(size_t index, Float rho_i) const {
       assert(index < n_elements);
-      static bool once = true;
 
-      if(rho_i > rho_cutoff){
-        std::cout << 'WARNING: function get_alpha() in eph_beta.h: rho_i > rho_cutoff, alpha set to zero\n';
+      if(rho_i > rho_cutoff) {
+        if(!beta_zero_warning) {
+          std::cout << 'WARNING: function get_alpha() in eph_beta.h: rho_i > rho_cutoff, alpha set to zero\n';
+          beta_zero_warning = true;
+        }
         return 0;
       }
 
@@ -206,6 +211,8 @@ class EPH_Beta {
     Container<Spline, Allocator<Spline>> rho_r_sq;
     Container<Spline, Allocator<Spline>> alpha;
     Container<Spline, Allocator<Spline>> beta;
+
+    bool beta_zero_warning {false};
 };
 
 using Beta = EPH_Beta<Float, Allocator, Container>;
