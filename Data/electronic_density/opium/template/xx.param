@@ -1,0 +1,28 @@
+
+[Atom]
+# XX: ZZ electrons 
+# 1s2 2s2 2p6 3s2 3p6 3d10 4s2 4p2
+XX
+14 # number of orbitals (reference configuration)
+100  2.00 - # nl0 orbital ; occupation ; initial guess for eigenvalue
+200  2.00 -
+210  6.00 -
+300  2.00 -
+310  6.00 -
+320 10.00 -
+400  2.00 -
+410  6.00 -
+420 10.00 -
+430  14.0 -
+500  2.00 -
+510  6.00 -
+520  2.00 -
+600  2.00 -
+
+[Pseudo]
+1 # number of pseudo orbitals
+1.90 # cutoff radius
+kerker
+
+[XC]
+pwlda
