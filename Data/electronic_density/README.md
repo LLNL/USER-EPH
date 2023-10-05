@@ -9,8 +9,10 @@ Here is a list of elemental electronic density profiles extracted with either Op
 The folders include the necessary input and postprocessing files for reproducing them and making minor tweaks if necessary.
 
 ### H
+file: [`H opium`](Data/electronic_density/opium/H/H.beta)  
 
 ### He
+file: [`He opium`](Data/electronic_density/opium/He/He.beta)  
 
 
 
