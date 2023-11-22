@@ -8,6 +8,11 @@ Alfredo A. Correa (LLNL) \<correaa@llnl.gov\>
 ## Updates/News
 I am planning to refactor the code a bit, so that it would be easier to expand the capabilities of the code in the future. The old codebase will be saved under the tag legacy-2023-11-22.
 
+You can clone the legacy code with this command (you will see warnings about being in a detached state, but you can ignore them):
+```
+git clone -b 2023-11-22 https://gitlab.com/artuuuro/USER-EPH.git
+```
+
 Some planned changes:
 * Move to json format for inputs. This will enable to extend the input files without breaking older implementations. The json implementation will be based on nlohmann::json as it is low overhead and does not require any additional dependencies.
 * Remove old GPU implementation from the master branch
