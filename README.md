@@ -5,6 +5,16 @@ LAMMPS extension (LAMMPS "fix") to capture electron-ion interaction and electron
 Artur Tamm (University of Tartu) \<artur.tamm@ut.ee\>
 Alfredo A. Correa (LLNL) \<correaa@llnl.gov\>
 
+## Updates/News
+I am planning to refactor the code a bit, so that it would be easier to expand the capabilities of the code in the future. The old codebase will be saved under the tag legacy-2023-11-22.
+
+Some planned changes:
+* Move to json format for inputs. This will enable to extend the input files without breaking older implementations. The json implementation will be based on nlohmann::json as it is low overhead and does not require any additional dependencies.
+* Remove old GPU implementation from the master branch
+* Rewrite the documentation
+* Create EPH parameterisations based on Leonid Zhigilei's data
+* Create EPH parameterisations based on Nikita Medvedev's data
+
 ## Introduction
 
 In LAMMPS, a "fix" is a plugin or extension to the main code that performs a specific operation on the atomistic system during
