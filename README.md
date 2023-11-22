@@ -10,7 +10,7 @@ I am planning to refactor the code a bit, so that it would be easier to expand t
 
 You can clone the legacy code with this command (you will see warnings about being in a detached state, but you can ignore them):
 ```
-git clone -b 2023-11-22 https://gitlab.com/artuuuro/USER-EPH.git
+git clone -b legacy-2023-11-22 https://gitlab.com/artuuuro/USER-EPH.git
 ```
 
 Some planned changes:
