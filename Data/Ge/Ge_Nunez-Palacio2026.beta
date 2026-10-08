@@ -1,6 +1,6 @@
-# Ge parametrization 
-# Radial density function fitted from bulk material: PBE DFT 
-# Nuñez-Palacio R. https://doi.org/10.21203/rs.3.rs-9471547/v1
+# Ge parametrization - Radial density function fitted from bulk material: PBE DFT 
+# Nuñez-Palacio, R. et al. Trajectory-dependent electronic stopping in simulations of self-ion ranges in elemental semiconductors. 
+# npj Comput Mater (2026). https://doi.org/10.1038/s41524-026-02347-9
 1 Ge
 5001 0.001000 200001 0.000100 5.000000
 32
