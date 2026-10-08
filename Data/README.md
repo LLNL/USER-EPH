@@ -20,15 +20,15 @@ file: [`He_W_Ponomareva2026.beta`](Data/He/He_W_Ponomareva2026.beta)
 comment: This parameterisation was developed for a He projectile travelling in W host.
 
 ## C
-### Nunez-Palacio (under review)
-cite: R. Nunez-Palacio, *et al*., [doi: 10.21203/rs.3.rs-9471547/v1](https://doi.org/10.21203/rs.3.rs-9471547/v1)
+### Nunez-Palacio 2026
+cite: R. Nunez-Palacio, *et al*., [doi: 10.1038/s41524-026-02347-9](https://doi.org/10.1038/s41524-026-02347-9)
 file: [`C_Nunez-Palacio2026.beta`](Data/C/C_Nunez-Palacio2026.beta)
 
 ## Ge 
 In development
 
-### Nunez-Palacio (under review)
-cite: R. Nunez-Palacio, *et al*., [doi: 10.21203/rs.3.rs-9471547/v1](https://doi.org/10.21203/rs.3.rs-9471547/v1)
+### Nunez-Palacio 2026
+cite: R. Nunez-Palacio, *et al*., [doi: 10.1038/s41524-026-02347-9](https://doi.org/10.1038/s41524-026-02347-9)
 file: [`Ge_Nunez-Palacio2026.beta`](Data/Ge/Ge_Nunez-Palacio2026.beta)
 
 ## Ni
@@ -47,8 +47,8 @@ cite: T. Jarrin, *et al*., Phys. Rev. B, 104, 195203 (2021). [doi: 10.1103/PhysR
 file: [`Si_PRB2021_constant.beta`](Data/Si/Si_PRB2021_constant.beta)  
 file: [`Si_PRB2021_quadratic.beta`](Data/Si/Si_PRB2021_quadratic.beta)
 
-### Nunez-Palacio (under review)
-cite: R. Nunez-Palacio, *et al*., [doi: 10.21203/rs.3.rs-9471547/v1](https://doi.org/10.21203/rs.3.rs-9471547/v1)
+### Nunez-Palacio 2026
+cite: R. Nunez-Palacio, *et al*., [doi: 10.1038/s41524-026-02347-9](https://doi.org/10.1038/s41524-026-02347-9)
 file: [`Si_Nunez-Palacio2026.beta`](Data/Si/Si_Nunez-Palacio2026.beta)
 
 ## W
